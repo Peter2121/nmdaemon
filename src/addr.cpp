@@ -341,3 +341,58 @@ const address_base* addr::getDataAB() const
 {
     return ipData;
 }
+
+bool addr::isValidIp() const
+{
+    switch(ipAddress->getFamily())
+    {
+        case AF_INET6:
+            return isValidIp6();
+        case AF_INET:
+            return isValidIp4();
+        case AF_LINK:
+            return true;
+    }
+        return true;
+}
+
+bool addr::isValidIp4() const
+{
+    uint32_t addr_nbo=0;
+    uint32_t mask_nbo=0;
+    uint32_t gw_nbo=0;
+    uint32_t bcast_nbo=0;
+
+    if(ipAddress!=nullptr)
+    {
+        addr_nbo = ((struct sockaddr_in*)(ipAddress->getSockAddr()))->sin_addr.s_addr;
+    }
+    if(ipMask!=nullptr)
+    {
+        mask_nbo = ((struct sockaddr_in*)(ipMask->getSockAddr()))->sin_addr.s_addr;
+    }
+    switch(ipType)
+    {
+        case ipaddr_type::BCAST:
+            if(ipData!=nullptr)
+            {
+                bcast_nbo = ((struct sockaddr_in*)(ipData->getSockAddr()))->sin_addr.s_addr;
+                return tool::isValidBcast4(addr_nbo, mask_nbo, bcast_nbo);
+            }
+            return false;
+        case ipaddr_type::PPP:
+            if(ipData!=nullptr)
+            {
+                gw_nbo = ((struct sockaddr_in*)(ipData->getSockAddr()))->sin_addr.s_addr;
+                return tool::isValidGw4(addr_nbo, mask_nbo, gw_nbo);
+            }
+            return false;
+        default:
+            return true; // Not (yet) implemented
+    }
+}
+
+bool addr::isValidIp6() const
+{
+    return true; // Not (yet) implemented
+}

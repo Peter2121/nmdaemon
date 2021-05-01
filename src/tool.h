@@ -10,16 +10,19 @@
 #include "sockpp/version.h"
 #include "nmcommand.h"
 #include "nmjsonconst.h"
-#include "addr.h"
 
 using json = nlohmann::json;
+
+class addr;
 
 class tool
 {
 public:
     static addr* getAddrFromJson(json);
-    static int getIfFlags(std::string ifname);
-    static bool setIfFlags(std::string ifname, int setflags);
+    static int getIfFlags(std::string);
+    static bool setIfFlags(std::string, int);
+    static bool isValidGw4(uint32_t, uint32_t, uint32_t);
+    static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
 };
 
 #endif // TOOL_H

@@ -1,4 +1,5 @@
 #include "tool.h"
+#include "addr.h"
 
 addr* tool::getAddrFromJson(json cmd)
 {
@@ -164,5 +165,49 @@ bool tool::setIfFlags(std::string ifname, int setflags)
         return false;
     }
     sock.close();
+    return true;
+}
+
+bool tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
+{
+    if( (addr==0) || (mask==0) || (gw==0) )
+        return false;
+
+    uint32_t result1 = (~mask) & addr;
+    if(result1==0)   // No valuable bits in addr
+        return false;
+    uint32_t result2 = (~mask) & gw;
+    if(result2==0)   // No valuable bits in gw
+        return false;
+    if( (result1^result2) == 0 ) // Overlapped addr and gw
+        return false;
+    if( ((~mask)^result2) ==0 )  // Gw is bcast address
+        return false;
+
+    result1 = mask & addr;
+    result2 = mask & gw;
+    if( (result1^result2) != 0 ) // addr and gw in different networks
+        return false;
+
+    return true;
+}
+
+bool tool::isValidBcast4(uint32_t addr, uint32_t mask, uint32_t bcast)
+{
+    if( (addr==0) || (mask==0) || (bcast==0) )
+        return false;
+
+    if( ((~mask)&addr) == 0 )    // No valuable bits in addr
+        return false;
+
+    uint32_t result1 = (~mask) & bcast;
+    if( ((~mask)^result1) != 0 )   // Overlapped mask and bcast
+        return false;
+
+    result1 = mask & addr;
+    uint32_t result2 = mask & bcast;
+    if( (result1^result2) != 0 ) // addr and bcast in different networks
+        return false;
+
     return true;
 }

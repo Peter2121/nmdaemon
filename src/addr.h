@@ -11,6 +11,7 @@
 #include "address_ip6.h"
 #include "address_link.h"
 #include "nmexception.h"
+#include "tool.h"
 
 enum class ipaddr_type
 {
@@ -29,6 +30,8 @@ protected:
     bool memData;
     bool isAddrUp;
     nmexception nmExcept;
+    bool isValidIp4() const;
+    bool isValidIp6() const;
 public:
     addr(struct ifaddrs*);
     addr(address_base* addr, address_base* mask, address_base* data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, bool mm=false);
@@ -43,6 +46,7 @@ public:
     void setAddr(address_base*, bool);
     void setMask(address_base*, bool);
     void setData(address_base*, bool);
+    bool isValidIp() const;
 };
 
 #endif // IPADDR_H
