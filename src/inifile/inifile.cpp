@@ -122,7 +122,7 @@ void CIniFileA::Save( std::ostream& output )
 
     for( SecIndexA::iterator itr = m_sections.begin() ; itr != m_sections.end() ; ++itr )
     {
-        if((*itr)->GetSectionName()==DEFAULT_SECTION)
+        if((*itr)->GetSectionName()==DEFAULT_SECTION_A)
         	continue;
         sSection = "[" + (*itr)->GetSectionName() + "]";
 
@@ -172,7 +172,7 @@ void CIniFileA::Load( std::istream& input , bool bMerge )
     std::string sRead;
     enum { KEY , SECTION , COMMENT , OTHER };
 
-    pSection = AddSection( DEFAULT_SECTION );
+    pSection = AddSection( DEFAULT_SECTION_A );
     while( std::getline( input , sRead ) )
     {
 
@@ -757,7 +757,7 @@ void CIniFileW::Save( std::wostream& output )
 
     for( SecIndexW::iterator itr = m_sections.begin() ; itr != m_sections.end() ; ++itr )
     {
-        if((*itr)->GetSectionName()==DEFAULT_SECTION)
+        if((*itr)->GetSectionName()==DEFAULT_SECTION_W)
         	continue;
         sSection = L"[" + (*itr)->GetSectionName() + L"]";
 
@@ -815,7 +815,7 @@ void CIniFileW::Load( std::wistream& input , bool bMerge )
     std::wstring sRead;
     enum { KEY , SECTION , COMMENT , OTHER };
 
-    pSection = AddSection( DEFAULT_SECTION );
+    pSection = AddSection( DEFAULT_SECTION_W );
     while( std::getline( input , sRead ) )
     {
 

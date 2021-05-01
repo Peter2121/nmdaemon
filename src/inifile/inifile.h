@@ -94,7 +94,8 @@ SOFTWARE.
 #define INI_TOKEN_B_ANSI "\b"	// I.E. Item1,Item1b;Item2,Item2b;Item3,Item3b - '\b' used in place of ','
 #define INI_EMPTY_ANSI "*"		// Used to indicate empty value in token string. I.E. *;Item2;*;Item3;
 
-static const std::string DEFAULT_SECTION = "<<default>>";
+static const std::string DEFAULT_SECTION_A = "<<default>>";
+static const std::wstring DEFAULT_SECTION_W = L"<<default>>";
 
 void RTrim(std::string &str, const std::string& chars = " \t");
 void LTrim(std::string &str, const std::string& chars = " \t");
