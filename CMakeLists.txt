@@ -5,7 +5,7 @@ project(nmdaemon)
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -34,7 +34,9 @@ add_executable(nmdaemon
         src/system_worker.cpp
         src/wpa_worker.cpp
         src/tool.cpp
+        src/rcconf.cpp
         src/loguru/loguru.cpp
+        src/inifile/inifile.cpp
         )
 
 target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} sockpp)
