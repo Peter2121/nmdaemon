@@ -10,6 +10,7 @@
 #include "nmworker.h"
 #include "interface.h"
 #include "tool.h"
+#include "rcconf.h"
 
 class system_worker : public nmworker
 {
@@ -20,8 +21,13 @@ protected:
         { nmscope::SYSTEM, nmcmd::IF_REMOVE },
         { nmscope::SYSTEM, nmcmd::IF_ENABLE },
         { nmscope::SYSTEM, nmcmd::IF_DISABLE },
-        { nmscope::SYSTEM, nmcmd::IF_LIST }
+        { nmscope::SYSTEM, nmcmd::IF_LIST },
+        { nmscope::SYSTEM, nmcmd::RCCONF_READ },
+        { nmscope::SYSTEM, nmcmd::RCCONF_WRITE }
     };
+    static inline const std::string RCCONF_FILENAME = "/home/peter/Programming/nmdebug/rc.conf";
+    rcconf* prcConf;
+//    static inline const std::string RCCONF_FILENAME = "/etc/rc.conf";
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:
@@ -33,6 +39,8 @@ public:
     json execCmdIfList(nmcommand_data*);
     json execCmdIfEnable(nmcommand_data*);
     json execCmdIfDisable(nmcommand_data*);
+    json execCmdRcConfRead(nmcommand_data*);
+    json execCmdRcConfWrite(nmcommand_data*);
 };
 
 #endif // SYS_WORKER_H

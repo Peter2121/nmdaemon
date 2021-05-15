@@ -12,6 +12,7 @@ enum class nmcmd
 //  system_worker
     IF_ADD, IF_REMOVE, IF_LIST,
     IF_ENABLE, IF_DISABLE,
+    RCCONF_READ, RCCONF_WRITE,
 //  if_worker
     IP_ADDR_SET, IP4_DHCP_ENABLE, IP6_DHCP_ENABLE,
     IP_ADDR_ADD, IP_ADDR_REMOVE,

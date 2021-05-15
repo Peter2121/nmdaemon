@@ -1,10 +1,15 @@
 #include "system_worker.h"
 
 system_worker::system_worker()
-{ }
+{
+    prcConf = nullptr;
+}
 
 system_worker::~system_worker()
-{ }
+{
+    if(prcConf!=nullptr)
+        delete prcConf;
+}
 
 nmscope system_worker::getScope()
 {
@@ -24,6 +29,10 @@ json system_worker::execCmd(nmcommand_data* pcmd)
             return execCmdIfEnable(pcmd);
         case nmcmd::IF_DISABLE :
             return execCmdIfDisable(pcmd);
+        case nmcmd::RCCONF_READ :
+            return execCmdRcConfRead(pcmd);
+        case nmcmd::RCCONF_WRITE :
+            return execCmdRcConfWrite(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -207,3 +216,20 @@ json system_worker::execCmdIfDisable(nmcommand_data* pcmd) {
     return JSON_RESULT_SUCCESS;
 }
 
+json system_worker::execCmdRcConfRead(nmcommand_data*)
+{
+    if(prcConf!=nullptr)
+        delete prcConf;
+    prcConf = new rcconf(RCCONF_FILENAME);
+    if(!prcConf->iniLoad())
+    {
+        LOG_S(ERROR) << "execCmdRcConfRead: Cannot load " << RCCONF_FILENAME;
+        return JSON_RESULT_ERR;
+    }
+    return prcConf->getRcIpConfig();
+}
+
+json system_worker::execCmdRcConfWrite(nmcommand_data*)
+{
+    return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+}

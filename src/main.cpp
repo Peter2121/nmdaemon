@@ -18,6 +18,7 @@
 
 #include "nmdaemon.h"
 #include "nmworker.h"
+#include "rcconf.h"
 #include "workers.h"
 #if defined (WORKER_DUMMY)
 #include "dummy_worker.h"
@@ -85,6 +86,27 @@ int main(int argc, char* argv[])
     {
         LOG_S(WARNING) << "This program must be run as root!";
     }
+
+    //*******************
+    /*
+    string s;
+    getline(cin, s);
+    rcconf* rc_conf = new rcconf("/home/peter/Programming/nmdebug/rc.conf");
+    if(!rc_conf->iniLoad())
+    {
+        LOG_S(ERROR) << "Cannot load rc.conf";
+        return -1;
+    }
+    json rcjson = rc_conf->getRcIpConfig();
+    if(!rcjson.empty())
+    {
+        LOG_S(INFO) << rcjson.dump(4);
+//        exit(0);
+    }
+    else
+        exit(-1);
+    */
+    //*******************
 
     signal(SIGINT, signalCleaner);
     signal(SIGABRT, signalCleaner);
