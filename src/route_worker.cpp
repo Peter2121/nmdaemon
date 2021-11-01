@@ -418,11 +418,8 @@ json route_worker::execCmdRouteList(nmcommand_data*)
 
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;
-    struct sockaddr_in *sin = nullptr;
+//    struct sockaddr_in *sin = nullptr;
     struct sockaddr *rti_info[RTAX_MAX];
-    struct in_addr ip_addr_dest;
-    struct in_addr ip_addr_mask;
-    struct in_addr ip_addr_gw;
 
     size_t sz = 0;
     short err_cnt = 0;
@@ -433,7 +430,7 @@ json route_worker::execCmdRouteList(nmcommand_data*)
     address_ip4 *dest=nullptr, *mask=nullptr, *gate=nullptr;
     size_t sa_len = sizeof(struct sockaddr);
 //    u_int32_t dest, mask, gate;
-    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
+//    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
     short constexpr MIB_SIZE = 6;
     int mib[MIB_SIZE];
     mib[0] = CTL_NET;
@@ -446,7 +443,8 @@ json route_worker::execCmdRouteList(nmcommand_data*)
     std::string strIfName = "";
     bool isFound = false;
     std::vector<nlohmann::json> vectIfsJson;
-    nlohmann::json retIfListJson;
+    nlohmann::json retIfListJson = {};
+    nlohmann::json res_routes = {};
 
     //  Get necessary buffer size and resize the buffer
     if ( sysctl(mib, MIB_SIZE, nullptr, &sz, nullptr, 0) != 0 )
@@ -581,12 +579,10 @@ json route_worker::execCmdRouteList(nmcommand_data*)
 
                 if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
                 {
-//                    ifaces.push_back(new interface(std::string(ifname)));
                     strIfName = std::string(ifname);
                 }
                 else
                 {
-//                    ifaces.push_back(new interface(std::to_string(rtm->rtm_index)));
                     strIfName = std::to_string(rtm->rtm_index);
                 }
 
@@ -604,16 +600,6 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     ifaces.push_back(new interface(strIfName));
                     ifaces[ifaces.size()-1]->addAddress(new addr(dest, mask, gate, ipaddr_type::ROUTE, true, false));
                 }
-/**
-                if(dest!=gate)
-                {
-                    cout << "Route: " << inet_ntoa(ip_addr_dest) << " / " << inet_ntoa(ip_addr_mask) << " " << inet_ntoa(ip_addr_gw);
-                    if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
-                        cout << " interface: " << ifname;
-                    else
-                        cout << endl;
-                }
-*/
             }
         }
 
@@ -644,12 +630,14 @@ json route_worker::execCmdRouteList(nmcommand_data*)
           vectIfsJson.push_back(iface->getIfJson());
           delete iface;
         }
-        nlohmann::json addrJson;
+
         retIfListJson[JSON_PARAM_ROUTES] = vectIfsJson;
-        return retIfListJson;
+        res_routes[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+        res_routes[JSON_PARAM_DATA] = retIfListJson;
+        return res_routes;
     }
     else
     {
-        return JSON_RESULT_SUCCESS;
+        return JSON_RESULT_NOTFOUND;
     }
 }
