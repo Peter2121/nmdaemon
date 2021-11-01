@@ -212,16 +212,19 @@ bool route_worker::getStaticRoute(addr* stroute)
         switch(fam_gw)
         {
             case AF_INET:
-                paddr_gw = new address_ip4((sockaddr_in*)&(pcur_route->gateway));
-                stroute->setData(paddr_gw, true);
+//                paddr_gw = new address_ip4((sockaddr_in*)&(pcur_route->gateway));
+                stroute->setData(std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(&(pcur_route->gateway))));
+//                stroute->setData(paddr_gw, true);
                 break;
             case AF_INET6:
-                paddr_gw = new address_ip6((sockaddr_in6*)&(pcur_route6->gateway));
-                stroute->setData(paddr_gw, true);
+//                paddr_gw = new address_ip6((sockaddr_in6*)&(pcur_route6->gateway));
+                stroute->setData(std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(&(pcur_route->gateway))));
+//                stroute->setData(paddr_gw, true);
                 break;
             case AF_LINK:
-                paddr_gw = new address_link((sockaddr_dl*)&(pcur_route->gateway));
-                stroute->setData(paddr_gw, true);
+//                paddr_gw = new address_link((sockaddr_dl*)&(pcur_route->gateway));
+                stroute->setData(std::make_shared<address_link>(reinterpret_cast<const struct sockaddr_dl*>(&(pcur_route->gateway))));
+//                stroute->setData(paddr_gw, true);
                 break;
             default:
                 LOG_S(ERROR) << "getStaticRoute received unknown router family from system: " << fam_gw;

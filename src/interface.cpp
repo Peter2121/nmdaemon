@@ -18,10 +18,6 @@ interface::interface()
 
 interface::~interface()
 {
-    for(auto a : vectAddrs)
-    {
-//        delete a;
-    }
 }
 
 void interface::setName(std::string name)
@@ -33,11 +29,8 @@ void interface::addAddress(struct ifaddrs* ifa)
 {
     try
     {
-//        addr* a = new addr(ifa);
         std::shared_ptr<addr> spa = std::make_shared<addr>(ifa);
-        vectAddrs.push_back(spa.get());
         spVectAddrs.push_back(spa);
-//        vectAddrs.push_back(a);
         if(spa->isUp())
             isIfUp = true;
         if(spa->getFamily() == AF_INET)
@@ -59,7 +52,6 @@ void interface::addAddress(std::shared_ptr<addr> spa)
     }
     try
     {
-        vectAddrs.push_back(spa.get());
         spVectAddrs.push_back(spa);
         if(spa->isUp())
             isIfUp = true;
@@ -71,11 +63,6 @@ void interface::addAddress(std::shared_ptr<addr> spa)
     {
         LOG_S(ERROR) << "Cannot add address: " << spa->getAddrString();
     }
-}
-
-const std::vector<addr*>* interface::getAddrs() const
-{
-    return &vectAddrs;
 }
 
 std::string interface::getName() const
@@ -125,7 +112,7 @@ const nlohmann::json interface::getIfJson() const
 
     retIfJson[JSON_PARAM_IF_NAME] = strName;
 
-    for(auto addr : vectAddrs)
+    for(auto addr : spVectAddrs)
     {
         addrJson = addr->getAddrJson();
         vectAddrsJson.push_back(addrJson);

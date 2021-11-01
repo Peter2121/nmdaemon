@@ -190,7 +190,7 @@ addr::~addr()
     if( (ipData != nullptr) && memData )
         delete ipData;
 }
-
+/*
 void addr::setAddr(address_base* addr, bool ma)
 {
     if( (ipAddress != nullptr) && memAddr )
@@ -213,6 +213,13 @@ void addr::setData(address_base* data, bool md)
         delete ipData;
     ipData = data;
     memData = md;
+}
+*/
+void addr::setData(std::shared_ptr<address_base> spdata)
+{
+    spIpData = spdata;
+    ipData = spdata.get();
+    memData = false;
 }
 
 // TODO: customize separator and eol strings (take them from arguments)
