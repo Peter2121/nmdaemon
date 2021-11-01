@@ -427,7 +427,10 @@ json route_worker::execCmdRouteList(nmcommand_data*)
     std::vector<uint8_t> buf(0);
 //    std::vector<addr*> routes(0);
     std::vector<interface*> ifaces(0);
-    address_ip4 *dest=nullptr, *mask=nullptr, *gate=nullptr;
+//    address_ip4 *dest=nullptr, *mask=nullptr, *gate=nullptr;
+    std::shared_ptr<address_ip4> sp_dest = nullptr;
+    std::shared_ptr<address_ip4> sp_mask = nullptr;
+    std::shared_ptr<address_ip4> sp_gate = nullptr;
     size_t sa_len = sizeof(struct sockaddr);
 //    u_int32_t dest, mask, gate;
 //    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
@@ -517,7 +520,7 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        dest = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_dest = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
@@ -526,55 +529,49 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                 }
                 else
                 {
-                    dest = nullptr;
+                    sp_dest = nullptr;
                 }
 
                 if ( (sa = rti_info[RTAX_GATEWAY]) != nullptr)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        gate = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_gate = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
-                        if(dest!=nullptr)
-                            delete dest;
                         continue;   // Normally never happens - we asked information about AF_INET routes
                     }
                 }
                 else
                 {
-                    gate = nullptr;
+                    sp_gate = nullptr;
                 }
 
                 if ( (sa = rti_info[RTAX_NETMASK]) != nullptr)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        mask = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_mask = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
-                        if(dest!=nullptr)
-                            delete dest;
-                        if(gate!=nullptr)
-                            delete gate;
                         continue;   // Normally never happens - we asked information about AF_INET routes
                     }
                 }
                 else
                 {
-                    mask = nullptr;
+                    sp_mask = nullptr;
                 }
 
                 if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
                 {
-                    mask = new address_ip4("255.255.255.255");
+                    sp_mask = std::make_shared<address_ip4>("255.255.255.255");
                 }
 
-                if(!dest)
+                if(sp_dest==nullptr)
                 {
-                    mask = new address_ip4("0.0.0.0");;
+                    sp_mask = std::make_shared<address_ip4>("0.0.0.0");;
                 }
 
                 if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
@@ -592,13 +589,15 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     if(iface->getName()==strIfName)
                     {
                         isFound = true;
-                        iface->addAddress(new addr(dest, mask, gate, ipaddr_type::ROUTE, true, false));
+//                        iface->addAddress(new addr(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
+                        iface->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                     }
                 }
                 if(!isFound)
                 {
                     ifaces.push_back(new interface(strIfName));
-                    ifaces[ifaces.size()-1]->addAddress(new addr(dest, mask, gate, ipaddr_type::ROUTE, true, false));
+//                    ifaces[ifaces.size()-1]->addAddress(new addr(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
+                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                 }
             }
         }

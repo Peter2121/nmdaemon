@@ -107,12 +107,14 @@ int main(int argc, char* argv[])
     */
     //*******************
 
+/*
     signal(SIGINT, signalCleaner);
     signal(SIGABRT, signalCleaner);
     signal(SIGFPE, signalCleaner);
     signal(SIGILL, signalCleaner);
     signal(SIGSEGV, signalCleaner);
     signal(SIGTERM, signalCleaner);
+*/
 
 #if defined (WORKER_DUMMY)
     workers.push_back(new WORKER_DUMMY());

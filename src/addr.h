@@ -3,6 +3,7 @@
 
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <memory>
 #include "json/json.hpp"
 #include "magic_enum/magic_enum.hpp"
 #include "nmjsonconst.h"
@@ -23,10 +24,13 @@ class addr
 protected:
     ipaddr_type ipType;
     address_base* ipAddress;
+    std::shared_ptr<address_base> spIpAddress;
     bool memAddr;
     address_base* ipMask;    // subnet mask or nothing
+    std::shared_ptr<address_base> spIpMask;
     bool memMask;
     address_base* ipData;    // network broadcast or gateway or nothing
+    std::shared_ptr<address_base> spIpData;
     bool memData;
     bool isAddrUp;
     nmexception nmExcept;
@@ -35,6 +39,7 @@ protected:
 public:
     addr(struct ifaddrs*);
     addr(address_base* addr, address_base* mask, address_base* data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, bool mm=false);
+    addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false);
     ~addr();
     const address_base* getAddrAB() const;
     const address_base* getMaskAB() const;

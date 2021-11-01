@@ -6,7 +6,9 @@ addr::addr(struct ifaddrs* ifa)
         ipType = ipaddr_type::LINK;
     else if( (ifa->ifa_flags & IFF_POINTOPOINT ) != 0 )
         ipType = ipaddr_type::PPP;
-    else if(ifa->ifa_broadaddr)
+    else if(ifa->ifa_addr->sa_family==AF_INET6)
+        ipType = ipaddr_type::BCAST;
+    else if((ifa->ifa_broadaddr) && (ifa->ifa_addr->sa_family==AF_INET))
         ipType = ipaddr_type::BCAST;
     else
         throw nmExcept;
@@ -96,8 +98,6 @@ addr::addr(struct ifaddrs* ifa)
                         ipData = new address_ip6((sockaddr_in6*)ifa->ifa_broadaddr);
                         memData = true;
                     }
-                    else
-                        throw nmExcept;
                     break;
                 case ipaddr_type::PPP:
                 case ipaddr_type::ROUTE:
@@ -136,6 +136,47 @@ addr::addr(address_base* addr, address_base* mask, address_base* data, ipaddr_ty
     memAddr = mm;
     memMask = mm;
     memData = mm;
+    ipType = type;
+    isAddrUp = up;
+}
+
+addr::addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data, ipaddr_type type, bool up)
+{
+    if(addr!=nullptr)
+    {
+        spIpAddress = addr;
+        ipAddress = addr.get();
+    }
+    else
+    {
+        spIpAddress = nullptr;
+        ipAddress = nullptr;
+    }
+    if(mask!=nullptr)
+    {
+        spIpMask = mask;
+        ipMask = mask.get();
+    }
+    else
+    {
+        spIpMask = nullptr;
+        ipMask = nullptr;
+    }
+
+    if(data!=nullptr)
+    {
+        spIpData = data;
+        ipData = data.get();
+    }
+    else
+    {
+        spIpData = nullptr;
+        ipData = nullptr;
+    }
+
+    memAddr = false;
+    memMask = false;
+    memData = false;
     ipType = type;
     isAddrUp = up;
 }

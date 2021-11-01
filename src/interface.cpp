@@ -20,7 +20,7 @@ interface::~interface()
 {
     for(auto a : vectAddrs)
     {
-        delete a;
+//        delete a;
     }
 }
 
@@ -33,37 +33,46 @@ void interface::addAddress(struct ifaddrs* ifa)
 {
     try
     {
-        addr* a = new addr(ifa);
-        vectAddrs.push_back(a);
-        if(a->isUp())
+//        addr* a = new addr(ifa);
+        std::shared_ptr<addr> spa = std::make_shared<addr>(ifa);
+        vectAddrs.push_back(spa.get());
+        spVectAddrs.push_back(spa);
+//        vectAddrs.push_back(a);
+        if(spa->isUp())
             isIfUp = true;
-        if(a->getFamily() == AF_INET)
+        if(spa->getFamily() == AF_INET)
             hasIPv4 = true;
-        if(a->getFamily() == AF_INET6)
+        if(spa->getFamily() == AF_INET6)
             hasIPv6 = true;
     } catch (std::exception& e)
     {
-        LOG_S(ERROR) << "Cannot add address: " << ifa->ifa_name;
+        LOG_S(ERROR) << "Cannot add address of family " << (int)ifa->ifa_addr->sa_family << " to interface " << ifa->ifa_name;
     }
 }
 
-// The addr* got by this function will be deleted in the destructor ~interface()
-void interface::addAddress(addr* a)
+void interface::addAddress(std::shared_ptr<addr> spa)
 {
+    if(spa==nullptr)
+    {
+        LOG_S(ERROR) << "interface::addAddress error: NULL pointer received";
+        return;
+    }
     try
     {
-        vectAddrs.push_back(a);
-        if(a->isUp())
+        vectAddrs.push_back(spa.get());
+        spVectAddrs.push_back(spa);
+        if(spa->isUp())
             isIfUp = true;
-        if(a->getFamily() == AF_INET)
+        if(spa->getFamily() == AF_INET)
             hasIPv4 = true;
-        if(a->getFamily() == AF_INET6)
+        if(spa->getFamily() == AF_INET6)
             hasIPv6 = true;
     } catch (std::exception& e)
     {
-        LOG_S(ERROR) << "Cannot add address: " << a->getAddrString();
+        LOG_S(ERROR) << "Cannot add address: " << spa->getAddrString();
     }
 }
+
 const std::vector<addr*>* interface::getAddrs() const
 {
     return &vectAddrs;
