@@ -58,6 +58,7 @@ addr::addr(struct ifaddrs* ifa)
                         throw nmExcept;
                     break;
                 case ipaddr_type::PPP:
+                case ipaddr_type::ROUTE:
                     // We can have only IPv4 or only IPv6 ifa_dstaddr not the both
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET) )
@@ -99,6 +100,7 @@ addr::addr(struct ifaddrs* ifa)
                         throw nmExcept;
                     break;
                 case ipaddr_type::PPP:
+                case ipaddr_type::ROUTE:
                     // We can have only IPv4 or only IPv6 ifa_dstaddr not the both
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET6) )
@@ -218,6 +220,7 @@ const std::string addr::getAddrString() const
                 }
                 break;
             case ipaddr_type::PPP:
+            case ipaddr_type::ROUTE:
                 if(ipMask != nullptr)
                 {
                     strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
@@ -294,6 +297,7 @@ const nlohmann::json addr::getAddrJson() const
                 }
                 break;
             case ipaddr_type::PPP:
+            case ipaddr_type::ROUTE:
                 if(ipMask != nullptr)
                 {
                     strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;

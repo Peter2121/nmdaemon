@@ -20,6 +20,8 @@ public:
     interface(std::string);
     void setName(std::string);
     void addAddress(struct ifaddrs*);
+    void addAddress(addr*);
+    std::string getName() const;
     const std::vector<addr*>* getAddrs() const;
     const nlohmann::json getIfJson() const;
     const nlohmann::json getIfString() const;

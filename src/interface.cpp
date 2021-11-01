@@ -47,9 +47,31 @@ void interface::addAddress(struct ifaddrs* ifa)
     }
 }
 
+// The addr* got by this function will be deleted in the destructor ~interface()
+void interface::addAddress(addr* a)
+{
+    try
+    {
+        vectAddrs.push_back(a);
+        if(a->isUp())
+            isIfUp = true;
+        if(a->getFamily() == AF_INET)
+            hasIPv4 = true;
+        if(a->getFamily() == AF_INET6)
+            hasIPv6 = true;
+    } catch (std::exception& e)
+    {
+        LOG_S(ERROR) << "Cannot add address: " << a->getAddrString();
+    }
+}
 const std::vector<addr*>* interface::getAddrs() const
 {
     return &vectAddrs;
+}
+
+std::string interface::getName() const
+{
+    return strName;
 }
 
 /*

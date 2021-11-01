@@ -36,7 +36,6 @@
 #include "wpa_worker.h"
 #endif
 
-using namespace std;
 
 /*
 void run_echo(sockpp::unix_socket sock)
@@ -73,7 +72,7 @@ int main(int argc, char* argv[])
     bool res;
     std::vector<nmdaemon*> daemons;
     std::vector<nmworker*> workers;
-    std::vector<thread*> threads;
+    std::vector<std::thread*> threads;
     std::string sock_path = DEFAULT_SOCKET_PATH;
     struct sockaddr_un sock_addr;
     memset(&sock_addr, 0, sizeof(struct sockaddr_un));
@@ -166,7 +165,7 @@ int main(int argc, char* argv[])
         else {
             nmdaemon* daemon = new nmdaemon(workers);
             daemons.push_back(daemon);
-            thread thr(&nmdaemon::sock_receiver, daemon, move(sock));
+            std::thread thr(&nmdaemon::sock_receiver, daemon, move(sock));
             threads.push_back(&thr);
             thr.detach();
         }

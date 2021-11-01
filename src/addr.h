@@ -15,7 +15,7 @@
 
 enum class ipaddr_type
 {
-    BCAST, PPP, LINK, LOOPBACK
+    BCAST, PPP, LINK, LOOPBACK, ROUTE
 };
 
 class addr

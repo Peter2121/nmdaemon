@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <net/route.h>
+#include <sys/sysctl.h>
 #define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
 #include "nmworker.h"
+#include "interface.h"
 #include "addr.h"
 #include "tool.h"
 
@@ -40,7 +42,8 @@ protected:
         { nmscope::ROUTE, nmcmd::RT_DEF_SET },
         { nmscope::ROUTE, nmcmd::RT_REMOVE },
         { nmscope::ROUTE, nmcmd::RT_DEF_REMOVE },
-        { nmscope::ROUTE, nmcmd::RT_LIST }
+        { nmscope::ROUTE, nmcmd::RT_LIST },
+        { nmscope::ROUTE, nmcmd::RT_LIST6 }
     };
     bool setStaticRoute(addr*);
     bool getStaticRoute(addr*);
@@ -56,9 +59,10 @@ public:
     json execCmdRouteGet(nmcommand_data*);
     json execCmdDefRouteSet(nmcommand_data*);
     json execCmdDefRouteGet(nmcommand_data*);
+    json execCmdRouteList(nmcommand_data*);
 //    json execCmdRouteRemove(nmcommand_data*);
 //    json execCmdDefRouteRemove(nmcommand_data*);
-//    json execCmdRouteList(nmcommand_data*);
+//    json execCmdRouteList6(nmcommand_data*);
 };
 
 #endif // ROUTE_WORKER_H

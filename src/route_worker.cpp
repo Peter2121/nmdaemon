@@ -23,10 +23,12 @@ json route_worker::execCmd(nmcommand_data* pcmd)
             return execCmdRouteSet(pcmd);
         case nmcmd::RT_DEF_SET :
             return execCmdDefRouteSet(pcmd);
+        case nmcmd::RT_LIST :
+            return execCmdRouteList(pcmd);
         case nmcmd::RT_DEF6_GET :
         case nmcmd::RT_REMOVE :
         case nmcmd::RT_DEF_REMOVE :
-        case nmcmd::RT_LIST :
+        case nmcmd::RT_LIST6 :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
@@ -398,4 +400,256 @@ json route_worker::execCmdDefRouteSet(nmcommand_data* pcmd)
     LOG_S(INFO) << "Default route set";
     delete rt_addr;
     return JSON_RESULT_SUCCESS;
+}
+
+json route_worker::execCmdRouteList(nmcommand_data*)
+{
+    /*
+     * Round up 'a' to next multiple of 'size', which must be a power of 2
+     * (c) Unix Network Programming by W. Richard Stevens.
+    */
+    #define ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
+    /*
+     * Step to next socket address structure;
+     * if sa_len is 0, assume it is sizeof(u_long)
+     * (c) Unix Network Programming by W. Richard Stevens.
+    */
+    #define NEXT_SA(ap) ap = (struct sockaddr *) ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (u_long)) : sizeof(u_long)))
+
+    struct rt_msghdr* rtm = nullptr;
+    struct sockaddr *sa = nullptr;
+    struct sockaddr_in *sin = nullptr;
+    struct sockaddr *rti_info[RTAX_MAX];
+    struct in_addr ip_addr_dest;
+    struct in_addr ip_addr_mask;
+    struct in_addr ip_addr_gw;
+
+    size_t sz = 0;
+    short err_cnt = 0;
+    short constexpr ERR_CNT_MAX = 10;
+    std::vector<uint8_t> buf(0);
+//    std::vector<addr*> routes(0);
+    std::vector<interface*> ifaces(0);
+    address_ip4 *dest=nullptr, *mask=nullptr, *gate=nullptr;
+    size_t sa_len = sizeof(struct sockaddr);
+//    u_int32_t dest, mask, gate;
+    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
+    short constexpr MIB_SIZE = 6;
+    int mib[MIB_SIZE];
+    mib[0] = CTL_NET;
+    mib[1] = AF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_INET;
+    mib[4] = NET_RT_DUMP;
+    mib[5] = 0;
+    char ifname[IFNAMSIZ];
+    std::string strIfName = "";
+    bool isFound = false;
+    std::vector<nlohmann::json> vectIfsJson;
+    nlohmann::json retIfListJson;
+
+    //  Get necessary buffer size and resize the buffer
+    if ( sysctl(mib, MIB_SIZE, nullptr, &sz, nullptr, 0) != 0 )
+    {
+        LOG_S(ERROR) << "Cannot get sysctl table size";
+        return JSON_RESULT_ERR;
+    }
+    buf.resize(sz);
+
+    //  Try to get routing table using sysctl calls until we successfully get it
+    //  or until we get ERR_CNT_MAX errors
+    while(true)
+    {
+        if ( sysctl(mib, MIB_SIZE, &buf[0], &sz, nullptr, 0) == 0)
+        {
+            if (buf.size() < sz)
+            {
+                buf.resize(sz);
+                continue;
+            }
+            else if (buf.size() > sz)
+            {
+                buf.resize(sz);
+            }
+            rtm = reinterpret_cast<struct rt_msghdr*>(&(buf[0]));
+            for( size_t offset=0; offset<buf.size(); offset+=rtm->rtm_msglen )
+            {
+                if(offset>0)
+                {
+                    rtm = reinterpret_cast<struct rt_msghdr*>(&(buf[offset]));
+                }
+                if (rtm->rtm_version != RTM_VERSION)
+                {
+                    LOG_S(ERROR) << "RTM version mismatch: expected " << RTM_VERSION << " got " << rtm->rtm_version;
+                    err_cnt++;
+                    if(err_cnt > ERR_CNT_MAX)
+                        return JSON_RESULT_ERR;
+                    continue;
+                }
+                if (rtm->rtm_errno != 0)
+                {
+                    LOG_S(ERROR) << "Got error in RTM: " << rtm->rtm_errno;
+                    err_cnt++;
+                    if(err_cnt > ERR_CNT_MAX)
+                        return JSON_RESULT_ERR;
+                    continue;
+                }
+//              We need only active static routes with gateway defined
+                if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) || !(rtm->rtm_flags & RTF_STATIC) )
+                    continue;
+
+//              Fill rti_info array with available information
+                sa = reinterpret_cast<struct sockaddr*>(rtm + 1);
+                for (short i=0; i<RTAX_MAX; i++)
+                {
+                    if (rtm->rtm_addrs & (1 << i))
+                    {
+                        sa_len = sa->sa_len;
+                        rti_info[i] = sa;
+                        NEXT_SA(sa);
+                    }
+                    else
+                    {
+                        rti_info[i] = nullptr;
+                    }
+                }
+
+//              Analyse and output the information from rti_info array
+                if ( (sa=rti_info[RTAX_DST]) != nullptr )
+                {
+                    if (sa->sa_family == AF_INET)
+                    {
+                        dest = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                    }
+                    else if (sa->sa_family == AF_INET6)
+                    {
+                        continue;   // Normally never happens - we asked information about AF_INET routes
+                    }
+                }
+                else
+                {
+                    dest = nullptr;
+                }
+
+                if ( (sa = rti_info[RTAX_GATEWAY]) != nullptr)
+                {
+                    if (sa->sa_family == AF_INET)
+                    {
+                        gate = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                    }
+                    else if (sa->sa_family == AF_INET6)
+                    {
+                        if(dest!=nullptr)
+                            delete dest;
+                        continue;   // Normally never happens - we asked information about AF_INET routes
+                    }
+                }
+                else
+                {
+                    gate = nullptr;
+                }
+
+                if ( (sa = rti_info[RTAX_NETMASK]) != nullptr)
+                {
+                    if (sa->sa_family == AF_INET)
+                    {
+                        mask = new address_ip4(reinterpret_cast<const struct sockaddr_in*>(sa));
+                    }
+                    else if (sa->sa_family == AF_INET6)
+                    {
+                        if(dest!=nullptr)
+                            delete dest;
+                        if(gate!=nullptr)
+                            delete gate;
+                        continue;   // Normally never happens - we asked information about AF_INET routes
+                    }
+                }
+                else
+                {
+                    mask = nullptr;
+                }
+
+                if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
+                {
+                    mask = new address_ip4("255.255.255.255");
+                }
+
+                if(!dest)
+                {
+                    mask = new address_ip4("0.0.0.0");;
+                }
+
+                if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
+                {
+//                    ifaces.push_back(new interface(std::string(ifname)));
+                    strIfName = std::string(ifname);
+                }
+                else
+                {
+//                    ifaces.push_back(new interface(std::to_string(rtm->rtm_index)));
+                    strIfName = std::to_string(rtm->rtm_index);
+                }
+
+                isFound = false;
+                for(auto iface : ifaces)
+                {
+                    if(iface->getName()==strIfName)
+                    {
+                        isFound = true;
+                        iface->addAddress(new addr(dest, mask, gate, ipaddr_type::ROUTE, true, false));
+                    }
+                }
+                if(!isFound)
+                {
+                    ifaces.push_back(new interface(strIfName));
+                    ifaces[ifaces.size()-1]->addAddress(new addr(dest, mask, gate, ipaddr_type::ROUTE, true, false));
+                }
+/**
+                if(dest!=gate)
+                {
+                    cout << "Route: " << inet_ntoa(ip_addr_dest) << " / " << inet_ntoa(ip_addr_mask) << " " << inet_ntoa(ip_addr_gw);
+                    if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
+                        cout << " interface: " << ifname;
+                    else
+                        cout << endl;
+                }
+*/
+            }
+        }
+
+        if (errno == ENOMEM)
+        {
+            if ( sysctl(mib, MIB_SIZE, nullptr, &sz, nullptr, 0) != 0 )
+            {
+                LOG_S(ERROR) << "Cannot get sysctl table size to resize buffer";
+                return JSON_RESULT_ERR;
+            }
+            buf.resize(sz);
+            continue;
+        }
+
+        if (errno!=0)
+        {
+            LOG_S(ERROR) << "sysctl call failed: " << strerror(errno);
+            return JSON_RESULT_ERR;
+        }
+
+        break;
+    }
+
+    if(ifaces.size()>0)
+    {
+        for (auto iface : ifaces)
+        {
+          vectIfsJson.push_back(iface->getIfJson());
+          delete iface;
+        }
+        nlohmann::json addrJson;
+        retIfListJson[JSON_PARAM_ROUTES] = vectIfsJson;
+        return retIfListJson;
+    }
+    else
+    {
+        return JSON_RESULT_SUCCESS;
+    }
 }
