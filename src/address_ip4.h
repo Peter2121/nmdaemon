@@ -18,6 +18,7 @@ protected:
 public:
     address_ip4(const struct sockaddr_in*);
     address_ip4(std::string);
+    address_ip4() : address_ip4("0.0.0.0") {}
     ~address_ip4();
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;

@@ -18,7 +18,7 @@ class addr;
 class tool
 {
 public:
-    static addr* getAddrFromJson(json);
+    static std::shared_ptr<addr> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
     static bool isValidGw4(uint32_t, uint32_t, uint32_t);

@@ -33,7 +33,7 @@ protected:
     std::string ifName = "";
     address_base* getMainIfAddr(short family);
     bool removeIfAddr(const address_base*);
-    bool addIfAddr(addr*);
+    bool addIfAddr(std::shared_ptr<addr>);
 //    addr* getAddrFromJson(json);
 public:
     if_worker();

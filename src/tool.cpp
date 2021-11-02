@@ -1,7 +1,7 @@
 #include "tool.h"
 #include "addr.h"
 
-addr* tool::getAddrFromJson(json cmd)
+std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
 {
     json cmd_json_data = {};
     std::string str_ifaddr = "";
@@ -9,16 +9,16 @@ addr* tool::getAddrFromJson(json cmd)
     std::string str_ifgw = "";
     std::string str_ifbcast = "";
     short ip_family = 0;
-    address_base* ifaddr = nullptr;
-    address_base* ifmask = nullptr;
-    address_base* ifdata = nullptr;
+    std::shared_ptr<address_base> sp_ifaddr = nullptr;
+    std::shared_ptr<address_base> sp_ifmask = nullptr;
+    std::shared_ptr<address_base> sp_ifdata = nullptr;
     ipaddr_type ip_type;
-    addr* if_addr = nullptr;
+    std::shared_ptr<addr> sp_addr = nullptr;
 
     if(!cmd.contains(JSON_PARAM_DATA))
     {
         LOG_S(ERROR) << "getAddrFromJson - JSON does not contain data section";
-        return if_addr;
+        return sp_addr;
     }
 
     cmd_json_data = cmd[JSON_PARAM_DATA];
@@ -40,7 +40,7 @@ addr* tool::getAddrFromJson(json cmd)
     else
     {
         LOG_S(ERROR) << "getAddrFromJson - cannot determine IP address family";
-        return if_addr;
+        return sp_addr;
     }
 
     switch(ip_family)
@@ -82,7 +82,7 @@ addr* tool::getAddrFromJson(json cmd)
     if( str_ifaddr.empty() && str_ifmask.empty() && str_ifgw.empty() && str_ifbcast.empty() )
     {
         LOG_S(ERROR) << "getAddrFromJson - cannot get IP address from JSON";
-        return if_addr;
+        return sp_addr;
     }
 
     switch(ip_family)
@@ -91,47 +91,47 @@ addr* tool::getAddrFromJson(json cmd)
             try
             {
                 if(!str_ifaddr.empty())
-                    ifaddr = new address_ip4(str_ifaddr);
+                    sp_ifaddr = std::make_shared<address_ip4>(str_ifaddr);
                 if(!str_ifmask.empty())
-                    ifmask = new address_ip4(str_ifmask);
+                    sp_ifmask = std::make_shared<address_ip4>(str_ifmask);
                 if( ip_type==ipaddr_type::BCAST && !str_ifbcast.empty() )
-                    ifdata=new address_ip4(str_ifbcast);
-                else if( ip_type==ipaddr_type::PPP && !str_ifgw.empty() )
-                    ifdata=new address_ip4(str_ifgw);
+                    sp_ifdata=std::make_shared<address_ip4>(str_ifbcast);
+                else if( ((ip_type==ipaddr_type::PPP)||(ip_type==ipaddr_type::ROUTE)) && (!str_ifgw.empty()) )
+                    sp_ifdata=std::make_shared<address_ip4>(str_ifgw);
             }
             catch (std::exception& e)
             {
                 LOG_S(ERROR) << "Cannot create ip4 address from JSON parameters";
-                return if_addr;
+                return sp_addr;
             }
             break;
         case AF_INET6:
             try
             {
                 if(!str_ifaddr.empty())
-                    ifaddr = new address_ip6(str_ifaddr);
+                    sp_ifaddr = std::make_shared<address_ip6>(str_ifaddr);
                 if(!str_ifmask.empty())
-                    ifmask = new address_ip6(str_ifmask);
+                    sp_ifmask = std::make_shared<address_ip6>(str_ifmask);
                 if( ip_type==ipaddr_type::BCAST && !str_ifbcast.empty() )
-                    ifdata=new address_ip6(str_ifbcast);
-                else if( ip_type==ipaddr_type::PPP && !str_ifgw.empty() )
-                    ifdata=new address_ip6(str_ifgw);
+                    sp_ifdata=std::make_shared<address_ip6>(str_ifbcast);
+                else if( ((ip_type==ipaddr_type::PPP)||(ip_type==ipaddr_type::ROUTE)) && (!str_ifgw.empty()) )
+                    sp_ifdata=std::make_shared<address_ip6>(str_ifgw);
             }
             catch (std::exception& e)
             {
                 LOG_S(ERROR) << "Cannot create ip6 address from JSON parameters";
-                return if_addr;
+                return sp_addr;
             }
             break;
     }
 
     try {
-        if_addr = new addr(ifaddr, ifmask, ifdata, ip_type, false, true);
+        sp_addr = std::make_shared<addr>(sp_ifaddr, sp_ifmask, sp_ifdata, ip_type, false);
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Cannot create if_addr from JSON parameters";
         return nullptr;
     }
-    return if_addr;
+    return sp_addr;
 }
 
 int tool::getIfFlags(std::string ifname)

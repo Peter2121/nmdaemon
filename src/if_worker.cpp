@@ -190,7 +190,7 @@ bool if_worker::removeIfAddr(const address_base* paddrb)
     return true;
 }
 
-bool if_worker::addIfAddr(addr* paddr)
+bool if_worker::addIfAddr(std::shared_ptr<addr> paddr)
 {
     struct ifaliasreq ifra;
     memset(&ifra, 0, sizeof(struct ifaliasreq));
@@ -294,7 +294,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-    addr* if_addr = nullptr;
+//    addr* if_addr = nullptr;
     address_base* cur_if_addr = nullptr;
     json cmd = {};
 
@@ -306,7 +306,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if_addr = tool::getAddrFromJson(cmd);
+    auto if_addr = tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -323,7 +323,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         LOG_S(INFO) << "Got current primary IP address " << cur_if_addr->getStrAddr() << " from interface " << ifName;
         if(!removeIfAddr(cur_if_addr)) {
             delete cur_if_addr;
-            delete if_addr;
+//            delete if_addr;
             LOG_S(ERROR) << "Cannot remove current IP address from interface " << ifName;
             return JSON_RESULT_ERR;
         }
@@ -331,12 +331,12 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         delete cur_if_addr;
     }
     if(!addIfAddr(if_addr)) {
-        delete if_addr;
+//        delete if_addr;
         LOG_S(ERROR) << "Cannot add new IP address to interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address set to interface " << ifName;
-    delete if_addr;
+//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 
@@ -344,7 +344,7 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-    addr* if_addr = nullptr;
+//    addr* if_addr = nullptr;
     json cmd = {};
 
     try {
@@ -355,7 +355,7 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if_addr = tool::getAddrFromJson(cmd);
+    auto if_addr = tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -363,12 +363,12 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
     }
 
     if(!addIfAddr(if_addr)) {
-        delete if_addr;
+//        delete if_addr;
         LOG_S(ERROR) << "Cannot add IP address to interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address added to interface " << ifName;
-    delete if_addr;
+//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 
@@ -376,7 +376,7 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-    addr* if_addr = nullptr;
+//    addr* if_addr = nullptr;
     json cmd = {};
 
     try {
@@ -387,7 +387,7 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if_addr = tool::getAddrFromJson(cmd);
+    auto if_addr = tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -395,12 +395,12 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
     }
 
     if(!removeIfAddr(if_addr->getAddrAB())) {
-        delete if_addr;
+//        delete if_addr;
         LOG_S(ERROR) << "Cannot remove IP address from interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "IP address removed from interface " << ifName;
-    delete if_addr;
+//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 

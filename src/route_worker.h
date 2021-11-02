@@ -30,6 +30,14 @@ typedef struct
       struct sockaddr_in6 netmask;
 } static_route6;
 
+typedef struct
+{
+      struct rt_msghdr head;
+      struct sockaddr_dl dest;
+      struct sockaddr_dl gateway;
+      struct sockaddr_dl netmask;
+} static_route_link;
+
 class route_worker : public nmworker
 {
 protected:
@@ -45,8 +53,8 @@ protected:
         { nmscope::ROUTE, nmcmd::RT_LIST },
         { nmscope::ROUTE, nmcmd::RT_LIST6 }
     };
-    bool setStaticRoute(addr*);
-    bool getStaticRoute(addr*);
+    bool setStaticRoute(std::shared_ptr<addr>);
+    bool getStaticRoute(std::shared_ptr<addr>);
     void setPsaStruct(sockaddr_in *, const address_base*);
     void setPsaStruct6(sockaddr_in6 *, const address_base*);
 public:
