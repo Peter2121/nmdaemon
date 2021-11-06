@@ -2,6 +2,11 @@
 
 addr::addr(struct ifaddrs* ifa)
 {
+    if(ifa==nullptr)
+        throw nmExcept;
+    if(ifa->ifa_addr==nullptr)
+        throw nmExcept;
+
     if(ifa->ifa_addr->sa_family == AF_LINK)
         ipType = ipaddr_type::LINK;
     else if( (ifa->ifa_flags & IFF_POINTOPOINT ) != 0 )
@@ -21,28 +26,27 @@ addr::addr(struct ifaddrs* ifa)
     else
         isAddrUp = false;
 
-    ipAddress = nullptr;
-    ipMask = nullptr;
-    ipData = nullptr;
-    memAddr = false;
-    memMask = false;
-    memData = false;
+//    ipAddress = nullptr;
+//    ipMask = nullptr;
+//    ipData = nullptr;
+//    memAddr = false;
+//    memMask = false;
+//    memData = false;
 
     switch(ifa->ifa_addr->sa_family)
     {
         case AF_INET:
-            if(ifa->ifa_addr)
-            {
-                ipAddress = new address_ip4((sockaddr_in*)ifa->ifa_addr);
-                memAddr = true;
-            }
-            else
-                throw nmExcept;
+            spIpAddress = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_addr));
+//            ipAddress = spIpAddress.get();
+//                ipAddress = new address_ip4((sockaddr_in*)ifa->ifa_addr);
+//                memAddr = true;
 
             if(ifa->ifa_netmask)
             {
-                ipMask = new address_ip4((sockaddr_in*)ifa->ifa_netmask);
-                memMask = true;
+                spIpMask = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_netmask));
+//                ipMask = spIpMask.get();
+//                ipMask = new address_ip4((sockaddr_in*)ifa->ifa_netmask);
+//                memMask = true;
             }
             else
                 throw nmExcept;
@@ -53,8 +57,10 @@ addr::addr(struct ifaddrs* ifa)
                 case ipaddr_type::LOOPBACK:
                     if(ifa->ifa_broadaddr)
                     {
-                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_broadaddr);
-                        memData = true;
+                        spIpData = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_broadaddr));
+//                        ipData = spIpData.get();
+//                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_broadaddr);
+//                        memData = true;
                     }
                     else
                         throw nmExcept;
@@ -65,8 +71,10 @@ addr::addr(struct ifaddrs* ifa)
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET) )
                     {
-                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_dstaddr);
-                        memData = true;
+                        spIpData = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_dstaddr));
+//                        ipData = spIpData.get();
+//                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_dstaddr);
+//                        memData = true;
                     }
                     break;
                 default:
@@ -74,18 +82,17 @@ addr::addr(struct ifaddrs* ifa)
             }
             break;  // end of case AF_INET
         case AF_INET6:
-            if(ifa->ifa_addr)
-            {
-                ipAddress = new address_ip6((sockaddr_in6*)ifa->ifa_addr);
-                memAddr = true;
-            }
-            else
-                throw nmExcept;
+            spIpAddress = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_addr));
+//            ipAddress = spIpAddress.get();
+//            ipAddress = new address_ip6((sockaddr_in6*)ifa->ifa_addr);
+//            memAddr = true;
 
             if(ifa->ifa_netmask)
             {
-                ipMask = new address_ip6((sockaddr_in6*)ifa->ifa_netmask);
-                memMask = true;
+                spIpMask = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_netmask));
+//                ipMask = spIpMask.get();
+//                ipMask = new address_ip6((sockaddr_in6*)ifa->ifa_netmask);
+//                memMask = true;
             }
             else
                 throw nmExcept;
@@ -95,8 +102,10 @@ addr::addr(struct ifaddrs* ifa)
                 case ipaddr_type::BCAST:
                     if(ifa->ifa_broadaddr)
                     {
-                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_broadaddr);
-                        memData = true;
+                        spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_broadaddr));
+//                        ipData = spIpData.get();
+//                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_broadaddr);
+//                        memData = true;
                     }
                     break;
                 case ipaddr_type::PPP:
@@ -105,8 +114,10 @@ addr::addr(struct ifaddrs* ifa)
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET6) )
                     {
-                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_dstaddr);
-                        memData = true;
+                        spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_dstaddr));
+//                        ipData = spIpData.get();
+//                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_dstaddr);
+//                        memData = true;
                     }
                     break;
                 default:
@@ -114,20 +125,17 @@ addr::addr(struct ifaddrs* ifa)
             }
             break;  // end of case AF_INET6
         case AF_LINK:
-            if(ifa->ifa_addr)
-            {
-                ipAddress = new address_link((sockaddr_dl*)ifa->ifa_addr);
-                memAddr = true;
-            }
-            else
-                throw nmExcept;
+            spIpAddress = std::make_shared<address_link>(reinterpret_cast<sockaddr_dl*>(ifa->ifa_addr));
+//            ipAddress = spIpAddress.get();
+//            ipAddress = new address_link((sockaddr_dl*)ifa->ifa_addr);
+//            memAddr = true;
             break;
         default:
             throw nmExcept;
             break;
     }
 }
-
+/*
 addr::addr(address_base* addr, address_base* mask, address_base* data, ipaddr_type type, bool up, bool mm)
 {
     ipAddress = addr;
@@ -139,56 +147,58 @@ addr::addr(address_base* addr, address_base* mask, address_base* data, ipaddr_ty
     ipType = type;
     isAddrUp = up;
 }
-
+*/
 addr::addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data, ipaddr_type type, bool up)
 {
     if(addr!=nullptr)
     {
         spIpAddress = addr;
-        ipAddress = addr.get();
+//        ipAddress = addr.get();
     }
     else
     {
         spIpAddress = nullptr;
-        ipAddress = nullptr;
+//        ipAddress = nullptr;
     }
     if(mask!=nullptr)
     {
         spIpMask = mask;
-        ipMask = mask.get();
+//        ipMask = mask.get();
     }
     else
     {
         spIpMask = nullptr;
-        ipMask = nullptr;
+//        ipMask = nullptr;
     }
 
     if(data!=nullptr)
     {
         spIpData = data;
-        ipData = data.get();
+//        ipData = data.get();
     }
     else
     {
         spIpData = nullptr;
-        ipData = nullptr;
+//        ipData = nullptr;
     }
 
-    memAddr = false;
-    memMask = false;
-    memData = false;
+//    memAddr = false;
+//    memMask = false;
+//    memData = false;
     ipType = type;
     isAddrUp = up;
 }
 
 addr::~addr()
 {
+    /*
     if( (ipAddress != nullptr) && memAddr )
         delete ipAddress;
     if( (ipMask != nullptr) && memMask )
         delete ipMask;
     if( (ipData != nullptr) && memData )
         delete ipData;
+    */
 }
 /*
 void addr::setAddr(address_base* addr, bool ma)
@@ -218,8 +228,8 @@ void addr::setData(address_base* data, bool md)
 void addr::setData(std::shared_ptr<address_base> spdata)
 {
     spIpData = spdata;
-    ipData = spdata.get();
-    memData = false;
+//    ipData = spdata.get();
+//    memData = false;
 }
 
 // TODO: customize separator and eol strings (take them from arguments)
@@ -233,9 +243,9 @@ const std::string addr::getAddrString() const
     strTitle = std::string(magic_enum::enum_name(ipType));
     retAddrStr += JSON_PARAM_ADDR_TYPE + separator + strTitle + eol;
 
-    if(ipAddress != nullptr)
+    if(spIpAddress != nullptr)
     {
-        switch(ipAddress->getFamily())
+        switch(spIpAddress->getFamily())
         {
             case AF_INET:
                 strTitle = JSON_PARAM_IPV4_ADDR;
@@ -250,34 +260,34 @@ const std::string addr::getAddrString() const
                 break;
         }
 
-        retAddrStr += strTitle + separator + ipAddress->getStrAddr() + eol;
+        retAddrStr += strTitle + separator + spIpAddress->getStrAddr() + eol;
 
         switch(ipType)
         {
             case ipaddr_type::BCAST:
             case ipaddr_type::LOOPBACK:
-                if(ipMask != nullptr)
+                if(spIpMask != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
-                    retAddrStr += strTitle + separator + ipMask->getStrAddr() + eol;
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
+                    retAddrStr += strTitle + separator + spIpMask->getStrAddr() + eol;
                 }
-                if(ipData != nullptr)
+                if(spIpData != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_BCAST : JSON_PARAM_IPV6_BCAST;
-                    retAddrStr += strTitle + separator + ipData->getStrAddr() + eol;
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_BCAST : JSON_PARAM_IPV6_BCAST;
+                    retAddrStr += strTitle + separator + spIpData->getStrAddr() + eol;
                 }
                 break;
             case ipaddr_type::PPP:
             case ipaddr_type::ROUTE:
-                if(ipMask != nullptr)
+                if(spIpMask != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
-                    retAddrStr += strTitle + separator + ipMask->getStrAddr() + eol;
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
+                    retAddrStr += strTitle + separator + spIpMask->getStrAddr() + eol;
                 }
-                if(ipData != nullptr)
+                if(spIpData != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_GW : JSON_PARAM_IPV6_GW;
-                    retAddrStr += strTitle + separator + ipData->getStrAddr() + eol;
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_GW : JSON_PARAM_IPV6_GW;
+                    retAddrStr += strTitle + separator + spIpData->getStrAddr() + eol;
                 }
                 break;
             case ipaddr_type::LINK:
@@ -310,9 +320,9 @@ const nlohmann::json addr::getAddrJson() const
     strMainTitle = std::string(magic_enum::enum_name(ipType));
     retAddrJson[JSON_PARAM_ADDR_TYPE] = strMainTitle;
 
-    if(ipAddress != nullptr)
+    if(spIpAddress != nullptr)
     {
-        switch(ipAddress->getFamily())
+        switch(spIpAddress->getFamily())
         {
             case AF_INET:
                 strTitle = JSON_PARAM_IPV4_ADDR;
@@ -327,34 +337,34 @@ const nlohmann::json addr::getAddrJson() const
                 break;
         }
 
-        dataJson[strTitle] = ipAddress->getStrAddr();
+        dataJson[strTitle] = spIpAddress->getStrAddr();
 
         switch(ipType)
         {
             case ipaddr_type::BCAST:
             case ipaddr_type::LOOPBACK:
-                if(ipMask != nullptr)
+                if(spIpMask != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
-                    dataJson[strTitle] = ipMask->getStrAddr();
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
+                    dataJson[strTitle] = spIpMask->getStrAddr();
                 }
-                if(ipData != nullptr)
+                if(spIpData != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_BCAST : JSON_PARAM_IPV6_BCAST;
-                    dataJson[strTitle] = ipData->getStrAddr();
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_BCAST : JSON_PARAM_IPV6_BCAST;
+                    dataJson[strTitle] = spIpData->getStrAddr();
                 }
                 break;
             case ipaddr_type::PPP:
             case ipaddr_type::ROUTE:
-                if(ipMask != nullptr)
+                if(spIpMask != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
-                    dataJson[strTitle] = ipMask->getStrAddr();
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
+                    dataJson[strTitle] = spIpMask->getStrAddr();
                 }
-                if(ipData != nullptr)
+                if(spIpData != nullptr)
                 {
-                    strTitle = (ipAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_GW : JSON_PARAM_IPV6_GW;
-                    dataJson[strTitle] = ipData->getStrAddr();
+                    strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_GW : JSON_PARAM_IPV6_GW;
+                    dataJson[strTitle] = spIpData->getStrAddr();
                 }
                 break;
             case ipaddr_type::LINK:
@@ -376,27 +386,27 @@ bool addr::isUp() const
 
 short addr::getFamily() const
 {
-    return ipAddress->getFamily();
+    return spIpAddress->getFamily();
 }
 
 const address_base* addr::getAddrAB() const
 {
-    return ipAddress;
+    return spIpAddress.get();
 }
 
 const address_base* addr::getMaskAB() const
 {
-    return ipMask;
+    return spIpMask.get();
 }
 
 const address_base* addr::getDataAB() const
 {
-    return ipData;
+    return spIpData.get();
 }
 
 bool addr::isValidIp() const
 {
-    switch(ipAddress->getFamily())
+    switch(spIpAddress->getFamily())
     {
         case AF_INET6:
             return isValidIp6();
@@ -415,27 +425,27 @@ bool addr::isValidIp4() const
     uint32_t gw_nbo=0;
     uint32_t bcast_nbo=0;
 
-    if(ipAddress!=nullptr)
+    if(spIpAddress!=nullptr)
     {
-        addr_nbo = ((struct sockaddr_in*)(ipAddress->getSockAddr()))->sin_addr.s_addr;
+        addr_nbo = ((struct sockaddr_in*)(spIpAddress->getSockAddr()))->sin_addr.s_addr;
     }
-    if(ipMask!=nullptr)
+    if(spIpMask!=nullptr)
     {
-        mask_nbo = ((struct sockaddr_in*)(ipMask->getSockAddr()))->sin_addr.s_addr;
+        mask_nbo = ((struct sockaddr_in*)(spIpMask->getSockAddr()))->sin_addr.s_addr;
     }
     switch(ipType)
     {
         case ipaddr_type::BCAST:
-            if(ipData!=nullptr)
+            if(spIpData!=nullptr)
             {
-                bcast_nbo = ((struct sockaddr_in*)(ipData->getSockAddr()))->sin_addr.s_addr;
+                bcast_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;
                 return tool::isValidBcast4(addr_nbo, mask_nbo, bcast_nbo);
             }
             return false;
         case ipaddr_type::PPP:
-            if(ipData!=nullptr)
+            if(spIpData!=nullptr)
             {
-                gw_nbo = ((struct sockaddr_in*)(ipData->getSockAddr()))->sin_addr.s_addr;
+                gw_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;
                 return tool::isValidGw4(addr_nbo, mask_nbo, gw_nbo);
             }
             return false;
