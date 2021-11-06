@@ -128,10 +128,11 @@ struct ifaliasreq {
 */
 
 // The return value must be deallocated in calling function
-address_base* if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INET6
+std::shared_ptr<address_base> if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INET6
 {
     struct ifreq ifr;
-    address_base* paddr=nullptr;
+//    address_base* paddr=nullptr;
+    std::shared_ptr<address_base> spaddr=nullptr;
 
     if( (family!=AF_INET) && (family!=AF_INET6) )
     {
@@ -150,40 +151,39 @@ address_base* if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INE
         sock.close();
         return nullptr;
     }
+    sock.close();
 
     try {
         switch(family)
         {
             case AF_INET:
-                paddr = new address_ip4((sockaddr_in*)&ifr.ifr_addr);
+                spaddr = std::make_unique<address_ip4>((sockaddr_in*)&ifr.ifr_addr);
                 break;
             case AF_INET6:
-                paddr = new address_ip6((sockaddr_in6*)&ifr.ifr_addr);
+                spaddr = std::make_unique<address_ip6>((sockaddr_in6*)&ifr.ifr_addr);
                 break;
         }
     } catch (std::exception& e) {
-        sock.close();
         LOG_S(ERROR) << "Cannot get current interface " << ifName << "address";
         return nullptr;
     }
 
-    LOG_S(INFO) << "Got current IP address: " + paddr->getStrAddr() + " for interface " << ifName;
-    sock.close();
-    return paddr;
+    LOG_S(INFO) << "Got current IP address: " + spaddr->getStrAddr() + " for interface " << ifName;
+    return spaddr;
 }
 
-bool if_worker::removeIfAddr(const address_base* paddrb)
+bool if_worker::removeIfAddr(std::shared_ptr<address_base> spaddrb)
 {
     struct ifaliasreq ifra;
     memset(&ifra, 0, sizeof(struct ifaliasreq));
 
     strlcpy(ifra.ifra_name, ifName.c_str(), sizeof(ifra.ifra_name));
-    memcpy(&ifra.ifra_addr, paddrb->getSockAddr(), sizeof(struct sockaddr));
+    memcpy(&ifra.ifra_addr, spaddrb->getSockAddr(), sizeof(struct sockaddr));
 
     sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
     if (ioctl(sock.handle(), SIOCDIFADDR, (caddr_t)&ifra) < 0)
     {
-        LOG_S(ERROR) << "Cannot remove address " << paddrb->getStrAddr() << " from interface " << ifName;
+        LOG_S(ERROR) << "Cannot remove address " << spaddrb->getStrAddr() << " from interface " << ifName;
         sock.close();
         return false;
     }
@@ -296,7 +296,8 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-    address_base* cur_if_addr = nullptr;
+    std::shared_ptr<address_base> spcuraddr=nullptr;
+//    address_base* cur_if_addr = nullptr;
     json cmd = {};
 
     try {
@@ -314,21 +315,21 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    cur_if_addr = getMainIfAddr(if_addr->getAddrAB()->getFamily());
-    if(cur_if_addr==nullptr)
+    spcuraddr = getMainIfAddr(if_addr->getAddrAB()->getFamily());
+    if(spcuraddr==nullptr)
     {
         LOG_S(INFO) << "Cannot get current IP address of interface " << ifName;
     }
     else
     {
-        LOG_S(INFO) << "Got current primary IP address " << cur_if_addr->getStrAddr() << " from interface " << ifName;
-        if(!removeIfAddr(cur_if_addr)) {
-            delete cur_if_addr;
+        LOG_S(INFO) << "Got current primary IP address " << spcuraddr->getStrAddr() << " from interface " << ifName;
+        if(!removeIfAddr(spcuraddr)) {
+//            delete cur_if_addr;
             LOG_S(ERROR) << "Cannot remove current IP address from interface " << ifName;
             return JSON_RESULT_ERR;
         }
         LOG_S(INFO) << "Primary IP address deleted from interface " << ifName;
-        delete cur_if_addr;
+//        delete cur_if_addr;
     }
     if(!addIfAddr(if_addr)) {
         LOG_S(ERROR) << "Cannot add new IP address to interface " << ifName;
@@ -381,14 +382,14 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    auto if_addr = tool::getAddrFromJson(cmd);
+    std::shared_ptr<addr> if_addr = tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
         return JSON_RESULT_ERR;
     }
 
-    if(!removeIfAddr(if_addr->getAddrAB())) {
+    if(!removeIfAddr(if_addr->getAddr())) {
         LOG_S(ERROR) << "Cannot remove IP address from interface " << ifName;
         return JSON_RESULT_ERR;
     }

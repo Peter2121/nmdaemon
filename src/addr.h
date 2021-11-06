@@ -35,6 +35,9 @@ public:
     addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false);
     addr();
     ~addr();
+    const std::shared_ptr<address_base> getAddr() const;
+    const std::shared_ptr<address_base> getMask() const;
+    const std::shared_ptr<address_base> getData() const;
     const address_base* getAddrAB() const;
     const address_base* getMaskAB() const;
     const address_base* getDataAB() const;

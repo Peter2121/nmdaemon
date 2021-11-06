@@ -294,6 +294,21 @@ const address_base* addr::getDataAB() const
     return spIpData.get();
 }
 
+const std::shared_ptr<address_base> addr::getAddr() const
+{
+    return spIpAddress;
+}
+
+const std::shared_ptr<address_base> addr::getMask() const
+{
+    return spIpMask;
+}
+
+const std::shared_ptr<address_base> addr::getData() const
+{
+    return spIpData;
+}
+
 bool addr::isValidIp() const
 {
     switch(spIpAddress->getFamily())

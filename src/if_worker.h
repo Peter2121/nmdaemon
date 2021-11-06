@@ -31,8 +31,8 @@ protected:
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
     std::string ifName = "";
-    address_base* getMainIfAddr(short family);
-    bool removeIfAddr(const address_base*);
+    std::shared_ptr<address_base> getMainIfAddr(short family);
+    bool removeIfAddr(std::shared_ptr<address_base>);
     bool addIfAddr(std::shared_ptr<addr>);
 //    addr* getAddrFromJson(json);
 public:
