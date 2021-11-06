@@ -56,6 +56,7 @@ json system_worker::execCmdIfList(nmcommand_data*)
 {
     struct ifaddrs * ifaddrs_ptr;
     nlohmann::json retIfListJson;
+    nlohmann::json res_ifaces = {};
     std::vector<nlohmann::json> vectIfsJson;
     int status;
     std::map<std::string, interface> ifMap;
@@ -81,8 +82,10 @@ json system_worker::execCmdIfList(nmcommand_data*)
     nlohmann::json addrJson;
 
     retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
+    res_ifaces[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res_ifaces[JSON_PARAM_DATA] = vectIfsJson;
 
-    return retIfListJson;
+    return res_ifaces;
 }
 
 /*********  ifconfig.c  *********

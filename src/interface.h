@@ -17,8 +17,8 @@ protected:
     bool hasIPv6;
     bool isIfUp;
 public:
-    interface();
     interface(std::string);
+    interface() : interface("") {}
     void setName(std::string);
     void addAddress(struct ifaddrs*);
     void addAddress(std::shared_ptr<addr>);

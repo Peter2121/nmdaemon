@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.13.3, 2021-11-06T15:26:06. -->
+<!-- Written by QtCreator 4.13.3, 2021-11-06T19:49:47. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -361,8 +361,8 @@
   <variable>ProjectExplorer.Project.Target.1</variable>
   <valuemap type="QVariantMap">
    <value type="QString" key="DeviceType">Desktop</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Replacement for &quot;CMAKE Makefile - Debug&quot;</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Replacement for &quot;CMAKE Makefile - Debug&quot;</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">CMAKE Makefile - Debug</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CMAKE Makefile - Debug</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{ed1e5e4f-9c12-40c2-8c64-25bac8cb1264}</value>
    <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
@@ -479,8 +479,8 @@
   <variable>ProjectExplorer.Project.Target.2</variable>
   <valuemap type="QVariantMap">
    <value type="QString" key="DeviceType">Desktop</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Replacement for &quot;CMAKE Makefile - Release&quot;</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Replacement for &quot;CMAKE Makefile - Release&quot;</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">CMAKE Makefile - Release</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CMAKE Makefile - Release</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{9df42d9d-6f29-4b4f-8bce-7207a964e8c1}</value>
    <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>

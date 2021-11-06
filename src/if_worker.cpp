@@ -1,10 +1,12 @@
 #include "if_worker.h"
 
 if_worker::if_worker()
-{ }
+{
+}
 
 if_worker::~if_worker()
-{ }
+{
+}
 
 nmscope if_worker::getScope()
 {
@@ -300,7 +302,8 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
 
     try {
         cmd = pcmd->getJsonData();
-        ifName = cmd[JSON_PARAM_IF_NAME];
+//        ifName = cmd[JSON_PARAM_IF_NAME];
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -349,7 +352,8 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
 
     try {
         cmd = pcmd->getJsonData();
-        ifName = cmd[JSON_PARAM_IF_NAME];
+//        ifName = cmd[JSON_PARAM_IF_NAME];
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -381,7 +385,8 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
 
     try {
         cmd = pcmd->getJsonData();
-        ifName = cmd[JSON_PARAM_IF_NAME];
+//        ifName = cmd[JSON_PARAM_IF_NAME];
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -415,7 +420,8 @@ json if_worker::execCmdMtuGet(nmcommand_data* pcmd)
 
     try {
         cmd = pcmd->getJsonData();
-        ifName = cmd[JSON_PARAM_IF_NAME];
+//        ifName = cmd[JSON_PARAM_IF_NAME];
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface name";
         return JSON_RESULT_ERR;
@@ -452,7 +458,8 @@ json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
     try
     {
         cmd = pcmd->getJsonData();
-        ifName = cmd[JSON_PARAM_IF_NAME];
+//        ifName = cmd[JSON_PARAM_IF_NAME];
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
         cmd_data = cmd[JSON_PARAM_DATA];
         mtu = cmd_data[JSON_PARAM_MTU];
     } catch (std::exception& e)

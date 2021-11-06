@@ -1,19 +1,7 @@
 #include "interface.h"
 
-interface::interface(std::string name)
+interface::interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false), isIfUp(false)
 {
-    strName = name;
-    hasIPv4 = false;
-    hasIPv6 = false;
-    isIfUp = false;
-}
-
-interface::interface()
-{
-    strName = "";
-    hasIPv4 = false;
-    hasIPv6 = false;
-    isIfUp = false;
 }
 
 interface::~interface()
