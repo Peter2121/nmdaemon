@@ -131,7 +131,6 @@ struct ifaliasreq {
 std::shared_ptr<address_base> if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INET6
 {
     struct ifreq ifr;
-//    address_base* paddr=nullptr;
     std::shared_ptr<address_base> spaddr=nullptr;
 
     if( (family!=AF_INET) && (family!=AF_INET6) )
@@ -297,7 +296,6 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
     std::shared_ptr<address_base> spcuraddr=nullptr;
-//    address_base* cur_if_addr = nullptr;
     json cmd = {};
 
     try {
@@ -324,12 +322,10 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
     {
         LOG_S(INFO) << "Got current primary IP address " << spcuraddr->getStrAddr() << " from interface " << ifName;
         if(!removeIfAddr(spcuraddr)) {
-//            delete cur_if_addr;
             LOG_S(ERROR) << "Cannot remove current IP address from interface " << ifName;
             return JSON_RESULT_ERR;
         }
         LOG_S(INFO) << "Primary IP address deleted from interface " << ifName;
-//        delete cur_if_addr;
     }
     if(!addIfAddr(if_addr)) {
         LOG_S(ERROR) << "Cannot add new IP address to interface " << ifName;
@@ -424,6 +420,7 @@ json if_worker::execCmdMtuGet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    sock.close();
     res_data[JSON_PARAM_MTU] = ifr.ifr_mtu;
     res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res[JSON_PARAM_DATA] = res_data;
@@ -471,5 +468,6 @@ json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    sock.close();
     return JSON_RESULT_SUCCESS;
 }
