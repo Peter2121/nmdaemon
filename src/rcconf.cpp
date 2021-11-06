@@ -26,10 +26,6 @@ json rcconf::getRcIpConfig()
     std::string name;
     std::string_view element_view;
     std::stringstream ss;
-//    address_ip4* pipaddr4;
-//    address_ip4* pipmask4;
-//    address_ip4* pipgw4;
-//    addr* paddr4;
     std::shared_ptr<address_ip4> spipaddr4=nullptr;
     std::shared_ptr<address_ip4> spipmask4=nullptr;
     std::shared_ptr<address_ip4> spipgw4=nullptr;
@@ -175,8 +171,6 @@ json rcconf::getRcIpConfig()
         }
     }
 // Iterate interfaces to insert default route and aliases
-//    paddr4 = nullptr;
-//    pipgw4 = nullptr; pipmask4 = nullptr; pipaddr4 = nullptr;
     for(auto& j : jarInterfaces)
     {
         if(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>().find(DHCP_SUFFIX)!=std::string::npos)
@@ -191,9 +185,6 @@ json rcconf::getRcIpConfig()
         }
         try
         {
-//            pipaddr4 = new address_ip4(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>());
-//            pipmask4 = new address_ip4(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_MASK].get<std::string>());
-//            pipgw4 = new address_ip4(strDefaultRouter);
             spipaddr4 = std::make_shared<address_ip4>(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>());
             spipmask4 = std::make_shared<address_ip4>(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_MASK].get<std::string>());
             spipgw4 = std::make_shared<address_ip4>(strDefaultRouter);
@@ -203,30 +194,8 @@ json rcconf::getRcIpConfig()
                 LOG_S(INFO) << "Validated IP4 default router : " << j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>() << " / " << j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_MASK].get<std::string>() << " " << strDefaultRouter;
                 j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_GW] = strDefaultRouter;
             }
-//            delete paddr4; paddr4 = nullptr;
-//            delete pipgw4; pipgw4 = nullptr;
-//            delete pipmask4; pipmask4 = nullptr;
-//            delete pipaddr4; pipaddr4 = nullptr;
         } catch (std::exception& e) {
             LOG_S(WARNING) << "getRcIpConfig cannot validate IP configuration";
-            /*
-            if(paddr4 != nullptr)
-            {
-                delete paddr4; paddr4 = nullptr;
-            }
-            if(pipgw4 != nullptr)
-            {
-                delete pipgw4; pipgw4 = nullptr;
-            }
-            if(pipmask4 != nullptr)
-            {
-                delete pipmask4; pipmask4 = nullptr;
-            }
-            if(pipaddr4 != nullptr)
-            {
-                delete pipaddr4; pipaddr4 = nullptr;
-            }
-            */
 //            return {};  // TODO: Do we really need to return nothing here?
         }
     }
@@ -242,27 +211,9 @@ json rcconf::getRcIpConfig()
                 spipgw4 = std::make_shared<address_ip4>(jdata[JSON_PARAM_IPV4_GW].get<std::string>());
                 LOG_S(INFO) << "Active validated IP4 route " << jit.value().at(JSON_PARAM_RT_NAME).get<std::string>() << ": " << jdata[JSON_PARAM_IPV4_ADDR].get<std::string>() << " / " << jdata[JSON_PARAM_IPV4_MASK].get<std::string>() << " " << jdata[JSON_PARAM_IPV4_GW].get<std::string>();
                 jit.value().emplace(JSON_PARAM_STATUS,JSON_DATA_ENABLED);
-//                delete paddr4; paddr4 = nullptr;
-//                delete pipgw4; pipgw4 = nullptr;
-//                delete pipmask4; pipmask4 = nullptr;
-//                delete pipaddr4; pipaddr4 = nullptr;
             } catch (std::exception& e) {
                 LOG_S(WARNING) << "getRcIpConfig cannot validate route configuration for route " << jit.value().at(JSON_PARAM_RT_NAME).get<std::string>();
-                /*
-                if(paddr4 != nullptr)
-                {
-                    delete paddr4; paddr4 = nullptr;
-                }
-                if(pipgw4 != nullptr)
-                {
-                    delete pipgw4; pipgw4 = nullptr;
-                }
-                if(pipmask4 != nullptr)
-                {
-                    delete pipmask4; pipmask4 = nullptr;
-                }
-                */
-    //            return {};  // TODO: Do we really need to return nothing here?
+//            return {};  // TODO: Do we really need to return nothing here?
             }
         }
         else

@@ -398,14 +398,12 @@ json route_worker::execCmdRouteList(nmcommand_data*)
     struct sockaddr *sa = nullptr;
 //    struct sockaddr_in *sin = nullptr;
     struct sockaddr *rti_info[RTAX_MAX];
-
     size_t sz = 0;
     short err_cnt = 0;
     short constexpr ERR_CNT_MAX = 10;
     std::vector<uint8_t> buf(0);
 //    std::vector<addr*> routes(0);
     std::vector<interface*> ifaces(0);
-//    address_ip4 *dest=nullptr, *mask=nullptr, *gate=nullptr;
     std::shared_ptr<address_ip4> sp_dest = nullptr;
     std::shared_ptr<address_ip4> sp_mask = nullptr;
     std::shared_ptr<address_ip4> sp_gate = nullptr;
@@ -567,14 +565,12 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     if(iface->getName()==strIfName)
                     {
                         isFound = true;
-//                        iface->addAddress(new addr(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                         iface->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                     }
                 }
                 if(!isFound)
                 {
                     ifaces.push_back(new interface(strIfName));
-//                    ifaces[ifaces.size()-1]->addAddress(new addr(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                     ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
                 }
             }

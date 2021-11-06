@@ -26,27 +26,13 @@ addr::addr(struct ifaddrs* ifa)
     else
         isAddrUp = false;
 
-//    ipAddress = nullptr;
-//    ipMask = nullptr;
-//    ipData = nullptr;
-//    memAddr = false;
-//    memMask = false;
-//    memData = false;
-
     switch(ifa->ifa_addr->sa_family)
     {
         case AF_INET:
             spIpAddress = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_addr));
-//            ipAddress = spIpAddress.get();
-//                ipAddress = new address_ip4((sockaddr_in*)ifa->ifa_addr);
-//                memAddr = true;
-
             if(ifa->ifa_netmask)
             {
                 spIpMask = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_netmask));
-//                ipMask = spIpMask.get();
-//                ipMask = new address_ip4((sockaddr_in*)ifa->ifa_netmask);
-//                memMask = true;
             }
             else
                 throw nmExcept;
@@ -58,9 +44,6 @@ addr::addr(struct ifaddrs* ifa)
                     if(ifa->ifa_broadaddr)
                     {
                         spIpData = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_broadaddr));
-//                        ipData = spIpData.get();
-//                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_broadaddr);
-//                        memData = true;
                     }
                     else
                         throw nmExcept;
@@ -72,9 +55,6 @@ addr::addr(struct ifaddrs* ifa)
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET) )
                     {
                         spIpData = std::make_shared<address_ip4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_dstaddr));
-//                        ipData = spIpData.get();
-//                        ipData = new address_ip4((sockaddr_in*)ifa->ifa_dstaddr);
-//                        memData = true;
                     }
                     break;
                 default:
@@ -83,16 +63,9 @@ addr::addr(struct ifaddrs* ifa)
             break;  // end of case AF_INET
         case AF_INET6:
             spIpAddress = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_addr));
-//            ipAddress = spIpAddress.get();
-//            ipAddress = new address_ip6((sockaddr_in6*)ifa->ifa_addr);
-//            memAddr = true;
-
             if(ifa->ifa_netmask)
             {
                 spIpMask = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_netmask));
-//                ipMask = spIpMask.get();
-//                ipMask = new address_ip6((sockaddr_in6*)ifa->ifa_netmask);
-//                memMask = true;
             }
             else
                 throw nmExcept;
@@ -103,9 +76,6 @@ addr::addr(struct ifaddrs* ifa)
                     if(ifa->ifa_broadaddr)
                     {
                         spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_broadaddr));
-//                        ipData = spIpData.get();
-//                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_broadaddr);
-//                        memData = true;
                     }
                     break;
                 case ipaddr_type::PPP:
@@ -115,9 +85,6 @@ addr::addr(struct ifaddrs* ifa)
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET6) )
                     {
                         spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_dstaddr));
-//                        ipData = spIpData.get();
-//                        ipData = new address_ip6((sockaddr_in6*)ifa->ifa_dstaddr);
-//                        memData = true;
                     }
                     break;
                 default:
@@ -126,110 +93,51 @@ addr::addr(struct ifaddrs* ifa)
             break;  // end of case AF_INET6
         case AF_LINK:
             spIpAddress = std::make_shared<address_link>(reinterpret_cast<sockaddr_dl*>(ifa->ifa_addr));
-//            ipAddress = spIpAddress.get();
-//            ipAddress = new address_link((sockaddr_dl*)ifa->ifa_addr);
-//            memAddr = true;
             break;
         default:
             throw nmExcept;
             break;
     }
 }
-/*
-addr::addr(address_base* addr, address_base* mask, address_base* data, ipaddr_type type, bool up, bool mm)
-{
-    ipAddress = addr;
-    ipMask = mask;
-    ipData = data;
-    memAddr = mm;
-    memMask = mm;
-    memData = mm;
-    ipType = type;
-    isAddrUp = up;
-}
-*/
+
 addr::addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data, ipaddr_type type, bool up)
 {
     if(addr!=nullptr)
     {
         spIpAddress = addr;
-//        ipAddress = addr.get();
     }
     else
     {
         spIpAddress = nullptr;
-//        ipAddress = nullptr;
     }
     if(mask!=nullptr)
     {
         spIpMask = mask;
-//        ipMask = mask.get();
     }
     else
     {
         spIpMask = nullptr;
-//        ipMask = nullptr;
     }
 
     if(data!=nullptr)
     {
         spIpData = data;
-//        ipData = data.get();
     }
     else
     {
         spIpData = nullptr;
-//        ipData = nullptr;
     }
-
-//    memAddr = false;
-//    memMask = false;
-//    memData = false;
     ipType = type;
     isAddrUp = up;
 }
 
 addr::~addr()
 {
-    /*
-    if( (ipAddress != nullptr) && memAddr )
-        delete ipAddress;
-    if( (ipMask != nullptr) && memMask )
-        delete ipMask;
-    if( (ipData != nullptr) && memData )
-        delete ipData;
-    */
-}
-/*
-void addr::setAddr(address_base* addr, bool ma)
-{
-    if( (ipAddress != nullptr) && memAddr )
-        delete ipAddress;
-    ipAddress = addr;
-    memAddr = ma;
 }
 
-void addr::setMask(address_base* mask, bool mm)
-{
-    if( (ipMask != nullptr) && memMask )
-        delete ipMask;
-    ipMask = mask;
-    memMask = mm;
-}
-
-void addr::setData(address_base* data, bool md)
-{
-    if( (ipData != nullptr) && memData )
-        delete ipData;
-    ipData = data;
-    memData = md;
-}
-*/
 void addr::setData(std::shared_ptr<address_base> spdata)
 {
     spIpData = spdata;
-//    ipData = spdata.get();
-//    memData = false;
 }
 
 // TODO: customize separator and eol strings (take them from arguments)
