@@ -106,21 +106,11 @@ addr::addr( std::shared_ptr<address_base> addr,
             ipaddr_type type, bool up) :
                 ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), isAddrUp(up)
 {
-//    spIpAddress = addr;
-//    spIpMask = mask;
-//    spIpData = data;
-//    ipType = type;
-//    isAddrUp = up;
 }
 
 addr::addr() :
     ipType(ipaddr_type::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), isAddrUp(false)
 {
-//    spIpAddress = nullptr;
-//    spIpMask = nullptr;
-//    spIpData = nullptr;
-//    ipType = ipaddr_type::UNKNOWN;
-//    isAddrUp = false;
 }
 
 addr::~addr()
