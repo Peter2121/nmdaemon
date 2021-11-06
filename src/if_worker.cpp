@@ -296,13 +296,11 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-//    addr* if_addr = nullptr;
     address_base* cur_if_addr = nullptr;
     json cmd = {};
 
     try {
         cmd = pcmd->getJsonData();
-//        ifName = cmd[JSON_PARAM_IF_NAME];
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
@@ -326,7 +324,6 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         LOG_S(INFO) << "Got current primary IP address " << cur_if_addr->getStrAddr() << " from interface " << ifName;
         if(!removeIfAddr(cur_if_addr)) {
             delete cur_if_addr;
-//            delete if_addr;
             LOG_S(ERROR) << "Cannot remove current IP address from interface " << ifName;
             return JSON_RESULT_ERR;
         }
@@ -334,12 +331,10 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         delete cur_if_addr;
     }
     if(!addIfAddr(if_addr)) {
-//        delete if_addr;
         LOG_S(ERROR) << "Cannot add new IP address to interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address set to interface " << ifName;
-//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 
@@ -347,12 +342,10 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-//    addr* if_addr = nullptr;
     json cmd = {};
 
     try {
         cmd = pcmd->getJsonData();
-//        ifName = cmd[JSON_PARAM_IF_NAME];
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
@@ -367,12 +360,10 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
     }
 
     if(!addIfAddr(if_addr)) {
-//        delete if_addr;
         LOG_S(ERROR) << "Cannot add IP address to interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address added to interface " << ifName;
-//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 
@@ -380,12 +371,10 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-//    addr* if_addr = nullptr;
     json cmd = {};
 
     try {
         cmd = pcmd->getJsonData();
-//        ifName = cmd[JSON_PARAM_IF_NAME];
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
@@ -400,12 +389,10 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
     }
 
     if(!removeIfAddr(if_addr->getAddrAB())) {
-//        delete if_addr;
         LOG_S(ERROR) << "Cannot remove IP address from interface " << ifName;
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "IP address removed from interface " << ifName;
-//    delete if_addr;
     return JSON_RESULT_SUCCESS;
 }
 
@@ -420,7 +407,6 @@ json if_worker::execCmdMtuGet(nmcommand_data* pcmd)
 
     try {
         cmd = pcmd->getJsonData();
-//        ifName = cmd[JSON_PARAM_IF_NAME];
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface name";
@@ -458,7 +444,6 @@ json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
     try
     {
         cmd = pcmd->getJsonData();
-//        ifName = cmd[JSON_PARAM_IF_NAME];
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
         cmd_data = cmd[JSON_PARAM_DATA];
         mtu = cmd_data[JSON_PARAM_MTU];
