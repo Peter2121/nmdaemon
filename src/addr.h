@@ -16,7 +16,7 @@
 
 enum class ipaddr_type
 {
-    BCAST, PPP, LINK, LOOPBACK, ROUTE
+    BCAST, PPP, LINK, LOOPBACK, ROUTE, UNKNOWN
 };
 
 class addr
@@ -33,6 +33,7 @@ protected:
 public:
     addr(struct ifaddrs*);
     addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false);
+    addr();
     ~addr();
     const address_base* getAddrAB() const;
     const address_base* getMaskAB() const;

@@ -71,11 +71,27 @@ short address_ip6::getFamily() const
     return family;
 }
 
+/*
+struct in6_addr {
+        u_int8_t  s6_addr[16];  // IPv6 address
+}
+struct sockaddr_in6 {
+       u_char           sin6_len;      // length of this structure
+       u_char           sin6_family;   // AF_INET6
+       u_int16m_t       sin6_port;     // Transport layer port
+       u_int32m_t       sin6_flowinfo; // IPv6 flow information
+       struct in6_addr  sin6_addr;     // IPv6 address
+}
+*/
+
 bool address_ip6::operator==(const address_base& addr)
 {
     if(family != addr.getFamily())
         return false;
-    if(ip_addr6.s6_addr != ((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr)
+    const void *p1 = &(((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr);
+    const void *p2 = &(ip_addr6.s6_addr);
+    if(memcmp(p1,p2,sizeof(struct in6_addr))!=0)
+//    if(ip_addr6.s6_addr != ((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr)
         return false;
     else
         return true;
@@ -85,7 +101,10 @@ bool address_ip6::operator!=(const address_base& addr)
 {
     if(family == addr.getFamily())
         return false;
-    if(ip_addr6.s6_addr == ((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr)
+    const void *p1 = &(((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr);
+    const void *p2 = &(ip_addr6.s6_addr);
+    if(memcmp(p1,p2,sizeof(struct in6_addr))==0)
+//    if(ip_addr6.s6_addr == ((struct sockaddr_in6*)addr.getSockAddr())->sin6_addr.s6_addr)
         return false;
     else
         return true;

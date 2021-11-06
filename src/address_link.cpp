@@ -34,7 +34,7 @@ void address_link::setLinkAddr()
     }
     else
     {
-        // TODO: Raise exception
+        throw nmExcept;
     }
 }
 

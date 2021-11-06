@@ -100,35 +100,25 @@ addr::addr(struct ifaddrs* ifa)
     }
 }
 
-addr::addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data, ipaddr_type type, bool up)
+addr::addr( std::shared_ptr<address_base> addr,
+            std::shared_ptr<address_base> mask,
+            std::shared_ptr<address_base> data,
+            ipaddr_type type, bool up)
 {
-    if(addr!=nullptr)
-    {
-        spIpAddress = addr;
-    }
-    else
-    {
-        spIpAddress = nullptr;
-    }
-    if(mask!=nullptr)
-    {
-        spIpMask = mask;
-    }
-    else
-    {
-        spIpMask = nullptr;
-    }
-
-    if(data!=nullptr)
-    {
-        spIpData = data;
-    }
-    else
-    {
-        spIpData = nullptr;
-    }
+    spIpAddress = addr;
+    spIpMask = mask;
+    spIpData = data;
     ipType = type;
     isAddrUp = up;
+}
+
+addr::addr()
+{
+    spIpAddress = nullptr;
+    spIpMask = nullptr;
+    spIpData = nullptr;
+    ipType = ipaddr_type::UNKNOWN;
+    isAddrUp = false;
 }
 
 addr::~addr()
