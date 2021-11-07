@@ -48,15 +48,16 @@ protected:
         { nmscope::ROUTE, nmcmd::RT_DEF6_GET },
         { nmscope::ROUTE, nmcmd::RT_SET },
         { nmscope::ROUTE, nmcmd::RT_DEF_SET },
-        { nmscope::ROUTE, nmcmd::RT_REMOVE },
-        { nmscope::ROUTE, nmcmd::RT_DEF_REMOVE },
+        { nmscope::ROUTE, nmcmd::RT_DEL },
+        { nmscope::ROUTE, nmcmd::RT_DEF_DEL },
         { nmscope::ROUTE, nmcmd::RT_LIST },
         { nmscope::ROUTE, nmcmd::RT_LIST6 }
     };
     bool setStaticRoute(std::shared_ptr<addr>);
+    bool delStaticRoute(std::shared_ptr<addr>);
     bool getStaticRoute(std::shared_ptr<addr>);
-    void setPsaStruct(sockaddr_in *, const address_base*);
-    void setPsaStruct6(sockaddr_in6 *, const address_base*);
+    void setPsaStruct(sockaddr_in *, const std::shared_ptr<address_base>);
+    void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<address_base>);
 public:
     route_worker();
     ~route_worker();
@@ -68,8 +69,8 @@ public:
     json execCmdDefRouteSet(nmcommand_data*);
     json execCmdDefRouteGet(nmcommand_data*);
     json execCmdRouteList(nmcommand_data*);
-//    json execCmdRouteRemove(nmcommand_data*);
-//    json execCmdDefRouteRemove(nmcommand_data*);
+    json execCmdRouteDel(nmcommand_data*);
+//    json execCmdDefRouteDel(nmcommand_data*);
 //    json execCmdRouteList6(nmcommand_data*);
 };
 

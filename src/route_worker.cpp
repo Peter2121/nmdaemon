@@ -25,9 +25,10 @@ json route_worker::execCmd(nmcommand_data* pcmd)
             return execCmdDefRouteSet(pcmd);
         case nmcmd::RT_LIST :
             return execCmdRouteList(pcmd);
+        case nmcmd::RT_DEL :
+            return execCmdRouteDel(pcmd);
+        case nmcmd::RT_DEF_DEL :
         case nmcmd::RT_DEF6_GET :
-        case nmcmd::RT_REMOVE :
-        case nmcmd::RT_DEF_REMOVE :
         case nmcmd::RT_LIST6 :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
@@ -48,7 +49,7 @@ bool route_worker::isValidCmd(nmcommand_data* pcmd)
 
     return false;
 }
-
+/*
 void route_worker::setPsaStruct(sockaddr_in *psa, const address_base* strt)
 {
     psa->sin_len = sizeof(struct sockaddr_in);
@@ -61,6 +62,20 @@ void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const address_base* strt)
     psa6->sin6_len = sizeof(struct sockaddr_in6);
     psa6->sin6_family = strt->getFamily();
     memcpy(psa6, strt->getSockAddr(), sizeof(struct sockaddr_in6));
+}
+*/
+void route_worker::setPsaStruct(sockaddr_in *psa, const std::shared_ptr<address_base> spstrt)
+{
+    psa->sin_len = sizeof(struct sockaddr_in);
+    psa->sin_family = spstrt->getFamily();
+    memcpy(psa, spstrt->getSockAddr(), sizeof(struct sockaddr_in));
+}
+
+void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<address_base> spstrt)
+{
+    psa6->sin6_len = sizeof(struct sockaddr_in6);
+    psa6->sin6_family = spstrt->getFamily();
+    memcpy(psa6, spstrt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 
 bool route_worker::setStaticRoute(std::shared_ptr<addr> stroute)
@@ -101,17 +116,17 @@ bool route_worker::setStaticRoute(std::shared_ptr<addr> stroute)
 
     if(fam == AF_INET)
     {
-        setPsaStruct(&(up_new_route->dest), stroute->getAddrAB());
-        setPsaStruct(&(up_new_route->gateway), stroute->getDataAB());
-        setPsaStruct(&(up_new_route->netmask), stroute->getMaskAB());
+        setPsaStruct(&(up_new_route->dest), stroute->getAddr());
+        setPsaStruct(&(up_new_route->gateway), stroute->getData());
+        setPsaStruct(&(up_new_route->netmask), stroute->getMask());
         pnr=up_new_route.get();
         pnr_size = sizeof(static_route);
     }
     else if(fam == AF_INET6)
     {
-        setPsaStruct6(&(up_new_route6->dest), stroute->getAddrAB());
-        setPsaStruct6(&(up_new_route6->gateway), stroute->getDataAB());
-        setPsaStruct6(&(up_new_route6->netmask), stroute->getMaskAB());
+        setPsaStruct6(&(up_new_route6->dest), stroute->getAddr());
+        setPsaStruct6(&(up_new_route6->gateway), stroute->getData());
+        setPsaStruct6(&(up_new_route6->netmask), stroute->getMask());
         pnr=up_new_route6.get();
         pnr_size = sizeof(static_route6);
     }
@@ -134,6 +149,73 @@ bool route_worker::setStaticRoute(std::shared_ptr<addr> stroute)
         sock.close();
         return true;
     }
+}
+
+bool route_worker::delStaticRoute(std::shared_ptr<addr> stroute)
+{
+    std::unique_ptr<static_route> up_old_route=nullptr;
+    std::unique_ptr<static_route6> up_old_route6=nullptr;
+    void* pnr=nullptr;
+    size_t pnr_size=0;
+    struct rt_msghdr *prtm_hdr=nullptr;
+    short fam = stroute->getAddrAB()->getFamily();
+    time_t curtime = time(NULL);
+    struct tm *info = localtime(&curtime);
+    int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
+
+    if(fam == AF_INET)
+    {
+        up_old_route = std::make_unique<static_route>();
+        memset(up_old_route.get(), 0x00, sizeof(static_route));
+        prtm_hdr = &(up_old_route->head);
+        prtm_hdr->rtm_msglen = sizeof(static_route);
+    }
+    else if(fam == AF_INET6)
+    {
+        up_old_route6 = std::make_unique<static_route6>();
+        memset(up_old_route6.get(), 0x00, sizeof(static_route6));
+        prtm_hdr = &(up_old_route6->head);
+        prtm_hdr->rtm_msglen = sizeof(static_route6);
+    }
+    else
+    {
+        LOG_S(ERROR) << "Error in delStaticRoute: incorrect address family received: " << fam;
+        return false;
+    }
+
+    prtm_hdr->rtm_type = RTM_DELETE;
+    prtm_hdr->rtm_version = RTM_VERSION;
+    prtm_hdr->rtm_seq = seq;
+    prtm_hdr->rtm_addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
+    prtm_hdr->rtm_pid = getpid();
+
+    if(fam == AF_INET)
+    {
+        setPsaStruct(&(up_old_route->dest), stroute->getAddr());
+        setPsaStruct(&(up_old_route->gateway), stroute->getData());
+        setPsaStruct(&(up_old_route->netmask), stroute->getMask());
+        pnr=up_old_route.get();
+        pnr_size = sizeof(static_route);
+    }
+    else if(fam == AF_INET6)
+    {
+        setPsaStruct6(&(up_old_route6->dest), stroute->getAddr());
+        setPsaStruct6(&(up_old_route6->gateway), stroute->getData());
+        setPsaStruct6(&(up_old_route6->netmask), stroute->getMask());
+        pnr=up_old_route6.get();
+        pnr_size = sizeof(static_route6);
+    }
+
+    sockpp::socket sock = sockpp::socket::create(AF_ROUTE, SOCK_RAW);
+
+    if(write(sock.handle(), pnr, pnr_size) < 0)
+    {
+           LOG_S(ERROR) << "delStaticRoute cannot write to socket";
+           sock.close();
+           return false;
+    }
+    sock.close();
+    return true;
 }
 
 bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
@@ -174,8 +256,8 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 
     if(fam == AF_INET)
     {
-        setPsaStruct(&(up_cur_route->dest), stroute->getAddrAB());
-        setPsaStruct(&(up_cur_route->netmask), stroute->getMaskAB());
+        setPsaStruct(&(up_cur_route->dest), stroute->getAddr());
+        setPsaStruct(&(up_cur_route->netmask), stroute->getMask());
         up_cur_route->gateway.sin_len = sizeof(struct sockaddr_in);
         up_cur_route->gateway.sin_family = fam;
         pnr=up_cur_route.get();
@@ -183,8 +265,8 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     }
     else if(fam == AF_INET6)
     {
-        setPsaStruct6(&(up_cur_route6->dest), stroute->getAddrAB());
-        setPsaStruct6(&(up_cur_route6->netmask), stroute->getMaskAB());
+        setPsaStruct6(&(up_cur_route6->dest), stroute->getAddr());
+        setPsaStruct6(&(up_cur_route6->netmask), stroute->getMask());
         up_cur_route6->gateway.sin6_len = sizeof(struct sockaddr_in6);
         up_cur_route6->gateway.sin6_family = fam;
         pnr=up_cur_route6.get();
@@ -330,6 +412,27 @@ json route_worker::execCmdRouteSet(nmcommand_data* pcmd)
     }
 
     LOG_S(INFO) << "Static route set";
+    return JSON_RESULT_SUCCESS;
+}
+
+json route_worker::execCmdRouteDel(nmcommand_data* pcmd)
+{
+    json cmd = {};
+
+    auto rt_addr = tool::getAddrFromJson(pcmd->getJsonData());
+    if(rt_addr==nullptr)
+    {
+        LOG_S(ERROR) << "Cannot decode JSON data";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!route_worker::delStaticRoute(rt_addr))
+    {
+        LOG_S(ERROR) << "Cannot delete route";
+        return JSON_RESULT_ERR;
+    }
+
+    LOG_S(INFO) << "Static route deleted";
     return JSON_RESULT_SUCCESS;
 }
 
