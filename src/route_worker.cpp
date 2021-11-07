@@ -27,8 +27,10 @@ json route_worker::execCmd(nmcommand_data* pcmd)
             return execCmdRouteList(pcmd);
         case nmcmd::RT_DEL :
             return execCmdRouteDel(pcmd);
-        case nmcmd::RT_DEF_DEL :
         case nmcmd::RT_DEF6_GET :
+            return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+//            return execCmdDefRouteGet6(pcmd);
+        case nmcmd::RT_DEF_DEL :
         case nmcmd::RT_LIST6 :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
@@ -229,6 +231,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     time_t curtime = time(NULL);
     struct tm *info = localtime(&curtime);
     int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
+    pid_t curr_pid = getpid();
 
     if(fam == AF_INET)
     {
@@ -249,10 +252,12 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 
     prtm_hdr->rtm_type = RTM_GET;
     prtm_hdr->rtm_flags |= RTF_GATEWAY;
+    prtm_hdr->rtm_flags |= RTF_UP;
     prtm_hdr->rtm_version = RTM_VERSION;
     prtm_hdr->rtm_seq = seq;
-    prtm_hdr->rtm_pid = getpid();
+    prtm_hdr->rtm_pid = curr_pid;
     prtm_hdr->rtm_addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
+//    prtm_hdr->rtm_addrs = RTA_DST;
 
     if(fam == AF_INET)
     {
@@ -280,12 +285,17 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
         sock.close();
         return false;
     }
-    if(read(sock.handle(), pnr, pnr_size) == -1)
+    do
     {
-        LOG_S(ERROR) << "getStaticRoute cannot read from socket";
-        sock.close();
-        return false;
-    }
+        if(read(sock.handle(), pnr, pnr_size) == -1)
+        {
+            LOG_S(ERROR) << "getStaticRoute cannot read from socket";
+            sock.close();
+            return false;
+        }
+    } while( reinterpret_cast<struct rt_msghdr*>(pnr)->rtm_type != RTM_GET ||
+             reinterpret_cast<struct rt_msghdr*>(pnr)->rtm_seq != seq ||
+             reinterpret_cast<struct rt_msghdr*>(pnr)->rtm_pid != curr_pid );
     sock.close();
 
     try
@@ -365,32 +375,42 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
     json res_route = {};
     short family;
     std::string strGw = "";
-
     auto spaddr = std::make_shared<address_ip4>();
     auto spmask = std::make_shared<address_ip4>();
-    auto spgate = std::make_shared<address_ip4>();
-    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
-
+//    auto spgate = std::make_shared<address_ip4>();
+//    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
     if( !route_worker::getStaticRoute(sp_rt_addr) ) {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get route";
         return JSON_RESULT_ERR;
     }
 
-    family = sp_rt_addr->getDataAB()->getFamily();
-    strGw = sp_rt_addr->getDataAB()->getStrAddr();
+    family = sp_rt_addr->getData()->getFamily();
+    strGw = sp_rt_addr->getData()->getStrAddr();
+    res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV4_GW, strGw } };
+    return res_route;
+}
 
-    switch(family)
-    {
-    case AF_INET:
-        res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV4_GW, strGw } };
-        break;
-    case AF_INET6:
-        res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV6_GW, strGw } };
-        break;
+json route_worker::execCmdDefRouteGet6(nmcommand_data*)
+{
+    json res_route = {};
+    short family;
+    std::string strGw = "";
+    auto spaddr = std::make_shared<address_ip6>();
+    auto spmask = std::make_shared<address_ip6>();
+//    auto spgate = std::make_shared<address_ip6>();
+//    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    if( !route_worker::getStaticRoute(sp_rt_addr) ) {
+        LOG_S(ERROR) << "Error in execCmdDefRouteGet6 - cannot get route";
+        return JSON_RESULT_ERR;
     }
 
+    family = sp_rt_addr->getData()->getFamily();
+    strGw = sp_rt_addr->getData()->getStrAddr();
+    res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV6_GW, strGw } };
     return res_route;
 }
 
