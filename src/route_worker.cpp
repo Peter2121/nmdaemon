@@ -1,5 +1,17 @@
 #include "route_worker.h"
 
+/*
+ * Round up 'a' to next multiple of 'size', which must be a power of 2
+ * (c) Unix Network Programming by W. Richard Stevens.
+*/
+#define ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
+/*
+ * Step to next socket address structure;
+ * if sa_len is 0, assume it is sizeof(u_long)
+ * (c) Unix Network Programming by W. Richard Stevens.
+*/
+#define NEXT_SA(ap) ap = (struct sockaddr *) ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (u_long)) : sizeof(u_long)))
+
 route_worker::route_worker()
 { }
 
@@ -24,6 +36,7 @@ json route_worker::execCmd(nmcommand_data* pcmd)
         case nmcmd::RT_DEF_SET :
             return execCmdDefRouteSet(pcmd);
         case nmcmd::RT_LIST :
+        case nmcmd::RT_LIST6 :
             return execCmdRouteList(pcmd);
         case nmcmd::RT_DEL :
             return execCmdRouteDel(pcmd);
@@ -31,7 +44,6 @@ json route_worker::execCmd(nmcommand_data* pcmd)
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
 //            return execCmdDefRouteGet6(pcmd);
         case nmcmd::RT_DEF_DEL :
-        case nmcmd::RT_LIST6 :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
@@ -503,20 +515,8 @@ json route_worker::execCmdDefRouteSet(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdRouteList(nmcommand_data*)
+json route_worker::execCmdRouteList(nmcommand_data* pcmd)
 {
-    /*
-     * Round up 'a' to next multiple of 'size', which must be a power of 2
-     * (c) Unix Network Programming by W. Richard Stevens.
-    */
-    #define ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
-    /*
-     * Step to next socket address structure;
-     * if sa_len is 0, assume it is sizeof(u_long)
-     * (c) Unix Network Programming by W. Richard Stevens.
-    */
-    #define NEXT_SA(ap) ap = (struct sockaddr *) ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (u_long)) : sizeof(u_long)))
-
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;
 //    struct sockaddr_in *sin = nullptr;
@@ -527,26 +527,35 @@ json route_worker::execCmdRouteList(nmcommand_data*)
     std::vector<uint8_t> buf(0);
 //    std::vector<addr*> routes(0);
     std::vector<interface*> ifaces(0);
-    std::shared_ptr<address_ip4> sp_dest = nullptr;
-    std::shared_ptr<address_ip4> sp_mask = nullptr;
-    std::shared_ptr<address_ip4> sp_gate = nullptr;
+    std::shared_ptr<address_base> sp_dest = nullptr;
+    std::shared_ptr<address_base> sp_mask = nullptr;
+    std::shared_ptr<address_base> sp_gate = nullptr;
     size_t sa_len = sizeof(struct sockaddr);
 //    u_int32_t dest, mask, gate;
 //    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
     short constexpr MIB_SIZE = 6;
+    int family = 0;
     int mib[MIB_SIZE];
-    mib[0] = CTL_NET;
-    mib[1] = AF_ROUTE;
-    mib[2] = 0;
-    mib[3] = AF_INET;
-    mib[4] = NET_RT_DUMP;
-    mib[5] = 0;
     char ifname[IFNAMSIZ];
     std::string strIfName = "";
     bool isFound = false;
     std::vector<nlohmann::json> vectIfsJson;
     nlohmann::json retIfListJson = {};
     nlohmann::json res_routes = {};
+
+    if(pcmd->getCommand().cmd == nmcmd::RT_LIST)
+        family = AF_INET;
+    else if(pcmd->getCommand().cmd == nmcmd::RT_LIST6)
+        family = AF_INET6;
+    else
+        return JSON_RESULT_ERR;
+
+    mib[0] = CTL_NET;
+    mib[1] = AF_ROUTE;
+    mib[2] = 0;
+    mib[3] = family;
+    mib[4] = NET_RT_DUMP;
+    mib[5] = 0;
 
     //  Get necessary buffer size and resize the buffer
     if ( sysctl(mib, MIB_SIZE, nullptr, &sz, nullptr, 0) != 0 )
@@ -594,8 +603,9 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                         return JSON_RESULT_ERR;
                     continue;
                 }
-//              We need only active static routes with gateway defined
-                if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) || !(rtm->rtm_flags & RTF_STATIC) )
+//              We need only active routes with gateway defined
+//                if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) || !(rtm->rtm_flags & RTF_STATIC) )
+                if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) )
                     continue;
 
 //              Fill rti_info array with available information
@@ -623,7 +633,7 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
-                        continue;   // Normally never happens - we asked information about AF_INET routes
+                        sp_dest = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
                     }
                 }
                 else
@@ -639,7 +649,7 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
-                        continue;   // Normally never happens - we asked information about AF_INET routes
+                        sp_gate = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
                     }
                 }
                 else
@@ -655,7 +665,7 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
-                        continue;   // Normally never happens - we asked information about AF_INET routes
+                        sp_mask = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
                     }
                 }
                 else
@@ -665,12 +675,18 @@ json route_worker::execCmdRouteList(nmcommand_data*)
 
                 if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
                 {
-                    sp_mask = std::make_shared<address_ip4>("255.255.255.255");
+                    if (sa->sa_family == AF_INET)
+                        sp_mask = std::make_shared<address_ip4>("255.255.255.255");
+                    else if (sa->sa_family == AF_INET6)
+                        sp_mask = std::make_shared<address_ip6>("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
                 }
 
                 if(sp_dest==nullptr)
                 {
-                    sp_mask = std::make_shared<address_ip4>("0.0.0.0");;
+                    if (sa->sa_family == AF_INET)
+                        sp_mask = std::make_shared<address_ip4>("0.0.0.0");
+                    else if (sa->sa_family == AF_INET6)
+                        sp_mask = std::make_shared<address_ip6>("::");
                 }
 
                 if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
@@ -688,13 +704,13 @@ json route_worker::execCmdRouteList(nmcommand_data*)
                     if(iface->getName()==strIfName)
                     {
                         isFound = true;
-                        iface->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
+                        iface->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
                     }
                 }
                 if(!isFound)
                 {
                     ifaces.push_back(new interface(strIfName));
-                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true));
+                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
                 }
             }
         }
