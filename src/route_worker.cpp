@@ -519,20 +519,15 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
 {
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;
-//    struct sockaddr_in *sin = nullptr;
     struct sockaddr *rti_info[RTAX_MAX];
     size_t sz = 0;
     short err_cnt = 0;
     short constexpr ERR_CNT_MAX = 10;
     std::vector<uint8_t> buf(0);
-//    std::vector<addr*> routes(0);
     std::vector<interface*> ifaces(0);
     std::shared_ptr<address_base> sp_dest = nullptr;
     std::shared_ptr<address_base> sp_mask = nullptr;
     std::shared_ptr<address_base> sp_gate = nullptr;
-    size_t sa_len = sizeof(struct sockaddr);
-//    u_int32_t dest, mask, gate;
-//    u_int32_t constexpr LOCAL = htonl(0x7f000001);  // 127.0.0.1
     short constexpr MIB_SIZE = 6;
     int family = 0;
     int mib[MIB_SIZE];
@@ -604,7 +599,6 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                     continue;
                 }
 //              We need only active routes with gateway defined
-//                if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) || !(rtm->rtm_flags & RTF_STATIC) )
                 if( !(rtm->rtm_flags & RTF_GATEWAY) || !(rtm->rtm_flags & RTF_UP) )
                     continue;
 
@@ -614,7 +608,6 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 {
                     if (rtm->rtm_addrs & (1 << i))
                     {
-                        sa_len = sa->sa_len;
                         rti_info[i] = sa;
                         NEXT_SA(sa);
                     }
