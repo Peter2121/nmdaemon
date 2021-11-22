@@ -41,8 +41,7 @@ json route_worker::execCmd(nmcommand_data* pcmd)
         case nmcmd::RT_DEL :
             return execCmdRouteDel(pcmd);
         case nmcmd::RT_DEF6_GET :
-            return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
-//            return execCmdDefRouteGet6(pcmd);
+            return execCmdDefRouteGet6(pcmd);
         case nmcmd::RT_DEF_DEL :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
@@ -231,7 +230,7 @@ bool route_worker::delStaticRoute(std::shared_ptr<addr> stroute)
     sock.close();
     return true;
 }
-
+/*
 bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 {
     std::unique_ptr<static_route> up_cur_route=nullptr;
@@ -333,7 +332,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
         return false;
     }
 }
-
+*/
 json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
 {
     std::shared_ptr<addr> sp_rt_addr=nullptr;
@@ -356,6 +355,7 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    sp_rt_addr->setType(ipaddr_type::ROUTE);
     if( !route_worker::getStaticRoute(sp_rt_addr) ) {
         LOG_S(ERROR) << "Error in execCmdRouteGet - cannot get route";
         return JSON_RESULT_ERR;
@@ -367,12 +367,9 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
     switch(family)
     {
     case AF_INET:
-        res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV4_GW, strGw } };
-        break;
     case AF_INET6:
         res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV6_GW, strGw } };
+        res_route[JSON_PARAM_DATA] = sp_rt_addr->getAddrJson();
         break;
     case AF_LINK:
         res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
@@ -745,4 +742,193 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     {
         return JSON_RESULT_NOTFOUND;
     }
+}
+
+bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
+{
+    std::unique_ptr<static_route> up_cur_route=nullptr;
+    std::unique_ptr<static_route6> up_cur_route6=nullptr;
+    struct rt_msghdr *rtm=nullptr;
+    short fam = stroute->getAddrAB()->getFamily();
+    time_t curtime = time(NULL);
+    struct tm *info = localtime(&curtime);
+    int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
+    pid_t curr_pid = getpid();
+    std::shared_ptr<address_base> sp_dest = nullptr;
+    std::shared_ptr<address_base> sp_mask = nullptr;
+    std::shared_ptr<address_base> sp_gate = nullptr;
+    char ifname[IFNAMSIZ];
+    std::string strIfName = "";
+    struct sockaddr *sa = nullptr;
+    struct sockaddr *rti_info[RTAX_MAX];
+    struct sockaddr_in *sin = nullptr;
+    struct sockaddr_in6 *sin6 = nullptr;
+    constexpr short RTBUFLEN = 512;
+    auto buf = std::make_unique<unsigned char[]>(RTBUFLEN);
+    memset(buf.get(),0,sizeof(buf));
+    rtm = reinterpret_cast<struct rt_msghdr*>(buf.get());
+    if(fam == AF_INET)
+        rtm->rtm_msglen = sizeof(struct rt_msghdr) + sizeof(struct sockaddr_in);
+    else if(fam == AF_INET6)
+        rtm->rtm_msglen = sizeof(struct rt_msghdr) + sizeof(struct sockaddr_in6);
+    rtm->rtm_type = RTM_GET;
+    rtm->rtm_flags |= RTF_GATEWAY;
+    rtm->rtm_flags |= RTF_UP;
+//********************
+//    prtm_hdr->rtm_flags |= RTF_HOST;
+//********************
+    rtm->rtm_version = RTM_VERSION;
+    rtm->rtm_seq = seq;
+    rtm->rtm_pid = curr_pid;
+//********************
+//    prtm_hdr->rtm_addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
+//********************
+    rtm->rtm_addrs = RTA_DST;
+
+    if(fam == AF_INET)
+    {
+        sin = (struct sockaddr_in *) (rtm + 1);
+        sin->sin_len = sizeof(struct sockaddr_in);
+        sin->sin_family = AF_INET;
+        memcpy(sin, stroute->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in));
+    }
+    else if(fam == AF_INET6)
+    {
+        sin6 = (struct sockaddr_in6 *) (rtm + 1);
+        sin6->sin6_len = sizeof(struct sockaddr_in6);
+        sin6->sin6_family = AF_INET6;
+        memcpy(sin6, stroute->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in6));
+    }
+
+    sockpp::socket sock = sockpp::socket::create(AF_ROUTE, SOCK_RAW);
+    if(write(sock.handle(), rtm, rtm->rtm_msglen) < 0)
+    {
+        LOG_S(ERROR) << "getStaticRoute cannot write to socket";
+        sock.close();
+        return false;
+    }
+
+    do {
+        if(read(sock.handle(), rtm, RTBUFLEN) == -1)
+        {
+            LOG_S(ERROR) << "getStaticRoute cannot read from socket";
+            sock.close();
+            return false;
+        }
+    } while (rtm->rtm_type != RTM_GET || rtm->rtm_seq != seq || rtm->rtm_pid != curr_pid);
+
+    sock.close();
+
+    if (rtm->rtm_version != RTM_VERSION)
+    {
+        LOG_S(ERROR) << "RTM version mismatch: expected " << RTM_VERSION << " got " << rtm->rtm_version;
+        return false;
+    }
+    if (rtm->rtm_errno != 0)
+    {
+        LOG_S(ERROR) << "Got error in RTM: " << rtm->rtm_errno;
+        return false;
+    }
+
+//      Fill rti_info array with available information
+        sa = reinterpret_cast<struct sockaddr*>(rtm + 1);
+        for (short i=0; i<RTAX_MAX; i++)
+        {
+            if (rtm->rtm_addrs & (1 << i))
+            {
+                rti_info[i] = sa;
+                NEXT_SA(sa);
+            }
+            else
+            {
+                rti_info[i] = nullptr;
+            }
+        }
+
+//      Analyse and output the information from rti_info array
+        if ( (sa=rti_info[RTAX_DST]) != nullptr )
+        {
+            if (sa->sa_family == AF_INET)
+            {
+                sp_dest = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+            }
+            else if (sa->sa_family == AF_INET6)
+            {
+                sp_dest = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+            }
+        }
+        else
+        {
+            sp_dest = nullptr;
+        }
+
+        if ( (sa = rti_info[RTAX_GATEWAY]) != nullptr)
+        {
+            if (sa->sa_family == AF_INET)
+            {
+                sp_gate = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+            }
+            else if (sa->sa_family == AF_INET6)
+            {
+                sp_gate = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+            }
+        }
+        else
+        {
+            sp_gate = nullptr;
+        }
+
+        if ( (sa = rti_info[RTAX_NETMASK]) != nullptr)
+        {
+            if (sa->sa_family == AF_INET)
+            {
+                sp_mask = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+            }
+            else if (sa->sa_family == AF_INET6)
+            {
+                sp_mask = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+            }
+        }
+        else
+        {
+            sp_mask = nullptr;
+        }
+
+        if(sp_gate == nullptr)
+        {
+            LOG_S(ERROR) << "No gateway received from socket";
+            return false;
+        }
+
+        if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
+        {
+            if (sa->sa_family == AF_INET)
+                sp_mask = std::make_shared<address_ip4>("255.255.255.255");
+            else if (sa->sa_family == AF_INET6)
+                sp_mask = std::make_shared<address_ip6>("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+        }
+
+        if(sp_dest==nullptr)
+        {
+            if (sa->sa_family == AF_INET)
+                sp_mask = std::make_shared<address_ip4>("0.0.0.0");
+            else if (sa->sa_family == AF_INET6)
+                sp_mask = std::make_shared<address_ip6>("::");
+        }
+
+        if(if_indextoname(rtm->rtm_index, ifname) != nullptr)
+        {
+            strIfName = std::string(ifname);
+        }
+        else
+        {
+            strIfName = std::to_string(rtm->rtm_index);
+        }
+
+    stroute->setAddr(sp_dest);
+    stroute->setMask(sp_mask);
+    stroute->setData(sp_gate);
+    stroute->setFlags(rtm->rtm_flags);
+
+    return true;
 }

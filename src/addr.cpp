@@ -117,9 +117,24 @@ addr::~addr()
 {
 }
 
+void addr::setAddr(std::shared_ptr<address_base> spaddr)
+{
+    spIpAddress = spaddr;
+}
+
+void addr::setMask(std::shared_ptr<address_base> spmask)
+{
+    spIpMask = spmask;
+}
+
 void addr::setData(std::shared_ptr<address_base> spdata)
 {
     spIpData = spdata;
+}
+
+void addr::setType(ipaddr_type type)
+{
+    ipType = type;
 }
 
 // TODO: customize separator and eol strings (take them from arguments)

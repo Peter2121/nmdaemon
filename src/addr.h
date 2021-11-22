@@ -47,7 +47,10 @@ public:
     const nlohmann::json getAddrJson() const;
     bool isUp() const;
     short getFamily() const;
+    void setAddr(std::shared_ptr<address_base>);
+    void setMask(std::shared_ptr<address_base>);
     void setData(std::shared_ptr<address_base>);
+    void setType(ipaddr_type);
     bool isValidIp() const;
     int getFlags() const;
     void setFlags(int);
