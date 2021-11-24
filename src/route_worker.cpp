@@ -336,10 +336,9 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
 {
     std::shared_ptr<addr> sp_rt_addr=nullptr;
+    std::unique_ptr<interface> proute=nullptr;
     json cmd = {};
     json res_route = {};
-    short family;
-    std::string strGw = "";
 
     try {
         cmd = pcmd->getJsonData();
@@ -356,26 +355,14 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
     }
 
     sp_rt_addr->setType(ipaddr_type::ROUTE);
-    if( !route_worker::getStaticRoute(sp_rt_addr) ) {
+    proute=getStaticRoute(sp_rt_addr);
+    if( proute == nullptr ) {
         LOG_S(ERROR) << "Error in execCmdRouteGet - cannot get route";
         return JSON_RESULT_ERR;
     }
 
-    family = sp_rt_addr->getDataAB()->getFamily();
-    strGw = sp_rt_addr->getDataAB()->getStrAddr();
-
-    switch(family)
-    {
-    case AF_INET:
-    case AF_INET6:
-        res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = sp_rt_addr->getAddrJson();
-        break;
-    case AF_LINK:
-        res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-        res_route[JSON_PARAM_DATA] = { { JSON_PARAM_LINK_ADDR, strGw } };
-        break;
-    }
+    res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res_route[JSON_PARAM_DATA] = proute->getIfJson();
     return res_route;
 }
 
@@ -744,12 +731,12 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     }
 }
 
-bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
+std::unique_ptr<interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp_route)
 {
     std::unique_ptr<static_route> up_cur_route=nullptr;
     std::unique_ptr<static_route6> up_cur_route6=nullptr;
     struct rt_msghdr *rtm=nullptr;
-    short fam = stroute->getAddrAB()->getFamily();
+    short fam = sp_route->getAddrAB()->getFamily();
     time_t curtime = time(NULL);
     struct tm *info = localtime(&curtime);
     int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
@@ -790,14 +777,14 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
         sin = (struct sockaddr_in *) (rtm + 1);
         sin->sin_len = sizeof(struct sockaddr_in);
         sin->sin_family = AF_INET;
-        memcpy(sin, stroute->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in));
+        memcpy(sin, sp_route->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in));
     }
     else if(fam == AF_INET6)
     {
         sin6 = (struct sockaddr_in6 *) (rtm + 1);
         sin6->sin6_len = sizeof(struct sockaddr_in6);
         sin6->sin6_family = AF_INET6;
-        memcpy(sin6, stroute->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in6));
+        memcpy(sin6, sp_route->getAddrAB()->getSockAddr(), sizeof(struct sockaddr_in6));
     }
 
     sockpp::socket sock = sockpp::socket::create(AF_ROUTE, SOCK_RAW);
@@ -805,7 +792,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     {
         LOG_S(ERROR) << "getStaticRoute cannot write to socket";
         sock.close();
-        return false;
+        return nullptr;
     }
 
     do {
@@ -813,7 +800,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
         {
             LOG_S(ERROR) << "getStaticRoute cannot read from socket";
             sock.close();
-            return false;
+            return nullptr;
         }
     } while (rtm->rtm_type != RTM_GET || rtm->rtm_seq != seq || rtm->rtm_pid != curr_pid);
 
@@ -822,12 +809,12 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     if (rtm->rtm_version != RTM_VERSION)
     {
         LOG_S(ERROR) << "RTM version mismatch: expected " << RTM_VERSION << " got " << rtm->rtm_version;
-        return false;
+        return nullptr;
     }
     if (rtm->rtm_errno != 0)
     {
         LOG_S(ERROR) << "Got error in RTM: " << rtm->rtm_errno;
-        return false;
+        return nullptr;
     }
 
 //      Fill rti_info array with available information
@@ -856,6 +843,10 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
             {
                 sp_dest = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
             }
+            else if (sa->sa_family == AF_LINK)
+            {
+                sp_dest = std::make_shared<address_link>(reinterpret_cast<const struct sockaddr_dl*>(sa));
+            }
         }
         else
         {
@@ -871,6 +862,10 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
             else if (sa->sa_family == AF_INET6)
             {
                 sp_gate = std::make_shared<address_ip6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+            }
+            else if (sa->sa_family == AF_LINK)
+            {
+                sp_gate = std::make_shared<address_link>(reinterpret_cast<const struct sockaddr_dl*>(sa));
             }
         }
         else
@@ -897,10 +892,10 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
         if(sp_gate == nullptr)
         {
             LOG_S(ERROR) << "No gateway received from socket";
-            return false;
+            return nullptr;
         }
 
-        if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
+        if((sa != nullptr) && !(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
         {
             if (sa->sa_family == AF_INET)
                 sp_mask = std::make_shared<address_ip4>("255.255.255.255");
@@ -925,10 +920,13 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
             strIfName = std::to_string(rtm->rtm_index);
         }
 
-    stroute->setAddr(sp_dest);
-    stroute->setMask(sp_mask);
-    stroute->setData(sp_gate);
-    stroute->setFlags(rtm->rtm_flags);
+    sp_route->setAddr(sp_dest);
+    sp_route->setMask(sp_mask);
+    sp_route->setData(sp_gate);
+    sp_route->setFlags(rtm->rtm_flags);
 
-    return true;
+    auto up_ret = std::make_unique<interface>(strIfName);
+    up_ret->addAddress(sp_route);
+
+    return up_ret;
 }
