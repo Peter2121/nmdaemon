@@ -28,6 +28,7 @@ add_executable(nmdaemon
         src/interface.cpp
         src/main.cpp
         src/nmcommand_data.cpp
+        src/nmconfig.cpp
         src/nmdaemon.cpp
         src/nmexception.cpp
         src/route_worker.cpp
