@@ -1,7 +1,8 @@
 #include "nmconfig.h"
 
-nmconfig::nmconfig(std::string filename) : confFileName(filename), confIniFile()
+nmconfig::nmconfig(std::string filename) : confFileName(filename)
 {
+    confIniFile = new CIniFile();
 }
 
 nmconfig::~nmconfig()
@@ -14,7 +15,7 @@ bool nmconfig::iniLoad()
     return confIniFile->Load(confFileName);
 }
 
-bool nmconfig::isValidSection(std::string section)
+bool nmconfig::isValidSection(std::string section) const
 {
     for(auto s : sections)
     {
@@ -25,7 +26,7 @@ bool nmconfig::isValidSection(std::string section)
     return false;
 }
 
-std::string nmconfig::getConfigValue(std::string section, std::string key)
+std::string nmconfig::getConfigValue(std::string section, std::string key) const
 {
     std::string ret_val = "";
 

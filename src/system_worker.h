@@ -3,7 +3,7 @@
 
 #include <ifaddrs.h>
 #include <sys/sockio.h>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/version.h"

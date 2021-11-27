@@ -4,7 +4,7 @@
 #include <string>
 #include <exception>
 #include <memory>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "addr.h"
 

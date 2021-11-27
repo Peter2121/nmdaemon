@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <map>
 #include <arpa/inet.h>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "json/json.hpp"
 #include "inifile/inifile.h"

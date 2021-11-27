@@ -2,7 +2,7 @@
 #define TOOL_H
 
 #include <sys/sockio.h>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "json/json.hpp"
 #include "magic_enum/magic_enum.hpp"

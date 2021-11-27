@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_definitions(LOGURU_WITH_STREAMS=1)
+
 include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/generated")
 

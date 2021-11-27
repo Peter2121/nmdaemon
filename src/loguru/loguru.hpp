@@ -137,7 +137,7 @@ Website: www.ilikebigbits.com
 #endif
 
 #ifdef LOGURU_CATCH_SIGABRT
-	#error "You are defining LOGURU_CATCH_SIGABRT. his is for older versions of Loguru. You should now instead set the options passed to loguru::init"
+	#error "You are defining LOGURU_CATCH_SIGABRT. This is for older versions of Loguru. You should now instead set the options passed to loguru::init"
 #endif
 
 #ifndef LOGURU_VERBOSE_SCOPE_ENDINGS
@@ -338,13 +338,13 @@ namespace loguru
 		Verbosity_8       = +8,
 		Verbosity_9       = +9,
 
-		// Don not use higher verbosity levels, as that will make grepping log files harder.
+		// Do not use higher verbosity levels, as that will make grepping log files harder.
 		Verbosity_MAX     = +9,
 	};
 
 	struct Message
 	{
-		// You would generally print a Message by just concating the buffers without spacing.
+		// You would generally print a Message by just concatenating the buffers without spacing.
 		// Optionally, ignore preamble and indentation.
 		Verbosity   verbosity;   // Already part of preamble
 		const char* filename;    // Already part of preamble
@@ -442,7 +442,7 @@ namespace loguru
 	struct Options
 	{
 		// This allows you to use something else instead of "-v" via verbosity_flag.
-		// Set to nullptr to if you don't want Loguru to parse verbosity from the args.'
+		// Set to nullptr if you don't want Loguru to parse verbosity from the args.
 		const char* verbosity_flag = "-v";
 
 		// loguru::init will set the name of the calling thread to this.
@@ -453,7 +453,7 @@ namespace loguru
 		// To always set a thread name, use loguru::set_thread_name instead.
 		const char* main_thread_name = "main thread";
 
-		SignalOptions signals;
+		SignalOptions signal_options;
 	};
 
 	/*  Should be called from the main thread.
@@ -463,7 +463,7 @@ namespace loguru
 			* Working dir logged
 			* Optional -v verbosity flag parsed
 			* Main thread name set to "main thread"
-			* Explanation of the preamble (date, threanmae etc) logged
+			* Explanation of the preamble (date, thread name, etc) logged
 
 		loguru::init() will look for arguments meant for loguru and remove them.
 		Arguments meant for loguru are:

@@ -2,7 +2,7 @@
 #define NMCONFIG_H
 
 #include <string>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "inifile/inifile.h"
 
@@ -12,11 +12,11 @@
 socket_path=/var/run/nmd.socket
 socket_uid=root
 socket_gid=wheel
-socket_mod=0660
-log_level=INFO
+socket_mod=660
+stderr_log_level=INFO
 
 [rcconf]
-file=/etc/rc.conf
+rcconf_file=/etc/rc.conf
 
 *******************************/
 
@@ -34,12 +34,12 @@ protected:
     };
     std::string confFileName;
     CIniFile* confIniFile;
-    bool isValidSection(std::string);
+    bool isValidSection(const std::string) const;
 public:
     nmconfig(std::string);
     ~nmconfig();
     bool iniLoad();
-    std::string getConfigValue(std::string, std::string);
+    std::string getConfigValue(const std::string, const std::string) const;
 };
 
 #endif // NMCONFIG_H

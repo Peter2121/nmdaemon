@@ -5,7 +5,7 @@
 #include <queue>
 #include <thread>
 
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 
 #include "sockpp/unix_acceptor.h"
@@ -13,8 +13,9 @@
 
 #include "nmcommand_data.h"
 #include "nmworker.h"
+#include "nmconfig.h"
 
-using namespace std;
+//using namespace std;
 
 class nmdaemon
 {
@@ -24,14 +25,14 @@ protected:
     bool running_dispatcher;
     bool stop_dispatcher;
     bool stop_receiver;
-    mutex req_access;
-    mutex sock_access_write;
-    mutex work_access;
-    queue<nmcommand_data*> requests;
-    vector<nmworker*> workers;
+    std::mutex req_access;
+    std::mutex sock_access_write;
+    std::mutex work_access;
+    std::queue<nmcommand_data*> requests;
+    std::vector<nmworker*> workers;
 
 public:
-    nmdaemon(vector<nmworker*>);
+    nmdaemon(std::vector<nmworker*>);
     void sock_receiver(sockpp::unix_socket);
     void dispatcher(sockpp::unix_socket);
     void shutdown();

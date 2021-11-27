@@ -1,6 +1,6 @@
 #include "nmdaemon.h"
 
-nmdaemon::nmdaemon(vector<nmworker*> wrks) : req_access(), work_access(), requests()
+nmdaemon::nmdaemon(std::vector<nmworker*> wrks) : req_access(), work_access(), requests()
 {
     running_sock_receiver = false;
     running_dispatcher = false;
@@ -19,7 +19,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
     unsigned long nread=0;
     unsigned long nwrite=0;
     char buf[NM_MAXBUF];
-    string strBuf;
+    std::string strBuf;
     bool res;
 
     if(running_sock_receiver == true)
@@ -29,7 +29,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
     }
     running_sock_receiver = true;
 
-    thread dispatch_thread(&nmdaemon::dispatcher, this, sockin.clone());
+    std::thread dispatch_thread(&nmdaemon::dispatcher, this, sockin.clone());
 
     std::unique_lock<std::mutex> ulmut_req(req_access);
     req_access.unlock();
@@ -54,7 +54,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
         nread = sockin.read(buf, sizeof(buf));
         if(nread <= 0)
             break;
-        strBuf = string(buf);
+        strBuf = std::string(buf);
         nmcommand_data* request = new nmcommand_data(strBuf);
         res = false;
         if(request->isValid())
@@ -76,7 +76,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
         {
             LOG_S(INFO) << "Received invalid request: " << strBuf;
             json jsResult = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_REQUEST } };
-            string strResult = jsResult.dump();
+            std::string strResult = jsResult.dump();
             strlcpy(buf,strResult.c_str(),strResult.length()+1);
             sock_access_write.lock();
             nwrite = sockin.write_n(buf, sizeof(buf));
@@ -84,7 +84,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
             if(nwrite != sizeof(buf))
                 LOG_S(WARNING) << "Error writing to socket: wrote " << nwrite << " bytes, expected " << sizeof(buf) << "bytes";
         }
-        this_thread::sleep_for(chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
         if(stop_receiver)
             break;
     }
@@ -99,7 +99,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
 void nmdaemon::dispatcher(sockpp::unix_socket sockout)
 {
     json jsonRes;
-    string strResult;
+    std::string strResult;
     char buf[NM_MAXBUF];
 
     if(running_dispatcher == true)
@@ -166,7 +166,7 @@ void nmdaemon::dispatcher(sockpp::unix_socket sockout)
             sockout.write_n(buf, sizeof(buf));
             sock_access_write.unlock();
         }
-        this_thread::sleep_for(chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if(stop_dispatcher)
             break;
     }

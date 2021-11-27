@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <string_view>
 #include <thread>
-#define LOGURU_WITH_STREAMS 1
+//#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/unix_dgram_socket.h"
