@@ -15,8 +15,6 @@
 #include "nmworker.h"
 #include "nmconfig.h"
 
-//using namespace std;
-
 class nmdaemon
 {
 protected:

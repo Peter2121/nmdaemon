@@ -223,10 +223,16 @@ json system_worker::execCmdRcConfRead(nmcommand_data*)
 {
     if(prcConf!=nullptr)
         delete prcConf;
-    prcConf = new rcconf(RCCONF_FILENAME);
+    std::string rcconf_name;
+    if( sp_conf!=nullptr )
+        rcconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_FILE);
+    if(rcconf_name.empty())
+        rcconf_name = RCCONF_FILENAME_DEFAULT;
+    LOG_S(INFO) << "execCmdRcConfRead: Trying to read " << rcconf_name;
+    prcConf = new rcconf(rcconf_name);
     if(!prcConf->iniLoad())
     {
-        LOG_S(ERROR) << "execCmdRcConfRead: Cannot load " << RCCONF_FILENAME;
+        LOG_S(ERROR) << "execCmdRcConfRead: Cannot load " << rcconf_name;
         return JSON_RESULT_ERR;
     }
     return prcConf->getRcIpConfig();

@@ -7,10 +7,13 @@
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
+#include "nmdaemon.h"
 #include "nmworker.h"
 #include "interface.h"
 #include "tool.h"
 #include "rcconf.h"
+
+extern std::shared_ptr<nmconfig> sp_conf;
 
 class system_worker : public nmworker
 {
@@ -25,9 +28,10 @@ protected:
         { nmscope::SYSTEM, nmcmd::RCCONF_READ },
         { nmscope::SYSTEM, nmcmd::RCCONF_WRITE }
     };
-    static inline const std::string RCCONF_FILENAME = "/home/peter/Programming/nmdebug/rc.conf";
+    static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
+    static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
+    static inline const std::string RCCONF_FILENAME_DEFAULT = "/etc/rc.conf";
     rcconf* prcConf;
-//    static inline const std::string RCCONF_FILENAME = "/etc/rc.conf";
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:

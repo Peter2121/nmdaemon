@@ -15,7 +15,7 @@ socket_gid=wheel
 socket_mod=660
 stderr_log_level=INFO
 
-[rcconf]
+[SYSTEM]
 rcconf_file=/etc/rc.conf
 
 *******************************/
@@ -26,7 +26,6 @@ protected:
     static inline const std::string sections[] =
     {
         "nmdaemon",
-        "rcconf",
         "SYSTEM",
         "INTERFACE",
         "ROUTE",

@@ -20,6 +20,9 @@
 
 #include "nmdaemon.h"
 #include "nmworker.h"
+
+std::shared_ptr<nmconfig> sp_conf;
+
 #include "rcconf.h"
 #include "workers.h"
 #if defined (WORKER_DUMMY)
@@ -37,7 +40,6 @@
 #if defined (WORKER_WPA)
 #include "wpa_worker.h"
 #endif
-
 
 /*
 void run_echo(sockpp::unix_socket sock)
@@ -61,8 +63,6 @@ static inline const std::string CONF_KEY_SOCKET_USER = "socket_user";
 static inline const std::string CONF_KEY_SOCKET_GROUP = "socket_group";
 static inline const std::string CONF_KEY_SOCKET_MOD = "socket_mod";
 static inline const std::string CONF_KEY_LOG_LEVEL = "stderr_log_level";
-static inline const std::string CONF_SECT_RCCONF = "rcconf";
-static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
 
 static inline const std::string DEFAULT_SOCKET_PATH = "/var/run/nmd.socket";
 static inline const std::string DEFAULT_SOCKET_USER = "root";
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
     std::string sock_group = DEFAULT_SOCKET_GROUP;
     std::string sock_mod = DEFAULT_SOCKET_MOD;
     std::string log_level = DEFAULT_LOG_LEVEL;
-    std::unique_ptr<nmconfig> up_conf = nullptr;
+
     int loginit_argc = 3;
     const char *loginit_argv[] = { PROG_NAME, (char *)"-v", (char *)"INFO" };
     uid_t socket_uid = 0;
@@ -111,6 +111,7 @@ int main(int argc, char* argv[])
     memset(&sock_addr, 0, sizeof(struct sockaddr_un));
     sock_addr.sun_family = AF_UNIX;
     memset(&buf, 0, MAXBUF*sizeof(char));
+    sp_conf = nullptr;
 
     if(argc>1)
     {
@@ -118,10 +119,10 @@ int main(int argc, char* argv[])
         config_filename = argv[1];
     }
 
-    up_conf = std::make_unique<nmconfig>(config_filename);
+    sp_conf = std::make_shared<nmconfig>(config_filename);
     try
     {
-        if(!up_conf->iniLoad())
+        if(!sp_conf->iniLoad())
         {
             std::cout << "Cannot load configuration file: " << config_filename << std::endl;
             std::cout << "Continue with default settings..." << std::endl;
@@ -129,19 +130,19 @@ int main(int argc, char* argv[])
         else
         {
             std::cout << "Using settings from " << config_filename << std::endl;
-            conf_value = up_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_PATH);
+            conf_value = sp_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_PATH);
             if(!conf_value.empty())
                 sock_path = conf_value;
-            conf_value = up_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_USER);
+            conf_value = sp_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_USER);
             if(!conf_value.empty())
                 sock_user = conf_value;
-            conf_value = up_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_GROUP);
+            conf_value = sp_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_GROUP);
             if(!conf_value.empty())
                 sock_group = conf_value;
-            conf_value = up_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_MOD);
+            conf_value = sp_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_SOCKET_MOD);
             if(!conf_value.empty())
                 sock_mod = conf_value;
-            conf_value = up_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_LOG_LEVEL);
+            conf_value = sp_conf->getConfigValue(CONF_SECT_NMDAEMON, CONF_KEY_LOG_LEVEL);
             if(!conf_value.empty())
             {
                 log_level = conf_value;
