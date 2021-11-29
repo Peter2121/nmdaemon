@@ -21,6 +21,8 @@ public:
     static std::shared_ptr<addr> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
+    static std::string getIfPrimaryAddr4(std::string);
+//    static std::string getIfPrimaryAddr6(std::string);
     static bool isValidGw4(uint32_t, uint32_t, uint32_t);
     static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
 };

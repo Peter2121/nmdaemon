@@ -19,6 +19,8 @@ json if_worker::execCmd(nmcommand_data* pcmd)
     {
         case nmcmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
+        case nmcmd::IP4_ADDR_GET :
+            return execCmdIpAddrGet(pcmd);
         case nmcmd::IP_ADDR_ADD :
             return execCmdIpAddrAdd(pcmd);
         case nmcmd::IP_ADDR_REMOVE :
@@ -27,6 +29,7 @@ json if_worker::execCmd(nmcommand_data* pcmd)
             return execCmdMtuGet(pcmd);
         case nmcmd::MTU_SET :
             return execCmdMtuSet(pcmd);
+        case nmcmd::IP6_ADDR_GET :
         case nmcmd::IP4_DHCP_ENABLE :
         case nmcmd::IP6_DHCP_ENABLE :
         case nmcmd::MAC_ADDR_GET :
@@ -470,4 +473,28 @@ json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
 
     sock.close();
     return JSON_RESULT_SUCCESS;
+}
+
+json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
+{
+    json cmd = {};
+    json res = {};
+    json res_data = {};
+    std::string str_addr;
+
+    cmd = pcmd->getJsonData();
+    ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+
+    str_addr = tool::getIfPrimaryAddr4(ifName);
+    if(!str_addr.empty())
+    {
+        res_data[JSON_PARAM_IPV4_ADDR] = str_addr;
+        res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+        res[JSON_PARAM_DATA] = res_data;
+    }
+    else
+    {
+        res = JSON_RESULT_ERR;
+    }
+    return res;
 }

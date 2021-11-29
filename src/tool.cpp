@@ -168,6 +168,35 @@ bool tool::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 
+std::string tool::getIfPrimaryAddr4(std::string ifname)
+{
+    struct ifreq ifr;
+    std::string str_addr4;
+    struct sockaddr_in *sa_in;
+    char address[INET_ADDRSTRLEN];
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_addr.sa_family = AF_INET;
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+
+    if (ioctl(sock.handle(), SIOCGIFADDR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get primary IPv4 address for interface: " << ifname;
+        sock.close();
+        return str_addr4;
+    }
+    sock.close();
+
+    sa_in = (struct sockaddr_in *) &ifr.ifr_addr;
+    if(sa_in->sin_addr.s_addr!=0) {
+        inet_ntop( AF_INET, &(sa_in->sin_addr), address, sizeof(address) );
+        str_addr4 = std::string(address);
+    }
+
+    return str_addr4;
+}
+
 bool tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )

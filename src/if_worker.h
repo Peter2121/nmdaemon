@@ -17,6 +17,8 @@ protected:
     static constexpr nmcommand Cmds[] =
     {
         { nmscope::INTERFACE, nmcmd::IP_ADDR_SET },
+        { nmscope::INTERFACE, nmcmd::IP4_ADDR_GET },
+        { nmscope::INTERFACE, nmcmd::IP6_ADDR_GET },
         { nmscope::INTERFACE, nmcmd::IP4_DHCP_ENABLE },
         { nmscope::INTERFACE, nmcmd::IP6_DHCP_ENABLE },
         { nmscope::INTERFACE, nmcmd::IP_ADDR_ADD },
@@ -42,6 +44,7 @@ public:
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
     json execCmdIpAddrSet(nmcommand_data*);
+    json execCmdIpAddrGet(nmcommand_data*);
     json execCmdIpAddrAdd(nmcommand_data*);
     json execCmdIpAddrRemove(nmcommand_data*);
     json execCmdMtuGet(nmcommand_data*);
