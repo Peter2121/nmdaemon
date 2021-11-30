@@ -1,6 +1,6 @@
 #include "addr.h"
 
-addr::addr(struct ifaddrs* ifa) : flags(0)
+addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
 {
     if(ifa==nullptr)
         throw nmExcept;
@@ -26,6 +26,9 @@ addr::addr(struct ifaddrs* ifa) : flags(0)
     else
         isAddrUp = false;
 
+    std::string if_name = std::string(ifa->ifa_name);
+    std::string def_addr;
+
     switch(ifa->ifa_addr->sa_family)
     {
         case AF_INET:
@@ -37,6 +40,9 @@ addr::addr(struct ifaddrs* ifa) : flags(0)
             else
                 throw nmExcept;
 
+            def_addr = tool::getIfPrimaryAddr4(if_name);
+            if( !def_addr.empty() && (def_addr==spIpAddress->getStrAddr()) )
+                isAddrPrimary = true;
             switch(ipType)
             {
                 case ipaddr_type::BCAST:
@@ -103,13 +109,13 @@ addr::addr(struct ifaddrs* ifa) : flags(0)
 addr::addr( std::shared_ptr<address_base> addr,
             std::shared_ptr<address_base> mask,
             std::shared_ptr<address_base> data,
-            ipaddr_type type, bool up, int fl) :
-                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up)
+            ipaddr_type type, bool up, int fl, bool primary) :
+                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrPrimary(primary)
 {
 }
 
 addr::addr() :
-    ipType(ipaddr_type::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false)
+    ipType(ipaddr_type::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrPrimary(false)
 {
 }
 
@@ -219,11 +225,14 @@ const nlohmann::json addr::getAddrJson() const
             "IPV4 ADDRESS" : "192.168.211.21",
             "IPV4 SUBNET MASK" : "255.255.255.0",
             "IPV4 BROADCAST ADDRESS" : "192.168.211.255"
-        }
+        },
+        "PRIMARY" : true
     }
 */
     strMainTitle = std::string(magic_enum::enum_name(ipType));
     retAddrJson[JSON_PARAM_ADDR_TYPE] = strMainTitle;
+    if(isAddrPrimary)
+        retAddrJson[JSON_PARAM_ADDR_PRIMARY] = isAddrPrimary;
 
     if(spIpAddress != nullptr)
     {
@@ -495,4 +504,9 @@ const std::string JSON_DATA_RTFLAG_STICKY = "STICKY";
         retFlags.push_back(JSON_DATA_RTFLAG_STICKY);
 
     return retFlags;
+}
+
+bool addr::isPrimary() const
+{
+    return isAddrPrimary;
 }

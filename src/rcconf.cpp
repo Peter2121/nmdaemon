@@ -44,6 +44,7 @@ json rcconf::getRcIpConfig()
     std::map<std::string, std::string> mapInterfaces;
     std::map<std::string, std::string> mapRoutes;
     std::set<std::string> setActiveRoutes;
+    bool is_primary = false;
 
     for( SecIndex::const_iterator itr = rcIniFile->GetSections().begin(); itr != rcIniFile->GetSections().end(); ++itr )
     {
@@ -100,6 +101,7 @@ json rcconf::getRcIpConfig()
         {
             jdata.clear();
             jif.clear();
+            is_primary = false;
             if(pos1=ifname.find_last_of("_"); pos1!=std::string::npos)
             {
                 if(pos2=ifname.find(ALIAS_SUFFIX); pos2!=std::string::npos)
@@ -146,11 +148,14 @@ json rcconf::getRcIpConfig()
             else
             {
                 jif[JSON_PARAM_IF_NAME] = ifname;
+                is_primary = true;
             }
 
             jdata = getIpConfFromString(ifconfig);
             if(!jdata.empty())
             {
+                if(is_primary)
+                    jdata[JSON_PARAM_ADDR_PRIMARY] = is_primary;
                 jif[JSON_PARAM_ADDRESSES].push_back(jdata);
                 jarInterfaces.push_back(jif);
             }

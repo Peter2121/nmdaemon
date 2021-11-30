@@ -29,12 +29,13 @@ protected:
     std::shared_ptr<address_base> spIpData;
     int flags;
     bool isAddrUp;
+    bool isAddrPrimary;
     nmexception nmExcept;
     bool isValidIp4() const;
     bool isValidIp6() const;
 public:
     addr(struct ifaddrs*);
-    addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0);
+    addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
     addr();
     ~addr();
     const std::shared_ptr<address_base> getAddr() const;
@@ -46,6 +47,7 @@ public:
     const std::string getAddrString() const;
     const nlohmann::json getAddrJson() const;
     bool isUp() const;
+    bool isPrimary() const;
     short getFamily() const;
     void setAddr(std::shared_ptr<address_base>);
     void setMask(std::shared_ptr<address_base>);
