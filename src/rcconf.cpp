@@ -226,8 +226,11 @@ json rcconf::getRcIpConfig()
         }
     }
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-    jret[JSON_PARAM_INTERFACES] = jarInterfaces;
-    jret[JSON_PARAM_ROUTES] = jarRoutes;
+    jdata[JSON_PARAM_INTERFACES] = jarInterfaces;
+//    jret[JSON_PARAM_INTERFACES] = jarInterfaces;
+    jdata[JSON_PARAM_ROUTES] = jarRoutes;
+//    jret[JSON_PARAM_ROUTES] = jarRoutes;
+    jret[JSON_PARAM_DATA] = jdata;
     return jret;
 }
 
