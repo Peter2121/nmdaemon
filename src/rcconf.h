@@ -30,12 +30,14 @@ protected:
     std::string getStrInetMaskFromPrefix(int);
     json getIpConfFromString(std::string);
     json getRouteConfFromString(std::string);
+    bool rotateRcConfFile();
+    short nBackups;
 public:
-    rcconf(std::string);
+    rcconf(std::string, short);
     ~rcconf();
     bool iniLoad();
     json getRcIpConfig();
-    bool setRcIpConfig(json*);
+    bool setRcIpConfig(json);
 };
 
 #endif // RCCONF_H

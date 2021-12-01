@@ -7,8 +7,6 @@ system_worker::system_worker()
 
 system_worker::~system_worker()
 {
-    if(prcConf!=nullptr)
-        delete prcConf;
 }
 
 nmscope system_worker::getScope()
@@ -221,15 +219,13 @@ json system_worker::execCmdIfDisable(nmcommand_data* pcmd) {
 
 json system_worker::execCmdRcConfRead(nmcommand_data*)
 {
-    if(prcConf!=nullptr)
-        delete prcConf;
     std::string rcconf_name;
     if( sp_conf!=nullptr )
         rcconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_FILE);
     if(rcconf_name.empty())
         rcconf_name = RCCONF_FILENAME_DEFAULT;
-    LOG_S(INFO) << "execCmdRcConfRead: Trying to read " << rcconf_name;
-    prcConf = new rcconf(rcconf_name);
+    LOG_S(INFO) << "execCmdRcConfRead: Trying to read from " << rcconf_name;
+    prcConf = std::make_unique<rcconf>(rcconf_name, 0);
     if(!prcConf->iniLoad())
     {
         LOG_S(ERROR) << "execCmdRcConfRead: Cannot load " << rcconf_name;
@@ -238,7 +234,37 @@ json system_worker::execCmdRcConfRead(nmcommand_data*)
     return prcConf->getRcIpConfig();
 }
 
-json system_worker::execCmdRcConfWrite(nmcommand_data*)
+json system_worker::execCmdRcConfWrite(nmcommand_data *pcmd)
 {
-    return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+    json cmd_json = {};
+    json jdata = {};
+    short n_backups = -1;
+    std::string str_nbackups;
+    std::string rcconf_name;
+    if( sp_conf!=nullptr )
+        rcconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_FILE);
+    if(rcconf_name.empty())
+        rcconf_name = RCCONF_FILENAME_DEFAULT;
+    LOG_S(INFO) << "execCmdRcConfRead: Trying to write to " << rcconf_name;
+    if( sp_conf!=nullptr )
+        str_nbackups = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_BACKUPS);
+    if(str_nbackups.empty())
+        n_backups = (short)strtol(RCCONF_BACKUPS_DEFAULT.c_str(), nullptr, 10);
+    else
+        n_backups = (short)strtol(str_nbackups.c_str(), nullptr, 10);
+    if(n_backups==0)
+        LOG_S(WARNING) << "File " << rcconf_name << " will be overwritten, backups are disabled in " << sp_conf->getConfigFileName()
+                       << " : " << CONF_KEY_RCCONF_FILE << "=" << str_nbackups;
+    prcConf = std::make_unique<rcconf>(rcconf_name, n_backups);
+    try {
+        cmd_json = pcmd->getJsonData();
+        jdata = cmd_json[JSON_PARAM_DATA];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdRcConfWrite - cannot get data from json";
+        return JSON_RESULT_ERR;
+    }
+    if(!prcConf->setRcIpConfig(jdata))
+        return JSON_RESULT_ERR;
+    else
+        return JSON_RESULT_SUCCESS;
 }

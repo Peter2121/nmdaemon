@@ -31,7 +31,9 @@ protected:
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
     static inline const std::string RCCONF_FILENAME_DEFAULT = "/etc/rc.conf";
-    rcconf* prcConf;
+    static inline const std::string CONF_KEY_RCCONF_BACKUPS = "rcconf_backups";
+    static inline const std::string RCCONF_BACKUPS_DEFAULT="5";
+    std::unique_ptr<rcconf> prcConf;
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:

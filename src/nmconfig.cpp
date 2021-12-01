@@ -36,3 +36,8 @@ std::string nmconfig::getConfigValue(std::string section, std::string key) const
     ret_val = confIniFile->GetKeyValue(section, key);
     return ret_val;
 }
+
+std::string nmconfig::getConfigFileName() const
+{
+    return confFileName;
+}

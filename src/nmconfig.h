@@ -17,6 +17,7 @@ stderr_log_level=INFO
 
 [SYSTEM]
 rcconf_file=/etc/rc.conf
+rcconf_backups=5
 
 *******************************/
 
@@ -38,6 +39,7 @@ public:
     nmconfig(std::string);
     ~nmconfig();
     bool iniLoad();
+    std::string getConfigFileName() const;
     std::string getConfigValue(const std::string, const std::string) const;
 };
 

@@ -1,6 +1,6 @@
 #include "rcconf.h"
 
-rcconf::rcconf(std::string path) : rcFileName(path)
+rcconf::rcconf(std::string path, short nbkp) : rcFileName(path), nBackups(nbkp)
 {
     rcIniFile = new CIniFile();
 }
@@ -227,9 +227,7 @@ json rcconf::getRcIpConfig()
     }
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     jdata[JSON_PARAM_INTERFACES] = jarInterfaces;
-//    jret[JSON_PARAM_INTERFACES] = jarInterfaces;
     jdata[JSON_PARAM_ROUTES] = jarRoutes;
-//    jret[JSON_PARAM_ROUTES] = jarRoutes;
     jret[JSON_PARAM_DATA] = jdata;
     return jret;
 }
@@ -401,7 +399,13 @@ std::string rcconf::getStrInetMaskFromPrefix(int prefix)
               std::to_string(lmask&0xFF);
 }
 
-bool rcconf::setRcIpConfig(json*)
+bool rcconf::rotateRcConfFile()
 {
     return true;
 }
+
+bool rcconf::setRcIpConfig(json rcdata)
+{
+    return true;
+}
+
