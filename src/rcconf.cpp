@@ -201,7 +201,6 @@ json rcconf::getRcIpConfig()
             }
         } catch (std::exception& e) {
             LOG_S(WARNING) << "getRcIpConfig cannot validate IP configuration";
-//            return {};  // TODO: Do we really need to return nothing here?
         }
     }
 // Iterate routes to remove inactive ones and validate the active ones
@@ -218,24 +217,14 @@ json rcconf::getRcIpConfig()
                 jit.value().emplace(JSON_PARAM_STATUS,JSON_DATA_ENABLED);
             } catch (std::exception& e) {
                 LOG_S(WARNING) << "getRcIpConfig cannot validate route configuration for route " << jit.value().at(JSON_PARAM_RT_NAME).get<std::string>();
-//            return {};  // TODO: Do we really need to return nothing here?
             }
         }
         else
         {
             LOG_S(INFO) << "getRcIpConfig: inactive route " << jit.value().at(JSON_PARAM_RT_NAME).get<std::string>();
             jit.value().emplace(JSON_PARAM_STATUS,JSON_DATA_DISABLED);
-//            vectInactiveRoutes.push_back(stoi(jit.key()));
         }
     }
-//    std::sort(vectInactiveRoutes.rbegin(), vectInactiveRoutes.rend());
-    /*
-    for (int &iit : vectInactiveRoutes)
-    {
-        LOG_S(INFO) << "getRcIpConfig: trying to remove route number " << iit << " from routes list";
-        jarRoutes.erase(jarRoutes.begin() + iit);
-    }
-    */
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     jret[JSON_PARAM_INTERFACES] = jarInterfaces;
     jret[JSON_PARAM_ROUTES] = jarRoutes;
