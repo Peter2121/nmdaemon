@@ -4,6 +4,7 @@
 #include <string>
 #include <stdlib.h>
 #include <map>
+#include <filesystem>
 #include <arpa/inet.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
@@ -25,17 +26,18 @@ protected:
     static inline const std::string INET_MASK = "netmask";
     static inline const std::string DHCP_SUFFIX = "DHCP";
     static inline const std::string ALIAS_SUFFIX = "aliases";
+    static inline const std::string FILE_VERSIONS_DELIMITER = ".";
     std::string rcFileName;
     CIniFile* rcIniFile;
     std::string getStrInetMaskFromPrefix(int);
     json getIpConfFromString(std::string);
     json getRouteConfFromString(std::string);
-    bool rotateRcConfFile();
     short nBackups;
 public:
     rcconf(std::string, short);
     ~rcconf();
     bool iniLoad();
+    bool rotateRcConfFile();
     json getRcIpConfig();
     bool setRcIpConfig(json);
 };

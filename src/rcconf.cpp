@@ -401,7 +401,52 @@ std::string rcconf::getStrInetMaskFromPrefix(int prefix)
 
 bool rcconf::rotateRcConfFile()
 {
-    return true;
+    std::string rc_file_name1;
+    std::string rc_file_name2;
+    bool error = false;
+    if(nBackups<=0)
+        return true;
+    rc_file_name1 = rcFileName + FILE_VERSIONS_DELIMITER + std::to_string(nBackups);
+    try
+    {
+        if(std::filesystem::exists(rc_file_name1))
+        {
+            LOG_S(INFO) << "Removing " << rc_file_name1 << " during rcconf file rotation";
+            std::filesystem::remove(rc_file_name1);
+        }
+
+    }  catch(std::exception& e)
+    {
+        LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
+    }
+    for(short i=nBackups; i>1; i--)
+    {
+        rc_file_name1 = rcFileName + FILE_VERSIONS_DELIMITER + std::to_string(i-1);
+        rc_file_name2 = rcFileName + FILE_VERSIONS_DELIMITER + std::to_string(i);
+        try
+        {
+            if(std::filesystem::exists(rc_file_name1))
+            {
+                LOG_S(INFO) << "Moving " << rc_file_name1 << " to " << rc_file_name2 << " during rcconf file rotation";
+                std::filesystem::copy(rc_file_name1, rc_file_name2);
+                std::filesystem::remove(rc_file_name1);
+            }
+        }  catch(std::exception& e)
+        {
+            LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
+            error = true;
+        }
+    }
+    try
+    {
+        LOG_S(INFO) << "Copy " << rcFileName << " to " << rc_file_name2 << " during rcconf file rotation";
+        std::filesystem::copy(rcFileName, rc_file_name1);
+    }  catch (std::exception& e)
+    {
+        LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
+        error = true;
+    }
+    return !error;
 }
 
 bool rcconf::setRcIpConfig(json rcdata)

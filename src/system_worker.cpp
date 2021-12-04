@@ -263,6 +263,8 @@ json system_worker::execCmdRcConfWrite(nmcommand_data *pcmd)
         LOG_S(ERROR) << "Exception in execCmdRcConfWrite - cannot get data from json";
         return JSON_RESULT_ERR;
     }
+    if(!prcConf->rotateRcConfFile())
+        return JSON_RESULT_ERR;
     if(!prcConf->setRcIpConfig(jdata))
         return JSON_RESULT_ERR;
     else
