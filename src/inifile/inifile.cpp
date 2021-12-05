@@ -122,16 +122,16 @@ void CIniFileA::Save( std::ostream& output )
 
     for( SecIndexA::iterator itr = m_sections.begin() ; itr != m_sections.end() ; ++itr )
     {
-        if((*itr)->GetSectionName()==DEFAULT_SECTION_A)
-        	continue;
-        sSection = "[" + (*itr)->GetSectionName() + "]";
+        if((*itr)->GetSectionName() != DEFAULT_SECTION_A)
+        {
+            sSection = "[" + (*itr)->GetSectionName() + "]";
 
 #ifdef _CINIFILE_DEBUG
-        std::cout <<  "Writing Section " << sSection << std::endl;
+            std::cout <<  "Writing Section " << sSection << std::endl;
 #endif
 
-        output << sSection << _CRLFA;
-
+            output << sSection << _CRLFA;
+        }
         for( KeyIndexA::iterator klitr = (*itr)->m_keys.begin() ; klitr !=  (*itr)->m_keys.end() ; ++klitr )
         {
             std::string sKey = (*klitr)->GetKeyName() + "=" + (*klitr)->GetValue();

@@ -37,6 +37,7 @@ public:
     rcconf(std::string, short);
     ~rcconf();
     bool iniLoad();
+    bool iniSave();
     bool rotateRcConfFile();
     json getRcIpConfig();
     bool setRcIpConfig(json);

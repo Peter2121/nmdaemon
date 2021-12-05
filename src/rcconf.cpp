@@ -15,6 +15,11 @@ bool rcconf::iniLoad()
     return rcIniFile->Load(rcFileName);
 }
 
+bool rcconf::iniSave()
+{
+    return rcIniFile->Save(rcFileName);
+}
+
 // TODO: Decode ipv6 configuration
 json rcconf::getRcIpConfig()
 {
@@ -415,7 +420,8 @@ bool rcconf::rotateRcConfFile()
             std::filesystem::remove(rc_file_name1);
         }
 
-    }  catch(std::exception& e)
+    }
+    catch(std::exception& e)
     {
         LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
     }
@@ -431,7 +437,8 @@ bool rcconf::rotateRcConfFile()
                 std::filesystem::copy(rc_file_name1, rc_file_name2);
                 std::filesystem::remove(rc_file_name1);
             }
-        }  catch(std::exception& e)
+        }
+        catch(std::exception& e)
         {
             LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
             error = true;
@@ -441,7 +448,8 @@ bool rcconf::rotateRcConfFile()
     {
         LOG_S(INFO) << "Copy " << rcFileName << " to " << rc_file_name2 << " during rcconf file rotation";
         std::filesystem::copy(rcFileName, rc_file_name1);
-    }  catch (std::exception& e)
+    }
+    catch (std::exception& e)
     {
         LOG_S(WARNING) << "Exception in rotateRcConfFile: " << e.what();
         error = true;
@@ -451,6 +459,172 @@ bool rcconf::rotateRcConfFile()
 
 bool rcconf::setRcIpConfig(json rcdata)
 {
-    return true;
+    json jar_interfaces = json::array();
+    json jar_addresses = json::array();
+    json jar_routes = json::array();
+    bool have_interfaces = false;
+    bool have_routes = false;
+    bool is_addr_primary = false;
+    std::string str_conf_key;
+    std::string str_conf_value;
+    std::string str_old_conf_value;
+    std::string str_if_name;
+    std::string ip_addr;
+    std::string ip_mask;
+    std::string ip_gw;
+    size_t pos1;
+    std::string element;
+
+    try
+    {
+        jar_interfaces = rcdata[JSON_PARAM_INTERFACES];
+        jar_routes = rcdata[JSON_PARAM_ROUTES];
+    }
+    catch(std::exception& e)
+    {
+        LOG_S(WARNING) << "setRcIpConfig: exception reading json received: " << e.what();
+    }
+
+    if(!jar_interfaces.empty())
+        have_interfaces = true;
+    if(!jar_routes.empty())
+        have_routes = true;
+    if(!have_interfaces && !have_routes)
+    {
+        LOG_S(ERROR) << "setRcIpConfig: no usable data in json received";
+        return false;
+    }
+
+    for(auto jif : jar_interfaces)
+    {
+        try
+        {
+            str_if_name = jif.at(JSON_PARAM_IF_NAME);
+            if(str_if_name.empty())
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot get interface name";
+                continue;
+            }
+//          Fix VLAN interface name
+            if(pos1=str_if_name.find_last_of("."); pos1!=std::string::npos)
+            {
+                if(element=str_if_name.substr(pos1+1,std::string::npos); strtol(element.c_str(),nullptr,10)>0)
+                    str_if_name.replace(pos1, 1, "_");
+            }
+            jar_addresses = jif.at(JSON_PARAM_ADDRESSES);
+            if(jar_addresses.empty())
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot get addresses for interface " << str_if_name;
+                continue;
+            }
+        }
+        catch (std::exception& e)
+        {
+            LOG_S(WARNING) << "Exception in setRcIpConfig trying to access addresses of interface " << str_if_name;
+            LOG_S(WARNING) << e.what();
+            continue;
+        }
+//  First cycle - put principal address and default route
+        for(auto jad : jar_addresses)
+        {
+            is_addr_primary = false;
+            try
+            {
+                is_addr_primary = jad.at(JSON_PARAM_ADDR_PRIMARY);
+            }
+            catch(std::exception&)
+            {
+                continue;
+            }
+            try
+            {
+                if(is_addr_primary)
+                {
+//  TODO: deal with IPv6 addresses
+                    ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
+                    ip_mask = "";
+                    if(ip_addr.find(DHCP_SUFFIX) == std::string::npos)
+                    {
+                        ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
+                    }
+                    str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
+                    if(ip_mask.empty())
+                        str_conf_value = "\"" + ip_addr + "\"";
+                    else
+                        str_conf_value = "\"" + INET_ADDR + " " + ip_addr + " "
+                                              + INET_MASK + " " + ip_mask + "\"";
+                    str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+                    if(str_conf_value != str_old_conf_value)
+                        rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+                }
+            }
+            catch(std::exception&)
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name;
+                continue;
+            }
+            try
+            {
+                if(is_addr_primary)
+                {
+                    str_conf_key = DEFAULT_ROUTE_KEY;
+                    ip_gw = jad.at(JSON_PARAM_IPV4_GW);
+                    str_conf_value = "\"" + ip_gw + "\"";
+                    str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+                    if(str_conf_value != str_old_conf_value)
+                        rcIniFile->SetKeyValue(DEFAULT_SECTION_A, str_conf_key, str_conf_value);
+                }
+            }
+            catch(std::exception&)
+            {
+            }
+        }
+//  Second cycle - put aliases
+        str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX;
+        str_conf_value = "";
+        for(auto jad : jar_addresses)
+        {
+            is_addr_primary = false;
+            try
+            {
+                is_addr_primary = jad.at(JSON_PARAM_ADDR_PRIMARY);
+            }
+            catch(std::exception&)
+            {
+            }
+            try
+            {
+                if(!is_addr_primary)
+                {
+//  TODO: deal with IPv6 addresses
+                    ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
+                    ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
+                    if(!str_conf_value.empty())
+                        str_conf_value += " ";
+                    str_conf_value += INET_ADDR + " " + ip_addr + " "
+                                    + INET_MASK + " " + ip_mask;
+                }
+            }
+            catch(std::exception&)
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name;
+                continue;
+            }
+            if(!str_conf_value.empty())
+            {
+                str_conf_value = "\"" + str_conf_value + "\"";
+                str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+                if(str_conf_value != str_old_conf_value)
+                    rcIniFile->SetKeyValue(DEFAULT_SECTION_A, str_conf_key, str_conf_value);
+            }
+        }
+    }
+
+    for(auto jrt : jar_routes)
+    {
+
+    }
+
+    return iniSave();
 }
 

@@ -556,6 +556,7 @@ typedef PCINIKEYW PCINIKEY;
 typedef PCINISECW PCINISEC;
 typedef KeyIndexW KeyIndex;
 typedef SecIndexW SecIndex;
+static const std::wstring DEFAULT_SECTION = DEFAULT_SECTION_W;
 #else
 #define INI_TOKEN_A INI_TOKEN_ANSI
 #define INI_TOKEN_B INI_TOKEN_ANSI
@@ -569,6 +570,7 @@ typedef PCINIKEYA PCINIKEY;
 typedef PCINISECA PCINISEC;
 typedef KeyIndexA KeyIndex;
 typedef SecIndexA SecIndex;
+static const std::string DEFAULT_SECTION = DEFAULT_SECTION_A;
 #endif
 
 #endif
