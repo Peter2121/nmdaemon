@@ -39,7 +39,7 @@ json rcconf::getRcIpConfig()
     const std::string quotes = "\"";
     const std::string point = ".";
     size_t pos0,pos1,pos2;
-    json jdata;
+    json jdata {};
     json jif;
     json jrt;
     json jaliases;
@@ -165,6 +165,7 @@ json rcconf::getRcIpConfig()
                 jarInterfaces.push_back(jif);
             }
         }
+        jdata.clear();
     }
 
     if(!mapRoutes.empty())
@@ -175,10 +176,11 @@ json rcconf::getRcIpConfig()
             jdata = getRouteConfFromString(rtconfig);
             if(!jdata.empty())
             {
-                jrt[JSON_PARAM_DATA] = jdata;
+                jrt[JSON_PARAM_ADDRESSES] = jdata;
                 jarRoutes.push_back(jrt);
             }
         }
+        jdata.clear();
     }
 // Iterate interfaces to insert default route and aliases
     for(auto& j : jarInterfaces)
@@ -213,7 +215,7 @@ json rcconf::getRcIpConfig()
     {
         if(setActiveRoutes.contains(jit.value().at(JSON_PARAM_RT_NAME).get<std::string>()))
         {
-            jdata = jit.value().at(JSON_PARAM_DATA);
+            jdata = jit.value().at(JSON_PARAM_ADDRESSES);
             try {
                 spipaddr4 = std::make_shared<address_ip4>(jdata[JSON_PARAM_IPV4_ADDR].get<std::string>());
                 spipmask4 = std::make_shared<address_ip4>(jdata[JSON_PARAM_IPV4_MASK].get<std::string>());
@@ -230,6 +232,7 @@ json rcconf::getRcIpConfig()
             jit.value().emplace(JSON_PARAM_STATUS,JSON_DATA_DISABLED);
         }
     }
+    jdata.clear();
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     jdata[JSON_PARAM_INTERFACES] = jarInterfaces;
     jdata[JSON_PARAM_ROUTES] = jarRoutes;
@@ -310,11 +313,11 @@ json rcconf::getRouteConfFromString(std::string rtconfig)
     unsigned int imask;
     struct in_addr ip_mask;
     std::string element;
-    std::string full_mask = "255.255.255.255";
-    std::string rt_format_net_1 = "-net %3d.%3d.%3d.%3d/%2d %3d.%3d.%3d.%3d"; // -net 192.168.32.0/24 192.168.213.252
-    std::string rt_format_net_2 = "-net %3d.%3d.%3d.%3d -netmask %10x %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 0xffffff00 192.168.213.252
-    std::string rt_format_net_3 = "-net %3d.%3d.%3d.%3d -netmask %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252
-    std::string rt_format_host_1 = "-host %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -host 191.1.200.4 192.168.213.254
+//    std::string full_mask = "255.255.255.255";
+    std::string rt_format_net_1 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d/%2d %3d.%3d.%3d.%3d"; // -net 192.168.32.0/24 192.168.213.252
+    std::string rt_format_net_2 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %10x %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 0xffffff00 192.168.213.252
+    std::string rt_format_net_3 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252
+    std::string rt_format_host_1 = ROUTE_PREFIX_HOST + " %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -host 191.1.200.4 192.168.213.254
     json jdata = {};
 
     Trim(rtconfig, quotes);
@@ -386,7 +389,7 @@ json rcconf::getRouteConfFromString(std::string rtconfig)
                                       std::to_string(arrIntIp4Conf[1]) + "." +
                                       std::to_string(arrIntIp4Conf[2]) + "." +
                                       std::to_string(arrIntIp4Conf[3]);
-        jdata[JSON_PARAM_IPV4_MASK] = full_mask;
+        jdata[JSON_PARAM_IPV4_MASK] = IPV4_MASK_HOST;
         jdata[JSON_PARAM_IPV4_GW]   = std::to_string(arrIntIp4Conf[4]) + "." +
                                       std::to_string(arrIntIp4Conf[5]) + "." +
                                       std::to_string(arrIntIp4Conf[6]) + "." +
@@ -465,13 +468,18 @@ bool rcconf::setRcIpConfig(json rcdata)
     bool have_interfaces = false;
     bool have_routes = false;
     bool is_addr_primary = false;
+    bool is_route_enabled = false;
+    bool is_route_to_host = false;
     std::string str_conf_key;
     std::string str_conf_value;
     std::string str_old_conf_value;
     std::string str_if_name;
+    std::string str_rt_name;
     std::string ip_addr;
     std::string ip_mask;
     std::string ip_gw;
+    std::string str_rt_status;
+    std::string str_active_routes;
     size_t pos1;
     std::string element;
 
@@ -495,7 +503,7 @@ bool rcconf::setRcIpConfig(json rcdata)
         return false;
     }
 
-    for(auto jif : jar_interfaces)
+    for(const auto &jif : jar_interfaces)
     {
         try
         {
@@ -525,7 +533,7 @@ bool rcconf::setRcIpConfig(json rcdata)
             continue;
         }
 //  First cycle - put principal address and default route
-        for(auto jad : jar_addresses)
+        for(const auto &jad : jar_addresses)
         {
             is_addr_primary = false;
             try
@@ -541,6 +549,7 @@ bool rcconf::setRcIpConfig(json rcdata)
                 if(is_addr_primary)
                 {
 //  TODO: deal with IPv6 addresses
+//  TODO: implement basic data check
                     ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
                     ip_mask = "";
                     if(ip_addr.find(DHCP_SUFFIX) == std::string::npos)
@@ -580,9 +589,10 @@ bool rcconf::setRcIpConfig(json rcdata)
             }
         }
 //  Second cycle - put aliases
+//  TODO: integrate the second cycle into the first one
         str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX;
         str_conf_value = "";
-        for(auto jad : jar_addresses)
+        for(const auto &jad : jar_addresses)
         {
             is_addr_primary = false;
             try
@@ -597,6 +607,7 @@ bool rcconf::setRcIpConfig(json rcdata)
                 if(!is_addr_primary)
                 {
 //  TODO: deal with IPv6 addresses
+//  TODO: implement basic data check
                     ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
                     ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
                     if(!str_conf_value.empty())
@@ -615,14 +626,92 @@ bool rcconf::setRcIpConfig(json rcdata)
                 str_conf_value = "\"" + str_conf_value + "\"";
                 str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
                 if(str_conf_value != str_old_conf_value)
-                    rcIniFile->SetKeyValue(DEFAULT_SECTION_A, str_conf_key, str_conf_value);
+                    rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
             }
         }
     }
 
-    for(auto jrt : jar_routes)
+//  Put routes
+    jar_addresses.clear();
+    str_active_routes = "";
+    for(const auto &jrt : jar_routes)
     {
+        try
+        {
+            str_rt_name = jrt.at(JSON_PARAM_RT_NAME);
+            if(str_rt_name.empty())
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot get route name";
+                continue;
+            }
+            str_rt_status = jrt.at(JSON_PARAM_STATUS);
+            if(str_rt_status.empty())
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot get status for route " << str_rt_name;
+                continue;
+            }
+            is_route_enabled = str_rt_status==JSON_DATA_ENABLED;
+            jar_addresses = jrt.at(JSON_PARAM_ADDRESSES);
+            if(jar_addresses.empty())
+            {
+                LOG_S(WARNING) << "setRcIpConfig cannot get addresses for route " << str_rt_name;
+                continue;
+            }
+        }
+        catch (std::exception& e)
+        {
+            LOG_S(WARNING) << "Exception in setRcIpConfig trying to access addresses of route " << str_rt_name;
+            LOG_S(WARNING) << e.what();
+            continue;
+        }
 
+        str_conf_value = "";
+        try
+        {
+//  TODO: deal with IPv6 addresses
+//  TODO: implement basic data check
+            ip_addr = jar_addresses.at(JSON_PARAM_IPV4_ADDR);
+            ip_mask = jar_addresses.at(JSON_PARAM_IPV4_MASK);
+            ip_gw = jar_addresses.at(JSON_PARAM_IPV4_GW);
+            if( ip_addr.empty() || ip_mask.empty() || ip_gw.empty() )
+            {
+                LOG_S(WARNING) << "setRcIpConfig received invalid addresses for route " << str_rt_name;
+                continue;
+            }
+            if(is_route_enabled)
+            {
+                if(!str_active_routes.empty())
+                    str_active_routes += " ";
+                str_active_routes += str_rt_name;
+            }
+            is_route_to_host = ip_mask==IPV4_MASK_HOST;
+            str_conf_key = ROUTE_KEY_PREFIX + str_rt_name;
+            if(is_route_to_host)
+            {
+                str_conf_value = "\"" + ROUTE_PREFIX_HOST + " " + ip_addr + " " + ip_gw + "\"";
+            }
+            else
+            {
+                str_conf_value = "\"" + ROUTE_PREFIX_NET + " " + ip_addr + " -" + INET_MASK + " " + ip_mask + " " + ip_gw + "\"";
+            }
+            str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+            if(str_conf_value != str_old_conf_value)
+                rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+        }
+        catch(std::exception&)
+        {
+            LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jar_addresses.dump() << " for route " << str_rt_name;
+            continue;
+        }
+    }
+
+    if(!str_active_routes.empty())
+    {
+        str_conf_key = ROUTES_KEY;
+        str_conf_value = "\"" + str_active_routes + "\"";
+        str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+        if(str_conf_value != str_old_conf_value)
+            rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
     }
 
     return iniSave();

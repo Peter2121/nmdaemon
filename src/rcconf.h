@@ -27,6 +27,9 @@ protected:
     static inline const std::string DHCP_SUFFIX = "DHCP";
     static inline const std::string ALIAS_SUFFIX = "aliases";
     static inline const std::string FILE_VERSIONS_DELIMITER = ".";
+    static inline const std::string IPV4_MASK_HOST = "255.255.255.255";
+    static inline const std::string ROUTE_PREFIX_HOST = "-host";
+    static inline const std::string ROUTE_PREFIX_NET = "-net";
     std::string rcFileName;
     CIniFile* rcIniFile;
     std::string getStrInetMaskFromPrefix(int);
