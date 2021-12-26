@@ -61,6 +61,7 @@ std::string interface::getName() const
 /*
 {
     "INTERFACE NAME" : "em0",
+    "DHCP_ENABLED" : false,
     "ADDRESSES" :
     [
         {
@@ -99,6 +100,7 @@ const nlohmann::json interface::getIfJson() const
     std::vector<nlohmann::json> vectAddrsJson;
 
     retIfJson[JSON_PARAM_IF_NAME] = strName;
+    retIfJson[JSON_PARAM_DHCP_ENABLED] = tool::isDHCPEnabled(strName);
 
     for(auto addr : spVectAddrs)
     {

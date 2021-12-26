@@ -1,7 +1,13 @@
 #ifndef TOOL_H
 #define TOOL_H
 
+#include <vector>
 #include <sys/sockio.h>
+#include <kvm.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <sys/user.h>
+#include <sys/sysctl.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "json/json.hpp"
@@ -17,6 +23,8 @@ class addr;
 
 class tool
 {
+protected:
+    static inline const std::string DHCP_CLIENT_PROCESS = "dhclient";
 public:
     static std::shared_ptr<addr> getAddrFromJson(json);
     static int getIfFlags(std::string);
@@ -25,6 +33,8 @@ public:
 //    static std::string getIfPrimaryAddr6(std::string);
     static bool isValidGw4(uint32_t, uint32_t, uint32_t);
     static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
+    static std::vector<std::tuple<int, std::string, std::string>> getActiveProcesses();
+    static bool isDHCPEnabled(std::string);
 };
 
 #endif // TOOL_H

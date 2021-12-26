@@ -4,6 +4,7 @@ project(nmdaemon)
 
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
+find_library(KVM_LIBRARY kvm)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,4 +43,4 @@ add_executable(nmdaemon
         src/inifile/inifile.cpp
         )
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} sockpp)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} sockpp)

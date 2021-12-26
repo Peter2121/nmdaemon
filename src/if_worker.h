@@ -36,6 +36,7 @@ protected:
     std::shared_ptr<address_base> getMainIfAddr(short family);
     bool removeIfAddr(std::shared_ptr<address_base>);
     bool addIfAddr(std::shared_ptr<addr>);
+    bool isDHCPEnabled();
 //    addr* getAddrFromJson(json);
 public:
     if_worker();

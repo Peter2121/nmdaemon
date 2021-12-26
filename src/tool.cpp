@@ -240,3 +240,94 @@ bool tool::isValidBcast4(uint32_t addr, uint32_t mask, uint32_t bcast)
 
     return true;
 }
+
+std::vector<std::tuple<int, std::string, std::string>> tool::getActiveProcesses()
+{
+    char errbuf[_POSIX2_LINE_MAX];
+    int nentries = 0;
+    char **args;
+    char **ptr;
+    char *buf = nullptr;
+    size_t size = 0, pos = 0, len = 0, curlen=0; ;
+    std::vector<std::tuple<int, std::string, std::string>> vect_procs;
+
+    kvm_t *kernel = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, errbuf);
+    if(kernel == nullptr)
+    {
+        LOG_S(ERROR) << "Error in getActiveProcesses: kvm_openfiles failed";
+        LOG_S(ERROR) << errbuf;
+        return vect_procs;
+    }
+    struct kinfo_proc *kinfo = kvm_getprocs(kernel, KERN_PROC_PROC, 0, &nentries);
+    if(kinfo == nullptr)
+    {
+        LOG_S(ERROR) << "Error in getActiveProcesses: kvm_getprocs returns NULL";
+        kvm_close(kernel);
+        return vect_procs;
+    }
+
+    for (int i = 0; i < nentries; ++i)
+    {
+// Trying to get arguments of the process
+        args = kvm_getargv(kernel, &kinfo[i], 0);
+        if( (args != NULL) && (*args != NULL) && (**args != '\0') )
+        {
+            for (ptr = args; *ptr; ptr++)
+            {
+                size += strlen(*ptr)+1;
+            }
+            size += 2;
+            buf = new char[size];
+            pos = 0;
+            for (ptr = args; *ptr; ptr++)
+            {
+                len = strlen(*ptr)+1;
+                curlen = strlen(buf);
+                if(curlen>0)
+                {
+                    buf[curlen] = ' ';
+                    buf[curlen+1] = 0;
+                }
+                memcpy(buf+pos, *ptr, len);
+                pos += len;
+            }
+        }
+// Put process info into return vector
+        if(buf != nullptr)
+        {
+            vect_procs.push_back(std::make_tuple(kinfo[i].ki_pid, kinfo[i].ki_comm, buf));
+            delete[](buf);
+            buf = nullptr;
+        }
+        else
+        {
+            vect_procs.push_back(std::make_tuple(kinfo[i].ki_pid, kinfo[i].ki_comm, ""));
+        }
+    }
+
+    kvm_close(kernel);
+    return vect_procs;
+}
+
+bool tool::isDHCPEnabled(std::string ifname)
+{
+    std::vector<std::tuple<int, std::string, std::string>> procs = getActiveProcesses();
+    bool found=false;
+    for(auto &p : procs)
+    {
+        if(get<1>(p) == DHCP_CLIENT_PROCESS)
+        {
+            if(get<2>(p).find(ifname) != std::string::npos)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+    return found;
+}
+
+
+
+
+

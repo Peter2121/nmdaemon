@@ -498,3 +498,8 @@ json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
     }
     return res;
 }
+
+bool if_worker::isDHCPEnabled()
+{
+    return tool::isDHCPEnabled(ifName);
+}
