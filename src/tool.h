@@ -35,6 +35,8 @@ public:
     static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
     static std::vector<std::tuple<int, std::string, std::string>> getActiveProcesses();
     static bool isDHCPEnabled(std::string);
+    static bool termDHCPClient(std::string, short sig=SIGTERM);
+    static int getDHCPClientPid(std::string);
 };
 
 #endif // TOOL_H

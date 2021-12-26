@@ -29,8 +29,9 @@ json if_worker::execCmd(nmcommand_data* pcmd)
             return execCmdMtuGet(pcmd);
         case nmcmd::MTU_SET :
             return execCmdMtuSet(pcmd);
-        case nmcmd::IP6_ADDR_GET :
         case nmcmd::IP4_DHCP_ENABLE :
+            return execCmdDHCPEnable(pcmd);
+        case nmcmd::IP6_ADDR_GET :
         case nmcmd::IP6_DHCP_ENABLE :
         case nmcmd::MAC_ADDR_GET :
         case nmcmd::MAC_ADDR_SET :
@@ -324,6 +325,27 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
     else
     {
         LOG_S(INFO) << "Got current primary IP address " << spcuraddr->getStrAddr() << " from interface " << ifName;
+        if(isDHCPEnabled())
+        {
+            if(!termDHCPClient())
+            {
+                LOG_S(ERROR) << "Cannot stop DHCP client";
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        if(isDHCPEnabled())
+        {
+            if(!killDHCPClient())
+            {
+                LOG_S(ERROR) << "Cannot kill DHCP client";
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        if(isDHCPEnabled())
+        {
+            LOG_S(ERROR) << "DHCP client still running for interface " << ifName;
+            LOG_S(ERROR) << "Continue anyway...";
+        }
         if(!removeIfAddr(spcuraddr)) {
             LOG_S(ERROR) << "Cannot remove current IP address from interface " << ifName;
             return JSON_RESULT_ERR;
@@ -502,4 +524,56 @@ json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
 bool if_worker::isDHCPEnabled()
 {
     return tool::isDHCPEnabled(ifName);
+}
+
+bool if_worker::termDHCPClient()
+{
+    return tool::termDHCPClient(ifName);
+}
+
+bool if_worker::killDHCPClient()
+{
+    return tool::termDHCPClient(ifName, SIGKILL);
+}
+
+json if_worker::execCmdDHCPEnable(nmcommand_data* pcmd)
+{
+    json cmd = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdDHCPEnable - cannot get interface parameters";
+        return JSON_RESULT_ERR;
+    }
+
+    std::shared_ptr<address_base> sp_cur_addr = getMainIfAddr(AF_INET);
+    if(!removeIfAddr(sp_cur_addr))
+    {
+        LOG_S(ERROR) << "Cannot remove current address " << sp_cur_addr->getStrAddr() << " from interface ifName";
+        LOG_S(ERROR) << "Enabling DHCP on this interface anyway...";
+    }
+
+    if(enableDHCP())
+        return JSON_RESULT_SUCCESS;
+    else
+        return JSON_RESULT_ERR;
+}
+
+bool if_worker::enableDHCP()
+{
+    if(isDHCPEnabled())
+        return true;
+
+    std::string cmd_dhcp_client = DHCP_CLIENT_EXEC + " " + ifName;
+    LOG_S(INFO) << "Starting DHCP client as: " << cmd_dhcp_client;
+    int retval = system(cmd_dhcp_client.c_str());
+    LOG_S(INFO) << "DHCP client returned: " << retval;
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    if(isDHCPEnabled())
+        return true;
+    else
+        return false;
 }

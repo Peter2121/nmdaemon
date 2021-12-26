@@ -1,6 +1,7 @@
 #ifndef IF_WORKER_H
 #define IF_WORKER_H
 
+#include <thread>
 #include <ifaddrs.h>
 #include <sys/sockio.h>
 //#define LOGURU_WITH_STREAMS 1
@@ -32,11 +33,15 @@ protected:
     };
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
+    static inline const std::string DHCP_CLIENT_EXEC = "/sbin/dhclient";
     std::string ifName = "";
     std::shared_ptr<address_base> getMainIfAddr(short family);
     bool removeIfAddr(std::shared_ptr<address_base>);
     bool addIfAddr(std::shared_ptr<addr>);
     bool isDHCPEnabled();
+    bool termDHCPClient();
+    bool killDHCPClient();
+    bool enableDHCP();
 //    addr* getAddrFromJson(json);
 public:
     if_worker();
@@ -50,6 +55,7 @@ public:
     json execCmdIpAddrRemove(nmcommand_data*);
     json execCmdMtuGet(nmcommand_data*);
     json execCmdMtuSet(nmcommand_data*);
+    json execCmdDHCPEnable(nmcommand_data*);
 //    json execCmdIfEnable(nmcommand_data*);
 //    json execCmdIfDisable(nmcommand_data*);
 };

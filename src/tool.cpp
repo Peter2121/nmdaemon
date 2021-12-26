@@ -327,7 +327,44 @@ bool tool::isDHCPEnabled(std::string ifname)
     return found;
 }
 
+int tool::getDHCPClientPid(std::string ifname)
+{
+    std::vector<std::tuple<int, std::string, std::string>> procs = getActiveProcesses();
+    int pid = 0;
+    for(auto &p : procs)
+    {
+        if(get<1>(p) == DHCP_CLIENT_PROCESS)
+        {
+            if(get<2>(p).find(ifname) != std::string::npos)
+            {
+                pid = get<0>(p);
+                break;
+            }
+        }
+    }
+    return pid;
+}
 
+bool tool::termDHCPClient(std::string ifname, short signal) // signal = SIGTERM (default), SIGKILL
+{
+    int pid = getDHCPClientPid(ifname);
+    if(pid>0)
+    {
+        LOG_S(INFO) << "Sending signal " << signal << " to pid " << pid;
+        if(kill(pid, signal) != 0)
+        {
+            LOG_S(ERROR) << "Error in termDHCPClient: cannot send signal " << signal << " to process " << pid;
+            LOG_S(ERROR) << strerror(errno);
+            return false;
+        }
+    }
+    else
+    {
+        LOG_S(ERROR) << "Error in termDHCPClient: cannot find DHCP client running for interface " << ifname;
+        return false;
+    }
+    return true;
+}
 
 
 
