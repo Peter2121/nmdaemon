@@ -72,7 +72,7 @@ public:
     json execCmdDefRouteGet6(nmcommand_data*);
     json execCmdRouteList(nmcommand_data*);
     json execCmdRouteDel(nmcommand_data*);
-//    json execCmdDefRouteDel(nmcommand_data*);
+    json execCmdDefRouteDel(nmcommand_data*);
 //    json execCmdRouteList6(nmcommand_data*);
 };
 

@@ -43,7 +43,7 @@ json route_worker::execCmd(nmcommand_data* pcmd)
         case nmcmd::RT_DEF6_GET :
             return execCmdDefRouteGet6(pcmd);
         case nmcmd::RT_DEF_DEL :
-            return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+            return execCmdDefRouteDel(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -366,6 +366,28 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
     return res_route;
 }
 
+json route_worker::execCmdDefRouteDel(nmcommand_data*)
+{
+    auto spaddr = std::make_shared<address_ip4>();
+    auto spmask = std::make_shared<address_ip4>();
+    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+
+    if( !getStaticRoute(sp_rt_addr) )
+    {
+        LOG_S(ERROR) << "Error in execCmdDefRouteDel - cannot get default route";
+        return JSON_RESULT_ERR;
+    }
+
+    if( !delStaticRoute(sp_rt_addr) )
+    {
+        LOG_S(ERROR) << "Error in execCmdDefRouteDel - cannot delete default route";
+        return JSON_RESULT_ERR;
+    }
+
+    LOG_S(INFO) << "Default route deleted";
+    return JSON_RESULT_SUCCESS;
+}
+
 json route_worker::execCmdDefRouteGet(nmcommand_data*)
 {
     json res_route = {};
@@ -376,8 +398,9 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
 //    auto spgate = std::make_shared<address_ip4>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
     auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
-    if( !route_worker::getStaticRoute(sp_rt_addr) ) {
-        LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get route";
+    if( !getStaticRoute(sp_rt_addr) )
+    {
+        LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get default route";
         return JSON_RESULT_ERR;
     }
 
@@ -398,8 +421,9 @@ json route_worker::execCmdDefRouteGet6(nmcommand_data*)
 //    auto spgate = std::make_shared<address_ip6>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
     auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
-    if( !route_worker::getStaticRoute(sp_rt_addr) ) {
-        LOG_S(ERROR) << "Error in execCmdDefRouteGet6 - cannot get route";
+    if( !getStaticRoute(sp_rt_addr) )
+    {
+        LOG_S(ERROR) << "Error in execCmdDefRouteGet6 - cannot get default route";
         return JSON_RESULT_ERR;
     }
 

@@ -24,7 +24,7 @@
 | ROUTE        | RT_SET           | Works           | Works            | Untested         |
 | ROUTE        | RT\_DEF_SET      | Works           | Works            | Untested         |
 | ROUTE        | RT_DEL           | Works           | Works            | Untested         |
-| ROUTE        | RT\_DEF_DEL      | Not Implemented | Not Implemented  | Not Implemented  |
+| ROUTE        | RT\_DEF_DEL      | Works           | Works            | *Not Applicable* |
 | ROUTE        | RT_LIST          | Works           | Works            | *Not Applicable* |
 | ROUTE        | RT_LIST6         | Works           | *Not Applicable* | Works            |
 | WPA          | WPA_LIST_IF      | Works           | *Not Applicable* | *Not Applicable* |
