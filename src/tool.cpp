@@ -12,7 +12,7 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
     std::shared_ptr<AddressBase> sp_ifaddr = nullptr;
     std::shared_ptr<AddressBase> sp_ifmask = nullptr;
     std::shared_ptr<AddressBase> sp_ifdata = nullptr;
-    ipaddr_type ip_type;
+    AddressGroupType ip_type;
     std::shared_ptr<AddressGroup> sp_addr = nullptr;
 
     if(!cmd.contains(JSON_PARAM_DATA))
@@ -53,12 +53,12 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
             if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
             {
                 str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
-                ip_type = ipaddr_type::BCAST;
+                ip_type = AddressGroupType::BCAST;
             }
             else if(cmd_json_data.contains(JSON_PARAM_IPV4_GW))
             {
                 str_ifgw = cmd_json_data[JSON_PARAM_IPV4_GW];
-                ip_type = ipaddr_type::PPP;
+                ip_type = AddressGroupType::PPP;
             }
             break;
         case AF_INET6:
@@ -69,12 +69,12 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
             if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
             {
                 str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
-                ip_type = ipaddr_type::BCAST;
+                ip_type = AddressGroupType::BCAST;
             }
             else if(cmd_json_data.contains(JSON_PARAM_IPV6_GW))
             {
                 str_ifgw = cmd_json_data[JSON_PARAM_IPV6_GW];
-                ip_type = ipaddr_type::PPP;
+                ip_type = AddressGroupType::PPP;
             }
             break;
     }
@@ -94,9 +94,9 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
                     sp_ifaddr = std::make_shared<AddressIp4>(str_ifaddr);
                 if(!str_ifmask.empty())
                     sp_ifmask = std::make_shared<AddressIp4>(str_ifmask);
-                if( ip_type==ipaddr_type::BCAST && !str_ifbcast.empty() )
+                if( ip_type==AddressGroupType::BCAST && !str_ifbcast.empty() )
                     sp_ifdata=std::make_shared<AddressIp4>(str_ifbcast);
-                else if( ((ip_type==ipaddr_type::PPP)||(ip_type==ipaddr_type::ROUTE)) && (!str_ifgw.empty()) )
+                else if( ((ip_type==AddressGroupType::PPP)||(ip_type==AddressGroupType::ROUTE)) && (!str_ifgw.empty()) )
                     sp_ifdata=std::make_shared<AddressIp4>(str_ifgw);
             }
             catch (std::exception& e)
@@ -112,9 +112,9 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
                     sp_ifaddr = std::make_shared<AddressIp6>(str_ifaddr);
                 if(!str_ifmask.empty())
                     sp_ifmask = std::make_shared<AddressIp6>(str_ifmask);
-                if( ip_type==ipaddr_type::BCAST && !str_ifbcast.empty() )
+                if( ip_type==AddressGroupType::BCAST && !str_ifbcast.empty() )
                     sp_ifdata=std::make_shared<AddressIp6>(str_ifbcast);
-                else if( ((ip_type==ipaddr_type::PPP)||(ip_type==ipaddr_type::ROUTE)) && (!str_ifgw.empty()) )
+                else if( ((ip_type==AddressGroupType::PPP)||(ip_type==AddressGroupType::ROUTE)) && (!str_ifgw.empty()) )
                     sp_ifdata=std::make_shared<AddressIp6>(str_ifgw);
             }
             catch (std::exception& e)

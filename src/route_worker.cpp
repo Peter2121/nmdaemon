@@ -354,7 +354,7 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    sp_rt_addr->setType(ipaddr_type::ROUTE);
+    sp_rt_addr->setType(AddressGroupType::ROUTE);
     proute=getStaticRoute(sp_rt_addr);
     if( proute == nullptr ) {
         LOG_S(ERROR) << "Error in execCmdRouteGet - cannot get route";
@@ -370,7 +370,7 @@ json route_worker::execCmdDefRouteDel(nmcommand_data*)
 {
     auto spaddr = std::make_shared<AddressIp4>();
     auto spmask = std::make_shared<AddressIp4>();
-    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, AddressGroupType::ROUTE);
 
     if( !getStaticRoute(sp_rt_addr) )
     {
@@ -397,7 +397,7 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
     auto spmask = std::make_shared<AddressIp4>();
 //    auto spgate = std::make_shared<address_ip4>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
-    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, AddressGroupType::ROUTE);
     if( !getStaticRoute(sp_rt_addr) )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get default route";
@@ -420,7 +420,7 @@ json route_worker::execCmdDefRouteGet6(nmcommand_data*)
     auto spmask = std::make_shared<AddressIp6>();
 //    auto spgate = std::make_shared<address_ip6>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
-    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, AddressGroupType::ROUTE);
     if( !getStaticRoute(sp_rt_addr) )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet6 - cannot get default route";
@@ -705,13 +705,13 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                     if(iface->getName()==strIfName)
                     {
                         isFound = true;
-                        iface->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
+                        iface->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, AddressGroupType::ROUTE, true, rtm->rtm_flags));
                     }
                 }
                 if(!isFound)
                 {
                     ifaces.push_back(new Interface(strIfName));
-                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
+                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, AddressGroupType::ROUTE, true, rtm->rtm_flags));
                 }
             }
         }

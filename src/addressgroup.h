@@ -15,7 +15,7 @@
 #include "nmexception.h"
 #include "tool.h"
 
-enum class ipaddr_type
+enum class AddressGroupType
 {
     BCAST, PPP, LINK, LOOPBACK, ROUTE, UNKNOWN
 };
@@ -23,7 +23,7 @@ enum class ipaddr_type
 class AddressGroup
 {
 protected:
-    ipaddr_type ipType;
+    AddressGroupType ipType;
     std::shared_ptr<AddressBase> spIpAddress;
     std::shared_ptr<AddressBase> spIpMask;
     std::shared_ptr<AddressBase> spIpData;
@@ -35,7 +35,7 @@ protected:
     bool isValidIp6() const;
 public:
     AddressGroup(struct ifaddrs*);
-    AddressGroup(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
+    AddressGroup(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, AddressGroupType type=AddressGroupType::BCAST, bool up=false, int fl=0, bool primary=false);
     AddressGroup();
     ~AddressGroup();
     const std::shared_ptr<AddressBase> getAddr() const;
@@ -52,7 +52,7 @@ public:
     void setAddr(std::shared_ptr<AddressBase>);
     void setMask(std::shared_ptr<AddressBase>);
     void setData(std::shared_ptr<AddressBase>);
-    void setType(ipaddr_type);
+    void setType(AddressGroupType);
     bool isValidIp() const;
     int getFlags() const;
     void setFlags(int);

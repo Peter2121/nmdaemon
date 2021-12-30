@@ -8,18 +8,18 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
         throw nmExcept;
 
     if(ifa->ifa_addr->sa_family == AF_LINK)
-        ipType = ipaddr_type::LINK;
+        ipType = AddressGroupType::LINK;
     else if( (ifa->ifa_flags & IFF_POINTOPOINT ) != 0 )
-        ipType = ipaddr_type::PPP;
+        ipType = AddressGroupType::PPP;
     else if(ifa->ifa_addr->sa_family==AF_INET6)
-        ipType = ipaddr_type::BCAST;
+        ipType = AddressGroupType::BCAST;
     else if((ifa->ifa_broadaddr) && (ifa->ifa_addr->sa_family==AF_INET))
-        ipType = ipaddr_type::BCAST;
+        ipType = AddressGroupType::BCAST;
     else
         throw nmExcept;
 
     if( (ifa->ifa_flags & IFF_LOOPBACK) != 0 )
-        ipType = ipaddr_type::LOOPBACK;
+        ipType = AddressGroupType::LOOPBACK;
 
     if( (ifa->ifa_flags & IFF_UP) != 0 )
         isAddrUp = true;
@@ -45,8 +45,8 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
                 isAddrPrimary = true;
             switch(ipType)
             {
-                case ipaddr_type::BCAST:
-                case ipaddr_type::LOOPBACK:
+                case AddressGroupType::BCAST:
+                case AddressGroupType::LOOPBACK:
                     if(ifa->ifa_broadaddr)
                     {
                         spIpData = std::make_shared<AddressIp4>(reinterpret_cast<sockaddr_in*>(ifa->ifa_broadaddr));
@@ -54,8 +54,8 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
                     else
                         throw nmExcept;
                     break;
-                case ipaddr_type::PPP:
-                case ipaddr_type::ROUTE:
+                case AddressGroupType::PPP:
+                case AddressGroupType::ROUTE:
                     // We can have only IPv4 or only IPv6 ifa_dstaddr not the both
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET) )
@@ -78,14 +78,14 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
 
             switch(ipType)
             {
-                case ipaddr_type::BCAST:
+                case AddressGroupType::BCAST:
                     if(ifa->ifa_broadaddr)
                     {
                         spIpData = std::make_shared<AddressIp6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_broadaddr));
                     }
                     break;
-                case ipaddr_type::PPP:
-                case ipaddr_type::ROUTE:
+                case AddressGroupType::PPP:
+                case AddressGroupType::ROUTE:
                     // We can have only IPv4 or only IPv6 ifa_dstaddr not the both
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET6) )
@@ -109,13 +109,13 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
 AddressGroup::AddressGroup( std::shared_ptr<AddressBase> addr,
             std::shared_ptr<AddressBase> mask,
             std::shared_ptr<AddressBase> data,
-            ipaddr_type type, bool up, int fl, bool primary) :
+            AddressGroupType type, bool up, int fl, bool primary) :
                 ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrPrimary(primary)
 {
 }
 
 AddressGroup::AddressGroup() :
-    ipType(ipaddr_type::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrPrimary(false)
+    ipType(AddressGroupType::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrPrimary(false)
 {
 }
 
@@ -138,7 +138,7 @@ void AddressGroup::setData(std::shared_ptr<AddressBase> spdata)
     spIpData = spdata;
 }
 
-void AddressGroup::setType(ipaddr_type type)
+void AddressGroup::setType(AddressGroupType type)
 {
     ipType = type;
 }
@@ -175,8 +175,8 @@ const std::string AddressGroup::getAddrString() const
 
         switch(ipType)
         {
-            case ipaddr_type::BCAST:
-            case ipaddr_type::LOOPBACK:
+            case AddressGroupType::BCAST:
+            case AddressGroupType::LOOPBACK:
                 if(spIpMask != nullptr)
                 {
                     strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
@@ -188,8 +188,8 @@ const std::string AddressGroup::getAddrString() const
                     retAddrStr += strTitle + separator + spIpData->getStrAddr() + eol;
                 }
                 break;
-            case ipaddr_type::PPP:
-            case ipaddr_type::ROUTE:
+            case AddressGroupType::PPP:
+            case AddressGroupType::ROUTE:
                 if(spIpMask != nullptr)
                 {
                     strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
@@ -201,7 +201,7 @@ const std::string AddressGroup::getAddrString() const
                     retAddrStr += strTitle + separator + spIpData->getStrAddr() + eol;
                 }
                 break;
-            case ipaddr_type::LINK:
+            case AddressGroupType::LINK:
             default:
                 break;
         }
@@ -255,8 +255,8 @@ const nlohmann::json AddressGroup::getAddrJson() const
 
         switch(ipType)
         {
-            case ipaddr_type::BCAST:
-            case ipaddr_type::LOOPBACK:
+            case AddressGroupType::BCAST:
+            case AddressGroupType::LOOPBACK:
                 if(spIpMask != nullptr)
                 {
                     strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
@@ -268,8 +268,8 @@ const nlohmann::json AddressGroup::getAddrJson() const
                     dataJson[strTitle] = spIpData->getStrAddr();
                 }
                 break;
-            case ipaddr_type::PPP:
-            case ipaddr_type::ROUTE:
+            case AddressGroupType::PPP:
+            case AddressGroupType::ROUTE:
                 if(spIpMask != nullptr)
                 {
                     strTitle = (spIpAddress->getFamily() == AF_INET) ? JSON_PARAM_IPV4_MASK : JSON_PARAM_IPV6_MASK;
@@ -281,7 +281,7 @@ const nlohmann::json AddressGroup::getAddrJson() const
                     dataJson[strTitle] = spIpData->getStrAddr();
                 }
                 break;
-            case ipaddr_type::LINK:
+            case AddressGroupType::LINK:
             // TODO: show link data (speed, status etc.)
             default:
                 break;
@@ -289,7 +289,7 @@ const nlohmann::json AddressGroup::getAddrJson() const
 
         switch(ipType)
         {
-            case ipaddr_type::ROUTE:
+            case AddressGroupType::ROUTE:
                 dataJson[JSON_PARAM_FLAGS] = getFlagsRoute();
                 break;
             default:
@@ -374,14 +374,14 @@ bool AddressGroup::isValidIp4() const
     }
     switch(ipType)
     {
-        case ipaddr_type::BCAST:
+        case AddressGroupType::BCAST:
             if(spIpData!=nullptr)
             {
                 bcast_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;
                 return tool::isValidBcast4(addr_nbo, mask_nbo, bcast_nbo);
             }
             return false;
-        case ipaddr_type::PPP:
+        case AddressGroupType::PPP:
             if(spIpData!=nullptr)
             {
                 gw_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;

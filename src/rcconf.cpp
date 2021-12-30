@@ -200,7 +200,7 @@ json rcconf::getRcIpConfig()
             spipaddr4 = std::make_shared<AddressIp4>(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>());
             spipmask4 = std::make_shared<AddressIp4>(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_MASK].get<std::string>());
             spipgw4 = std::make_shared<AddressIp4>(strDefaultRouter);
-            upaddr4 = std::make_unique<AddressGroup>(spipaddr4, spipmask4, spipgw4, ipaddr_type::PPP);
+            upaddr4 = std::make_unique<AddressGroup>(spipaddr4, spipmask4, spipgw4, AddressGroupType::PPP);
             if(upaddr4->isValidIp())
             {
                 LOG_S(INFO) << "Validated IP4 default router : " << j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>() << " / " << j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_MASK].get<std::string>() << " " << strDefaultRouter;
