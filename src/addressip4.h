@@ -1,12 +1,12 @@
-#ifndef ADDRESS_IP4_H
-#define ADDRESS_IP4_H
+#ifndef ADDRESSIP4_H
+#define ADDRESSIP4_H
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "addressbase.h"
 
-class address_ip4 : public AddressBase
+class AddressIp4 : public AddressBase
 {
 protected:
     struct in_addr ip_addr;
@@ -16,10 +16,10 @@ protected:
     nmexception nmExcept;
     void setIpAddr();
 public:
-    address_ip4(const struct sockaddr_in*);
-    address_ip4(std::string);
-    address_ip4() : address_ip4("0.0.0.0") {}
-    ~address_ip4();
+    AddressIp4(const struct sockaddr_in*);
+    AddressIp4(std::string);
+    AddressIp4() : AddressIp4("0.0.0.0") {}
+    ~AddressIp4();
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;
     short getFamily() const;
@@ -27,4 +27,4 @@ public:
     bool operator!=(const AddressBase&);
 };
 
-#endif // ADDRESS_IP4_H
+#endif // ADDRESSIP4_H

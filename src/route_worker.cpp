@@ -368,8 +368,8 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
 
 json route_worker::execCmdDefRouteDel(nmcommand_data*)
 {
-    auto spaddr = std::make_shared<address_ip4>();
-    auto spmask = std::make_shared<address_ip4>();
+    auto spaddr = std::make_shared<AddressIp4>();
+    auto spmask = std::make_shared<AddressIp4>();
     auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
 
     if( !getStaticRoute(sp_rt_addr) )
@@ -393,8 +393,8 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
     json res_route = {};
     short family;
     std::string strGw = "";
-    auto spaddr = std::make_shared<address_ip4>();
-    auto spmask = std::make_shared<address_ip4>();
+    auto spaddr = std::make_shared<AddressIp4>();
+    auto spmask = std::make_shared<AddressIp4>();
 //    auto spgate = std::make_shared<address_ip4>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
     auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
@@ -630,7 +630,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        sp_dest = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_dest = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
@@ -646,7 +646,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        sp_gate = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_gate = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
@@ -662,7 +662,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 {
                     if (sa->sa_family == AF_INET)
                     {
-                        sp_mask = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                        sp_mask = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
                     }
                     else if (sa->sa_family == AF_INET6)
                     {
@@ -677,7 +677,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
                 {
                     if (sa->sa_family == AF_INET)
-                        sp_mask = std::make_shared<address_ip4>("255.255.255.255");
+                        sp_mask = std::make_shared<AddressIp4>("255.255.255.255");
                     else if (sa->sa_family == AF_INET6)
                         sp_mask = std::make_shared<address_ip6>("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
                 }
@@ -685,7 +685,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 if(sp_dest==nullptr)
                 {
                     if (sa->sa_family == AF_INET)
-                        sp_mask = std::make_shared<address_ip4>("0.0.0.0");
+                        sp_mask = std::make_shared<AddressIp4>("0.0.0.0");
                     else if (sa->sa_family == AF_INET6)
                         sp_mask = std::make_shared<address_ip6>("::");
                 }
@@ -861,7 +861,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
         {
             if (sa->sa_family == AF_INET)
             {
-                sp_dest = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                sp_dest = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
             }
             else if (sa->sa_family == AF_INET6)
             {
@@ -881,7 +881,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
         {
             if (sa->sa_family == AF_INET)
             {
-                sp_gate = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                sp_gate = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
             }
             else if (sa->sa_family == AF_INET6)
             {
@@ -901,7 +901,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
         {
             if (sa->sa_family == AF_INET)
             {
-                sp_mask = std::make_shared<address_ip4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+                sp_mask = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
             }
             else if (sa->sa_family == AF_INET6)
             {
@@ -922,7 +922,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
         if((sa != nullptr) && !(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
         {
             if (sa->sa_family == AF_INET)
-                sp_mask = std::make_shared<address_ip4>("255.255.255.255");
+                sp_mask = std::make_shared<AddressIp4>("255.255.255.255");
             else if (sa->sa_family == AF_INET6)
                 sp_mask = std::make_shared<address_ip6>("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
         }
@@ -930,7 +930,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
         if(sp_dest==nullptr)
         {
             if (sa->sa_family == AF_INET)
-                sp_mask = std::make_shared<address_ip4>("0.0.0.0");
+                sp_mask = std::make_shared<AddressIp4>("0.0.0.0");
             else if (sa->sa_family == AF_INET6)
                 sp_mask = std::make_shared<address_ip6>("::");
         }

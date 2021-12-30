@@ -9,7 +9,7 @@
 #include "magic_enum/magic_enum.hpp"
 #include "nmjsonconst.h"
 #include "addressbase.h"
-#include "address_ip4.h"
+#include "addressip4.h"
 #include "address_ip6.h"
 #include "address_link.h"
 #include "nmexception.h"
