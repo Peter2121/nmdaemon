@@ -9,9 +9,9 @@ std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
     std::string str_ifgw = "";
     std::string str_ifbcast = "";
     short ip_family = 0;
-    std::shared_ptr<address_base> sp_ifaddr = nullptr;
-    std::shared_ptr<address_base> sp_ifmask = nullptr;
-    std::shared_ptr<address_base> sp_ifdata = nullptr;
+    std::shared_ptr<AddressBase> sp_ifaddr = nullptr;
+    std::shared_ptr<AddressBase> sp_ifmask = nullptr;
+    std::shared_ptr<AddressBase> sp_ifdata = nullptr;
     ipaddr_type ip_type;
     std::shared_ptr<addr> sp_addr = nullptr;
 

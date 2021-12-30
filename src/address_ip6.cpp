@@ -84,7 +84,7 @@ struct sockaddr_in6 {
 }
 */
 
-bool address_ip6::operator==(const address_base& addr)
+bool address_ip6::operator==(const AddressBase& addr)
 {
     if(family != addr.getFamily())
         return false;
@@ -97,7 +97,7 @@ bool address_ip6::operator==(const address_base& addr)
         return true;
 }
 
-bool address_ip6::operator!=(const address_base& addr)
+bool address_ip6::operator!=(const AddressBase& addr)
 {
     if(family == addr.getFamily())
         return false;

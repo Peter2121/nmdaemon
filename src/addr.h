@@ -8,7 +8,7 @@
 #include "json/json.hpp"
 #include "magic_enum/magic_enum.hpp"
 #include "nmjsonconst.h"
-#include "address_base.h"
+#include "addressbase.h"
 #include "address_ip4.h"
 #include "address_ip6.h"
 #include "address_link.h"
@@ -24,9 +24,9 @@ class addr
 {
 protected:
     ipaddr_type ipType;
-    std::shared_ptr<address_base> spIpAddress;
-    std::shared_ptr<address_base> spIpMask;
-    std::shared_ptr<address_base> spIpData;
+    std::shared_ptr<AddressBase> spIpAddress;
+    std::shared_ptr<AddressBase> spIpMask;
+    std::shared_ptr<AddressBase> spIpData;
     int flags;
     bool isAddrUp;
     bool isAddrPrimary;
@@ -35,23 +35,23 @@ protected:
     bool isValidIp6() const;
 public:
     addr(struct ifaddrs*);
-    addr(std::shared_ptr<address_base> addr, std::shared_ptr<address_base> mask, std::shared_ptr<address_base> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
+    addr(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
     addr();
     ~addr();
-    const std::shared_ptr<address_base> getAddr() const;
-    const std::shared_ptr<address_base> getMask() const;
-    const std::shared_ptr<address_base> getData() const;
-    const address_base* getAddrAB() const;
-    const address_base* getMaskAB() const;
-    const address_base* getDataAB() const;
+    const std::shared_ptr<AddressBase> getAddr() const;
+    const std::shared_ptr<AddressBase> getMask() const;
+    const std::shared_ptr<AddressBase> getData() const;
+    const AddressBase* getAddrAB() const;
+    const AddressBase* getMaskAB() const;
+    const AddressBase* getDataAB() const;
     const std::string getAddrString() const;
     const nlohmann::json getAddrJson() const;
     bool isUp() const;
     bool isPrimary() const;
     short getFamily() const;
-    void setAddr(std::shared_ptr<address_base>);
-    void setMask(std::shared_ptr<address_base>);
-    void setData(std::shared_ptr<address_base>);
+    void setAddr(std::shared_ptr<AddressBase>);
+    void setMask(std::shared_ptr<AddressBase>);
+    void setData(std::shared_ptr<AddressBase>);
     void setType(ipaddr_type);
     bool isValidIp() const;
     int getFlags() const;

@@ -6,9 +6,9 @@
 #include <netinet/in.h>
 #include <net/if_dl.h>
 #include <arpa/inet.h>
-#include "address_base.h"
+#include "addressbase.h"
 
-class address_link : public address_base
+class address_link : public AddressBase
 {
 protected:
     const short family = AF_LINK;
@@ -24,8 +24,8 @@ public:
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;
     short getFamily() const;
-    bool operator==(const address_base&);
-    bool operator!=(const address_base&);
+    bool operator==(const AddressBase&);
+    bool operator!=(const AddressBase&);
 };
 
 #endif // ADDR_LINK_H

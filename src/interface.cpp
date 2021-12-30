@@ -1,4 +1,4 @@
-#include "Interface.h"
+#include "interface.h"
 
 Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false), isIfUp(false)
 {

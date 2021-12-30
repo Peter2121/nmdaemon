@@ -53,7 +53,7 @@ short address_link::getFamily() const
     return family;
 }
 
-bool address_link::operator==(const address_base& addr)
+bool address_link::operator==(const AddressBase& addr)
 {
     if(family != addr.getFamily())
         return false;
@@ -63,7 +63,7 @@ bool address_link::operator==(const address_base& addr)
         return true;
 }
 
-bool address_link::operator!=(const address_base& addr)
+bool address_link::operator!=(const AddressBase& addr)
 {
     if(family == addr.getFamily())
         return false;

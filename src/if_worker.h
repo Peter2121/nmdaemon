@@ -9,7 +9,7 @@
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
 #include "nmworker.h"
-#include "Interface.h"
+#include "interface.h"
 #include "tool.h"
 
 class if_worker : public nmworker
@@ -35,8 +35,8 @@ protected:
 //    bool setIfFlags(std::string, int);
     static inline const std::string DHCP_CLIENT_EXEC = "/sbin/dhclient";
     std::string ifName = "";
-    std::shared_ptr<address_base> getMainIfAddr(short family);
-    bool removeIfAddr(std::shared_ptr<address_base>);
+    std::shared_ptr<AddressBase> getMainIfAddr(short family);
+    bool removeIfAddr(std::shared_ptr<AddressBase>);
     bool addIfAddr(std::shared_ptr<addr>);
     bool isDHCPEnabled();
     bool termDHCPClient();

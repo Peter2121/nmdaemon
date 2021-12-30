@@ -4,9 +4,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "address_base.h"
+#include "addressbase.h"
 
-class address_ip6 : public address_base
+class address_ip6 : public AddressBase
 {
 protected:
     struct in6_addr ip_addr6;
@@ -23,8 +23,8 @@ public:
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;
     short getFamily() const;
-    bool operator==(const address_base&);
-    bool operator!=(const address_base&);
+    bool operator==(const AddressBase&);
+    bool operator!=(const AddressBase&);
 };
 
 #endif // ADDRESS_IP6_H

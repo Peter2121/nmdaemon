@@ -106,9 +106,9 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
     }
 }
 
-addr::addr( std::shared_ptr<address_base> addr,
-            std::shared_ptr<address_base> mask,
-            std::shared_ptr<address_base> data,
+addr::addr( std::shared_ptr<AddressBase> addr,
+            std::shared_ptr<AddressBase> mask,
+            std::shared_ptr<AddressBase> data,
             ipaddr_type type, bool up, int fl, bool primary) :
                 ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrPrimary(primary)
 {
@@ -123,17 +123,17 @@ addr::~addr()
 {
 }
 
-void addr::setAddr(std::shared_ptr<address_base> spaddr)
+void addr::setAddr(std::shared_ptr<AddressBase> spaddr)
 {
     spIpAddress = spaddr;
 }
 
-void addr::setMask(std::shared_ptr<address_base> spmask)
+void addr::setMask(std::shared_ptr<AddressBase> spmask)
 {
     spIpMask = spmask;
 }
 
-void addr::setData(std::shared_ptr<address_base> spdata)
+void addr::setData(std::shared_ptr<AddressBase> spdata)
 {
     spIpData = spdata;
 }
@@ -313,32 +313,32 @@ short addr::getFamily() const
     return spIpAddress->getFamily();
 }
 
-const address_base* addr::getAddrAB() const
+const AddressBase* addr::getAddrAB() const
 {
     return spIpAddress.get();
 }
 
-const address_base* addr::getMaskAB() const
+const AddressBase* addr::getMaskAB() const
 {
     return spIpMask.get();
 }
 
-const address_base* addr::getDataAB() const
+const AddressBase* addr::getDataAB() const
 {
     return spIpData.get();
 }
 
-const std::shared_ptr<address_base> addr::getAddr() const
+const std::shared_ptr<AddressBase> addr::getAddr() const
 {
     return spIpAddress;
 }
 
-const std::shared_ptr<address_base> addr::getMask() const
+const std::shared_ptr<AddressBase> addr::getMask() const
 {
     return spIpMask;
 }
 
-const std::shared_ptr<address_base> addr::getData() const
+const std::shared_ptr<AddressBase> addr::getData() const
 {
     return spIpData;
 }

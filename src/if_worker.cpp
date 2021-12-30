@@ -132,10 +132,10 @@ struct ifaliasreq {
 */
 
 // The return value must be deallocated in calling function
-std::shared_ptr<address_base> if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INET6
+std::shared_ptr<AddressBase> if_worker::getMainIfAddr(short family) // family: AF_INET / AF_INET6
 {
     struct ifreq ifr;
-    std::shared_ptr<address_base> spaddr=nullptr;
+    std::shared_ptr<AddressBase> spaddr=nullptr;
 
     if( (family!=AF_INET) && (family!=AF_INET6) )
     {
@@ -175,7 +175,7 @@ std::shared_ptr<address_base> if_worker::getMainIfAddr(short family) // family: 
     return spaddr;
 }
 
-bool if_worker::removeIfAddr(std::shared_ptr<address_base> spaddrb)
+bool if_worker::removeIfAddr(std::shared_ptr<AddressBase> spaddrb)
 {
     struct ifaliasreq ifra;
     memset(&ifra, 0, sizeof(struct ifaliasreq));
@@ -199,7 +199,7 @@ bool if_worker::addIfAddr(std::shared_ptr<addr> paddr)
 {
     struct ifaliasreq ifra;
     memset(&ifra, 0, sizeof(struct ifaliasreq));
-    const address_base* ab = nullptr;
+    const AddressBase* ab = nullptr;
     const struct sockaddr* sa = nullptr;
 
     strlcpy(ifra.ifra_name, ifName.c_str(), sizeof(ifra.ifra_name));
@@ -299,7 +299,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
-    std::shared_ptr<address_base> spcuraddr=nullptr;
+    std::shared_ptr<AddressBase> spcuraddr=nullptr;
     json cmd = {};
 
     try {
@@ -548,7 +548,7 @@ json if_worker::execCmdDHCPEnable(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    std::shared_ptr<address_base> sp_cur_addr = getMainIfAddr(AF_INET);
+    std::shared_ptr<AddressBase> sp_cur_addr = getMainIfAddr(AF_INET);
     if(!removeIfAddr(sp_cur_addr))
     {
         LOG_S(ERROR) << "Cannot remove current address " << sp_cur_addr->getStrAddr() << " from interface ifName";

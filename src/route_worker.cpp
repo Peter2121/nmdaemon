@@ -77,14 +77,14 @@ void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const address_base* strt)
     memcpy(psa6, strt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 */
-void route_worker::setPsaStruct(sockaddr_in *psa, const std::shared_ptr<address_base> spstrt)
+void route_worker::setPsaStruct(sockaddr_in *psa, const std::shared_ptr<AddressBase> spstrt)
 {
     psa->sin_len = sizeof(struct sockaddr_in);
     psa->sin_family = spstrt->getFamily();
     memcpy(psa, spstrt->getSockAddr(), sizeof(struct sockaddr_in));
 }
 
-void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<address_base> spstrt)
+void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<AddressBase> spstrt)
 {
     psa6->sin6_len = sizeof(struct sockaddr_in6);
     psa6->sin6_family = spstrt->getFamily();
@@ -533,9 +533,9 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     short constexpr ERR_CNT_MAX = 10;
     std::vector<uint8_t> buf(0);
     std::vector<Interface*> ifaces(0);
-    std::shared_ptr<address_base> sp_dest = nullptr;
-    std::shared_ptr<address_base> sp_mask = nullptr;
-    std::shared_ptr<address_base> sp_gate = nullptr;
+    std::shared_ptr<AddressBase> sp_dest = nullptr;
+    std::shared_ptr<AddressBase> sp_mask = nullptr;
+    std::shared_ptr<AddressBase> sp_gate = nullptr;
     short constexpr MIB_SIZE = 6;
     int family = 0;
     int mib[MIB_SIZE];
@@ -765,9 +765,9 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
     struct tm *info = localtime(&curtime);
     int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
     pid_t curr_pid = getpid();
-    std::shared_ptr<address_base> sp_dest = nullptr;
-    std::shared_ptr<address_base> sp_mask = nullptr;
-    std::shared_ptr<address_base> sp_gate = nullptr;
+    std::shared_ptr<AddressBase> sp_dest = nullptr;
+    std::shared_ptr<AddressBase> sp_mask = nullptr;
+    std::shared_ptr<AddressBase> sp_gate = nullptr;
     char ifname[IFNAMSIZ];
     std::string strIfName = "";
     struct sockaddr *sa = nullptr;
