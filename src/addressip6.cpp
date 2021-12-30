@@ -1,6 +1,6 @@
-#include "address_ip6.h"
+#include "addressip6.h"
 
-address_ip6::address_ip6(const struct sockaddr_in6* psa)
+AddressIp6::AddressIp6(const struct sockaddr_in6* psa)
 {
     sock_addr = new struct sockaddr_storage;
     memset(sock_addr,0,sizeof(struct sockaddr_storage));
@@ -8,7 +8,7 @@ address_ip6::address_ip6(const struct sockaddr_in6* psa)
     setIpAddr6();
 }
 
-address_ip6::address_ip6(std::string str_addr)
+AddressIp6::AddressIp6(std::string str_addr)
 {
     const char* chr_ptr = str_addr.c_str();
     if(inet_pton(family, chr_ptr, &ip_addr6) == 1)
@@ -26,12 +26,12 @@ address_ip6::address_ip6(std::string str_addr)
     memcpy(&(((struct sockaddr_in6*)sock_addr)->sin6_addr.s6_addr), &(ip_addr6.s6_addr), sizeof(in6_addr::s6_addr));
 }
 
-address_ip6::~address_ip6()
+AddressIp6::~AddressIp6()
 {
     delete sock_addr;
 }
 
-void address_ip6::setIpAddr6()
+void AddressIp6::setIpAddr6()
 {
     void* addr_ptr = 0;
     char address[INET6_ADDRSTRLEN];
@@ -56,17 +56,17 @@ void address_ip6::setIpAddr6()
     }
 }
 
-std::string address_ip6::getStrAddr() const
+std::string AddressIp6::getStrAddr() const
 {
     return strAddr;
 }
 
-const struct sockaddr_storage* address_ip6::getSockAddr() const
+const struct sockaddr_storage* AddressIp6::getSockAddr() const
 {
     return sock_addr;
 }
 
-short address_ip6::getFamily() const
+short AddressIp6::getFamily() const
 {
     return family;
 }
@@ -84,7 +84,7 @@ struct sockaddr_in6 {
 }
 */
 
-bool address_ip6::operator==(const AddressBase& addr)
+bool AddressIp6::operator==(const AddressBase& addr)
 {
     if(family != addr.getFamily())
         return false;
@@ -97,7 +97,7 @@ bool address_ip6::operator==(const AddressBase& addr)
         return true;
 }
 
-bool address_ip6::operator!=(const AddressBase& addr)
+bool AddressIp6::operator!=(const AddressBase& addr)
 {
     if(family == addr.getFamily())
         return false;

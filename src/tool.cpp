@@ -109,13 +109,13 @@ std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
             try
             {
                 if(!str_ifaddr.empty())
-                    sp_ifaddr = std::make_shared<address_ip6>(str_ifaddr);
+                    sp_ifaddr = std::make_shared<AddressIp6>(str_ifaddr);
                 if(!str_ifmask.empty())
-                    sp_ifmask = std::make_shared<address_ip6>(str_ifmask);
+                    sp_ifmask = std::make_shared<AddressIp6>(str_ifmask);
                 if( ip_type==ipaddr_type::BCAST && !str_ifbcast.empty() )
-                    sp_ifdata=std::make_shared<address_ip6>(str_ifbcast);
+                    sp_ifdata=std::make_shared<AddressIp6>(str_ifbcast);
                 else if( ((ip_type==ipaddr_type::PPP)||(ip_type==ipaddr_type::ROUTE)) && (!str_ifgw.empty()) )
-                    sp_ifdata=std::make_shared<address_ip6>(str_ifgw);
+                    sp_ifdata=std::make_shared<AddressIp6>(str_ifgw);
             }
             catch (std::exception& e)
             {

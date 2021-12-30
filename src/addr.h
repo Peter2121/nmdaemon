@@ -10,7 +10,7 @@
 #include "nmjsonconst.h"
 #include "addressbase.h"
 #include "addressip4.h"
-#include "address_ip6.h"
+#include "addressip6.h"
 #include "address_link.h"
 #include "nmexception.h"
 #include "tool.h"

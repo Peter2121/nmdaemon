@@ -68,10 +68,10 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
             }
             break;  // end of case AF_INET
         case AF_INET6:
-            spIpAddress = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_addr));
+            spIpAddress = std::make_shared<AddressIp6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_addr));
             if(ifa->ifa_netmask)
             {
-                spIpMask = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_netmask));
+                spIpMask = std::make_shared<AddressIp6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_netmask));
             }
             else
                 throw nmExcept;
@@ -81,7 +81,7 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
                 case ipaddr_type::BCAST:
                     if(ifa->ifa_broadaddr)
                     {
-                        spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_broadaddr));
+                        spIpData = std::make_shared<AddressIp6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_broadaddr));
                     }
                     break;
                 case ipaddr_type::PPP:
@@ -90,7 +90,7 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
                     // In such case ifa->ifa_dstaddr->sa_family is 0
                     if( (ifa->ifa_dstaddr) && (ifa->ifa_dstaddr->sa_family==AF_INET6) )
                     {
-                        spIpData = std::make_shared<address_ip6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_dstaddr));
+                        spIpData = std::make_shared<AddressIp6>(reinterpret_cast<sockaddr_in6*>(ifa->ifa_dstaddr));
                     }
                     break;
                 default:

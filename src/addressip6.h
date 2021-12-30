@@ -1,12 +1,12 @@
-#ifndef ADDRESS_IP6_H
-#define ADDRESS_IP6_H
+#ifndef ADDRESSIP6_H
+#define ADDRESSIP6_H
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "addressbase.h"
 
-class address_ip6 : public AddressBase
+class AddressIp6 : public AddressBase
 {
 protected:
     struct in6_addr ip_addr6;
@@ -16,10 +16,10 @@ protected:
     nmexception nmExcept;
     void setIpAddr6();
 public:
-    address_ip6(const struct sockaddr_in6*);
-    address_ip6(std::string);
-    address_ip6() : address_ip6("0:0:0:0:0:0:0:0") {}
-    ~address_ip6();
+    AddressIp6(const struct sockaddr_in6*);
+    AddressIp6(std::string);
+    AddressIp6() : AddressIp6("0:0:0:0:0:0:0:0") {}
+    ~AddressIp6();
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;
     short getFamily() const;
@@ -27,4 +27,4 @@ public:
     bool operator!=(const AddressBase&);
 };
 
-#endif // ADDRESS_IP6_H
+#endif // ADDRESSIP6_H

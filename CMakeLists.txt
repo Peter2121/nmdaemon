@@ -24,7 +24,7 @@ set_property(TARGET sockpp PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_L
 add_executable(nmdaemon
         src/addr.cpp
         src/addressip4.cpp
-        src/address_ip6.cpp
+        src/addressip6.cpp
         src/address_link.cpp
         src/dummy_worker.cpp
         src/if_worker.cpp

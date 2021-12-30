@@ -163,7 +163,7 @@ std::shared_ptr<AddressBase> if_worker::getMainIfAddr(short family) // family: A
                 spaddr = std::make_unique<AddressIp4>((sockaddr_in*)&ifr.ifr_addr);
                 break;
             case AF_INET6:
-                spaddr = std::make_unique<address_ip6>((sockaddr_in6*)&ifr.ifr_addr);
+                spaddr = std::make_unique<AddressIp6>((sockaddr_in6*)&ifr.ifr_addr);
                 break;
         }
     } catch (std::exception& e) {
