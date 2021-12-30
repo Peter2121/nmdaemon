@@ -869,7 +869,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
             }
             else if (sa->sa_family == AF_LINK)
             {
-                sp_dest = std::make_shared<address_link>(reinterpret_cast<const struct sockaddr_dl*>(sa));
+                sp_dest = std::make_shared<AddressLink>(reinterpret_cast<const struct sockaddr_dl*>(sa));
             }
         }
         else
@@ -889,7 +889,7 @@ std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
             }
             else if (sa->sa_family == AF_LINK)
             {
-                sp_gate = std::make_shared<address_link>(reinterpret_cast<const struct sockaddr_dl*>(sa));
+                sp_gate = std::make_shared<AddressLink>(reinterpret_cast<const struct sockaddr_dl*>(sa));
             }
         }
         else

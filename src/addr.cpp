@@ -98,7 +98,7 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
             }
             break;  // end of case AF_INET6
         case AF_LINK:
-            spIpAddress = std::make_shared<address_link>(reinterpret_cast<sockaddr_dl*>(ifa->ifa_addr));
+            spIpAddress = std::make_shared<AddressLink>(reinterpret_cast<sockaddr_dl*>(ifa->ifa_addr));
             break;
         default:
             throw nmExcept;

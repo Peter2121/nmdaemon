@@ -1,6 +1,6 @@
-#include "address_link.h"
+#include "addresslink.h"
 
-address_link::address_link(const struct sockaddr_dl* psa)
+AddressLink::AddressLink(const struct sockaddr_dl* psa)
 {
     sock_addr = new struct sockaddr_storage;
     memset(sock_addr,0,sizeof(struct sockaddr_storage));
@@ -8,7 +8,7 @@ address_link::address_link(const struct sockaddr_dl* psa)
     setLinkAddr();
 }
 
-address_link::address_link(std::string str_addr)
+AddressLink::AddressLink(std::string str_addr)
 {
     const char* chr_ptr = str_addr.c_str();
     sock_addr = new struct sockaddr_storage;
@@ -18,12 +18,12 @@ address_link::address_link(std::string str_addr)
     strAddr = str_addr;
 }
 
-address_link::~address_link()
+AddressLink::~AddressLink()
 {
     delete sock_addr;
 }
 
-void address_link::setLinkAddr()
+void AddressLink::setLinkAddr()
 {
     char* addr_ptr = 0;
 
@@ -38,22 +38,22 @@ void address_link::setLinkAddr()
     }
 }
 
-std::string address_link::getStrAddr() const
+std::string AddressLink::getStrAddr() const
 {
     return strAddr;
 }
 
-const struct sockaddr_storage* address_link::getSockAddr() const
+const struct sockaddr_storage* AddressLink::getSockAddr() const
 {
     return sock_addr;
 }
 
-short address_link::getFamily() const
+short AddressLink::getFamily() const
 {
     return family;
 }
 
-bool address_link::operator==(const AddressBase& addr)
+bool AddressLink::operator==(const AddressBase& addr)
 {
     if(family != addr.getFamily())
         return false;
@@ -63,7 +63,7 @@ bool address_link::operator==(const AddressBase& addr)
         return true;
 }
 
-bool address_link::operator!=(const AddressBase& addr)
+bool AddressLink::operator!=(const AddressBase& addr)
 {
     if(family == addr.getFamily())
         return false;

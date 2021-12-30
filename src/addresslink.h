@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include "addressbase.h"
 
-class address_link : public AddressBase
+class AddressLink : public AddressBase
 {
 protected:
     const short family = AF_LINK;
@@ -17,10 +17,10 @@ protected:
     nmexception nmExcept;
     void setLinkAddr();
 public:
-    address_link(const struct sockaddr_dl*);
-    address_link(std::string);
-    address_link() : address_link("00:00:00:00:00:00") {}
-    ~address_link();
+    AddressLink(const struct sockaddr_dl*);
+    AddressLink(std::string);
+    AddressLink() : AddressLink("00:00:00:00:00:00") {}
+    ~AddressLink();
     std::string getStrAddr() const;
     const struct sockaddr_storage* getSockAddr() const;
     short getFamily() const;

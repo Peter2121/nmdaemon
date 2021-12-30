@@ -11,7 +11,7 @@
 #include "addressbase.h"
 #include "addressip4.h"
 #include "addressip6.h"
-#include "address_link.h"
+#include "addresslink.h"
 #include "nmexception.h"
 #include "tool.h"
 
