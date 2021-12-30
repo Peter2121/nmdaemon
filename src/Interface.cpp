@@ -1,19 +1,19 @@
-#include "interface.h"
+#include "Interface.h"
 
-interface::interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false), isIfUp(false)
+Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false), isIfUp(false)
 {
 }
 
-interface::~interface()
+Interface::~Interface()
 {
 }
 
-void interface::setName(std::string name)
+void Interface::setName(std::string name)
 {
     strName = name;
 }
 
-void interface::addAddress(struct ifaddrs* ifa)
+void Interface::addAddress(struct ifaddrs* ifa)
 {
     try
     {
@@ -31,7 +31,7 @@ void interface::addAddress(struct ifaddrs* ifa)
     }
 }
 
-void interface::addAddress(std::shared_ptr<addr> spa)
+void Interface::addAddress(std::shared_ptr<addr> spa)
 {
     if(spa==nullptr)
     {
@@ -53,7 +53,7 @@ void interface::addAddress(std::shared_ptr<addr> spa)
     }
 }
 
-std::string interface::getName() const
+std::string Interface::getName() const
 {
     return strName;
 }
@@ -93,7 +93,7 @@ std::string interface::getName() const
 }
 */
 
-const nlohmann::json interface::getIfJson() const
+const nlohmann::json Interface::getIfJson() const
 {
     nlohmann::json retIfJson;
     nlohmann::json addrJson;

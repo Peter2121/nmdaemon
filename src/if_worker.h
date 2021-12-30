@@ -9,7 +9,7 @@
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
 #include "nmworker.h"
-#include "interface.h"
+#include "Interface.h"
 #include "tool.h"
 
 class if_worker : public nmworker

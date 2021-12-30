@@ -9,7 +9,7 @@
 #include "sockpp/version.h"
 #include "nmdaemon.h"
 #include "nmworker.h"
-#include "interface.h"
+#include "Interface.h"
 #include "tool.h"
 #include "rcconf.h"
 

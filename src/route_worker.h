@@ -10,7 +10,7 @@
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
 #include "nmworker.h"
-#include "interface.h"
+#include "Interface.h"
 #include "addr.h"
 #include "tool.h"
 
@@ -55,7 +55,7 @@ protected:
     };
     bool setStaticRoute(std::shared_ptr<addr>);
     bool delStaticRoute(std::shared_ptr<addr>);
-    std::unique_ptr<interface> getStaticRoute(std::shared_ptr<addr>);
+    std::unique_ptr<Interface> getStaticRoute(std::shared_ptr<addr>);
 //    bool getStaticRouteN(std::shared_ptr<addr>);
     void setPsaStruct(sockaddr_in *, const std::shared_ptr<address_base>);
     void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<address_base>);

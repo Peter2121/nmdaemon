@@ -28,7 +28,7 @@ add_executable(nmdaemon
         src/address_link.cpp
         src/dummy_worker.cpp
         src/if_worker.cpp
-        src/interface.cpp
+        src/Interface.cpp
         src/main.cpp
         src/nmcommand_data.cpp
         src/nmconfig.cpp

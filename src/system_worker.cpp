@@ -57,7 +57,7 @@ json system_worker::execCmdIfList(nmcommand_data*)
     nlohmann::json res_ifaces = {};
     std::vector<nlohmann::json> vectIfsJson;
     int status;
-    std::map<std::string, interface> ifMap;
+    std::map<std::string, Interface> ifMap;
 
     status = getifaddrs (& ifaddrs_ptr);
     if (status == -1) {

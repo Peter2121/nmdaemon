@@ -8,7 +8,7 @@
 #include "loguru/loguru.hpp"
 #include "addr.h"
 
-class interface
+class Interface
 {
 protected:
     std::string strName;
@@ -17,15 +17,15 @@ protected:
     bool hasIPv6;
     bool isIfUp;
 public:
-    interface(std::string);
-    interface() : interface("") {}
+    Interface(std::string);
+    Interface() : Interface("") {}
     void setName(std::string);
     void addAddress(struct ifaddrs*);
     void addAddress(std::shared_ptr<addr>);
     std::string getName() const;
     const nlohmann::json getIfJson() const;
     const nlohmann::json getIfString() const;
-    ~interface();
+    ~Interface();
 };
 
 #endif // INTERFACE_H

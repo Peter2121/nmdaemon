@@ -336,7 +336,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
 {
     std::shared_ptr<addr> sp_rt_addr=nullptr;
-    std::unique_ptr<interface> proute=nullptr;
+    std::unique_ptr<Interface> proute=nullptr;
     json cmd = {};
     json res_route = {};
 
@@ -532,7 +532,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     short err_cnt = 0;
     short constexpr ERR_CNT_MAX = 10;
     std::vector<uint8_t> buf(0);
-    std::vector<interface*> ifaces(0);
+    std::vector<Interface*> ifaces(0);
     std::shared_ptr<address_base> sp_dest = nullptr;
     std::shared_ptr<address_base> sp_mask = nullptr;
     std::shared_ptr<address_base> sp_gate = nullptr;
@@ -710,7 +710,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                 }
                 if(!isFound)
                 {
-                    ifaces.push_back(new interface(strIfName));
+                    ifaces.push_back(new Interface(strIfName));
                     ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
                 }
             }
@@ -755,7 +755,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     }
 }
 
-std::unique_ptr<interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp_route)
+std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp_route)
 {
     std::unique_ptr<static_route> up_cur_route=nullptr;
     std::unique_ptr<static_route6> up_cur_route6=nullptr;
@@ -949,7 +949,7 @@ std::unique_ptr<interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp
     sp_route->setData(sp_gate);
     sp_route->setFlags(rtm->rtm_flags);
 
-    auto up_ret = std::make_unique<interface>(strIfName);
+    auto up_ret = std::make_unique<Interface>(strIfName);
     up_ret->addAddress(sp_route);
 
     return up_ret;
