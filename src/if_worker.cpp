@@ -195,7 +195,7 @@ bool if_worker::removeIfAddr(std::shared_ptr<AddressBase> spaddrb)
     return true;
 }
 
-bool if_worker::addIfAddr(std::shared_ptr<addr> paddr)
+bool if_worker::addIfAddr(std::shared_ptr<AddressGroup> paddr)
 {
     struct ifaliasreq ifra;
     memset(&ifra, 0, sizeof(struct ifaliasreq));
@@ -403,7 +403,7 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    std::shared_ptr<addr> if_addr = tool::getAddrFromJson(cmd);
+    std::shared_ptr<AddressGroup> if_addr = tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";

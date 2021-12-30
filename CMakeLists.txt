@@ -22,7 +22,7 @@ set_property(TARGET sockpp PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_LIS
 set_property(TARGET sockpp PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/libsockpp.a")
 
 add_executable(nmdaemon
-        src/addr.cpp
+        src/addressgroup.cpp
         src/addressip4.cpp
         src/addressip6.cpp
         src/addresslink.cpp

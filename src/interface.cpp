@@ -17,7 +17,7 @@ void Interface::addAddress(struct ifaddrs* ifa)
 {
     try
     {
-        std::shared_ptr<addr> spa = std::make_shared<addr>(ifa);
+        std::shared_ptr<AddressGroup> spa = std::make_shared<AddressGroup>(ifa);
         spVectAddrs.push_back(spa);
         if(spa->isUp())
             isIfUp = true;
@@ -31,7 +31,7 @@ void Interface::addAddress(struct ifaddrs* ifa)
     }
 }
 
-void Interface::addAddress(std::shared_ptr<addr> spa)
+void Interface::addAddress(std::shared_ptr<AddressGroup> spa)
 {
     if(spa==nullptr)
     {

@@ -11,7 +11,7 @@
 #include "json/json.hpp"
 #include "inifile/inifile.h"
 #include "nmjsonconst.h"
-#include "addr.h"
+#include "addressgroup.h"
 
 using json = nlohmann::json;
 

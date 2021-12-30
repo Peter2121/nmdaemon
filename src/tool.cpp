@@ -1,7 +1,7 @@
 #include "tool.h"
-#include "addr.h"
+#include "addressgroup.h"
 
-std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
+std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
 {
     json cmd_json_data = {};
     std::string str_ifaddr = "";
@@ -13,7 +13,7 @@ std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
     std::shared_ptr<AddressBase> sp_ifmask = nullptr;
     std::shared_ptr<AddressBase> sp_ifdata = nullptr;
     ipaddr_type ip_type;
-    std::shared_ptr<addr> sp_addr = nullptr;
+    std::shared_ptr<AddressGroup> sp_addr = nullptr;
 
     if(!cmd.contains(JSON_PARAM_DATA))
     {
@@ -126,7 +126,7 @@ std::shared_ptr<addr> tool::getAddrFromJson(json cmd)
     }
 
     try {
-        sp_addr = std::make_shared<addr>(sp_ifaddr, sp_ifmask, sp_ifdata, ip_type, false);
+        sp_addr = std::make_shared<AddressGroup>(sp_ifaddr, sp_ifmask, sp_ifdata, ip_type, false);
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Cannot create if_addr from JSON parameters";
         return nullptr;

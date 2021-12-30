@@ -37,7 +37,7 @@ protected:
     std::string ifName = "";
     std::shared_ptr<AddressBase> getMainIfAddr(short family);
     bool removeIfAddr(std::shared_ptr<AddressBase>);
-    bool addIfAddr(std::shared_ptr<addr>);
+    bool addIfAddr(std::shared_ptr<AddressGroup>);
     bool isDHCPEnabled();
     bool termDHCPClient();
     bool killDHCPClient();

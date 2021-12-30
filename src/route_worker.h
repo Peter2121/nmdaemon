@@ -11,7 +11,7 @@
 #include "sockpp/version.h"
 #include "nmworker.h"
 #include "interface.h"
-#include "addr.h"
+#include "addressgroup.h"
 #include "tool.h"
 
 typedef struct
@@ -53,9 +53,9 @@ protected:
         { nmscope::ROUTE, nmcmd::RT_LIST },
         { nmscope::ROUTE, nmcmd::RT_LIST6 }
     };
-    bool setStaticRoute(std::shared_ptr<addr>);
-    bool delStaticRoute(std::shared_ptr<addr>);
-    std::unique_ptr<Interface> getStaticRoute(std::shared_ptr<addr>);
+    bool setStaticRoute(std::shared_ptr<AddressGroup>);
+    bool delStaticRoute(std::shared_ptr<AddressGroup>);
+    std::unique_ptr<Interface> getStaticRoute(std::shared_ptr<AddressGroup>);
 //    bool getStaticRouteN(std::shared_ptr<addr>);
     void setPsaStruct(sockaddr_in *, const std::shared_ptr<AddressBase>);
     void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<AddressBase>);

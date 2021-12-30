@@ -20,7 +20,7 @@ enum class ipaddr_type
     BCAST, PPP, LINK, LOOPBACK, ROUTE, UNKNOWN
 };
 
-class addr
+class AddressGroup
 {
 protected:
     ipaddr_type ipType;
@@ -34,10 +34,10 @@ protected:
     bool isValidIp4() const;
     bool isValidIp6() const;
 public:
-    addr(struct ifaddrs*);
-    addr(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
-    addr();
-    ~addr();
+    AddressGroup(struct ifaddrs*);
+    AddressGroup(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, ipaddr_type type=ipaddr_type::BCAST, bool up=false, int fl=0, bool primary=false);
+    AddressGroup();
+    ~AddressGroup();
     const std::shared_ptr<AddressBase> getAddr() const;
     const std::shared_ptr<AddressBase> getMask() const;
     const std::shared_ptr<AddressBase> getData() const;

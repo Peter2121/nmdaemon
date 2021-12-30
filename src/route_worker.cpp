@@ -91,7 +91,7 @@ void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<Addre
     memcpy(psa6, spstrt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 
-bool route_worker::setStaticRoute(std::shared_ptr<addr> stroute)
+bool route_worker::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
 {
     std::unique_ptr<static_route> up_new_route=nullptr;
     std::unique_ptr<static_route6> up_new_route6=nullptr;
@@ -164,7 +164,7 @@ bool route_worker::setStaticRoute(std::shared_ptr<addr> stroute)
     }
 }
 
-bool route_worker::delStaticRoute(std::shared_ptr<addr> stroute)
+bool route_worker::delStaticRoute(std::shared_ptr<AddressGroup> stroute)
 {
     std::unique_ptr<static_route> up_old_route=nullptr;
     std::unique_ptr<static_route6> up_old_route6=nullptr;
@@ -335,7 +335,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
 */
 json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
 {
-    std::shared_ptr<addr> sp_rt_addr=nullptr;
+    std::shared_ptr<AddressGroup> sp_rt_addr=nullptr;
     std::unique_ptr<Interface> proute=nullptr;
     json cmd = {};
     json res_route = {};
@@ -370,7 +370,7 @@ json route_worker::execCmdDefRouteDel(nmcommand_data*)
 {
     auto spaddr = std::make_shared<AddressIp4>();
     auto spmask = std::make_shared<AddressIp4>();
-    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
 
     if( !getStaticRoute(sp_rt_addr) )
     {
@@ -397,7 +397,7 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
     auto spmask = std::make_shared<AddressIp4>();
 //    auto spgate = std::make_shared<address_ip4>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
-    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
     if( !getStaticRoute(sp_rt_addr) )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get default route";
@@ -420,7 +420,7 @@ json route_worker::execCmdDefRouteGet6(nmcommand_data*)
     auto spmask = std::make_shared<AddressIp6>();
 //    auto spgate = std::make_shared<address_ip6>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
-    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
+    auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, ipaddr_type::ROUTE);
     if( !getStaticRoute(sp_rt_addr) )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet6 - cannot get default route";
@@ -705,13 +705,13 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
                     if(iface->getName()==strIfName)
                     {
                         isFound = true;
-                        iface->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
+                        iface->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
                     }
                 }
                 if(!isFound)
                 {
                     ifaces.push_back(new Interface(strIfName));
-                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<addr>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
+                    ifaces[ifaces.size()-1]->addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, ipaddr_type::ROUTE, true, rtm->rtm_flags));
                 }
             }
         }
@@ -755,7 +755,7 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     }
 }
 
-std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<addr> sp_route)
+std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<AddressGroup> sp_route)
 {
     std::unique_ptr<static_route> up_cur_route=nullptr;
     std::unique_ptr<static_route6> up_cur_route6=nullptr;

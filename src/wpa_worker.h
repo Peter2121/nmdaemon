@@ -16,7 +16,7 @@
 #include "sockpp/unix_dgram_socket.h"
 #include "sockpp/version.h"
 #include "nmworker.h"
-#include "addr.h"
+#include "addressgroup.h"
 #include "tool.h"
 
 namespace fs = std::filesystem;

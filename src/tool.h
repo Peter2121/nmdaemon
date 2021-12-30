@@ -19,14 +19,14 @@
 
 using json = nlohmann::json;
 
-class addr;
+class AddressGroup;
 
 class tool
 {
 protected:
     static inline const std::string DHCP_CLIENT_PROCESS = "dhclient";
 public:
-    static std::shared_ptr<addr> getAddrFromJson(json);
+    static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
     static std::string getIfPrimaryAddr4(std::string);

@@ -1,6 +1,6 @@
-#include "addr.h"
+#include "addressgroup.h"
 
-addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
+AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
 {
     if(ifa==nullptr)
         throw nmExcept;
@@ -106,7 +106,7 @@ addr::addr(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
     }
 }
 
-addr::addr( std::shared_ptr<AddressBase> addr,
+AddressGroup::AddressGroup( std::shared_ptr<AddressBase> addr,
             std::shared_ptr<AddressBase> mask,
             std::shared_ptr<AddressBase> data,
             ipaddr_type type, bool up, int fl, bool primary) :
@@ -114,37 +114,37 @@ addr::addr( std::shared_ptr<AddressBase> addr,
 {
 }
 
-addr::addr() :
+AddressGroup::AddressGroup() :
     ipType(ipaddr_type::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrPrimary(false)
 {
 }
 
-addr::~addr()
+AddressGroup::~AddressGroup()
 {
 }
 
-void addr::setAddr(std::shared_ptr<AddressBase> spaddr)
+void AddressGroup::setAddr(std::shared_ptr<AddressBase> spaddr)
 {
     spIpAddress = spaddr;
 }
 
-void addr::setMask(std::shared_ptr<AddressBase> spmask)
+void AddressGroup::setMask(std::shared_ptr<AddressBase> spmask)
 {
     spIpMask = spmask;
 }
 
-void addr::setData(std::shared_ptr<AddressBase> spdata)
+void AddressGroup::setData(std::shared_ptr<AddressBase> spdata)
 {
     spIpData = spdata;
 }
 
-void addr::setType(ipaddr_type type)
+void AddressGroup::setType(ipaddr_type type)
 {
     ipType = type;
 }
 
 // TODO: customize separator and eol strings (take them from arguments)
-const std::string addr::getAddrString() const
+const std::string AddressGroup::getAddrString() const
 {
     std::string retAddrStr = "";
     std::string separator = ":";
@@ -209,7 +209,7 @@ const std::string addr::getAddrString() const
     return retAddrStr;
 }
 
-const nlohmann::json addr::getAddrJson() const
+const nlohmann::json AddressGroup::getAddrJson() const
 {
     nlohmann::json retAddrJson;
     nlohmann::json dataJson;
@@ -303,47 +303,47 @@ const nlohmann::json addr::getAddrJson() const
     return retAddrJson;
 }
 
-bool addr::isUp() const
+bool AddressGroup::isUp() const
 {
     return isAddrUp;
 }
 
-short addr::getFamily() const
+short AddressGroup::getFamily() const
 {
     return spIpAddress->getFamily();
 }
 
-const AddressBase* addr::getAddrAB() const
+const AddressBase* AddressGroup::getAddrAB() const
 {
     return spIpAddress.get();
 }
 
-const AddressBase* addr::getMaskAB() const
+const AddressBase* AddressGroup::getMaskAB() const
 {
     return spIpMask.get();
 }
 
-const AddressBase* addr::getDataAB() const
+const AddressBase* AddressGroup::getDataAB() const
 {
     return spIpData.get();
 }
 
-const std::shared_ptr<AddressBase> addr::getAddr() const
+const std::shared_ptr<AddressBase> AddressGroup::getAddr() const
 {
     return spIpAddress;
 }
 
-const std::shared_ptr<AddressBase> addr::getMask() const
+const std::shared_ptr<AddressBase> AddressGroup::getMask() const
 {
     return spIpMask;
 }
 
-const std::shared_ptr<AddressBase> addr::getData() const
+const std::shared_ptr<AddressBase> AddressGroup::getData() const
 {
     return spIpData;
 }
 
-bool addr::isValidIp() const
+bool AddressGroup::isValidIp() const
 {
     switch(spIpAddress->getFamily())
     {
@@ -357,7 +357,7 @@ bool addr::isValidIp() const
         return true;
 }
 
-bool addr::isValidIp4() const
+bool AddressGroup::isValidIp4() const
 {
     uint32_t addr_nbo=0;
     uint32_t mask_nbo=0;
@@ -393,22 +393,22 @@ bool addr::isValidIp4() const
     }
 }
 
-bool addr::isValidIp6() const
+bool AddressGroup::isValidIp6() const
 {
     return true; // Not (yet) implemented
 }
 
-int addr::getFlags() const
+int AddressGroup::getFlags() const
 {
     return flags;
 }
 
-void addr::setFlags(int f)
+void AddressGroup::setFlags(int f)
 {
     flags = f;
 }
 
-const std::vector<std::string> addr::getFlagsRoute() const
+const std::vector<std::string> AddressGroup::getFlagsRoute() const
 {
     std::vector<std::string> retFlags;
 /*
@@ -506,7 +506,7 @@ const std::string JSON_DATA_RTFLAG_STICKY = "STICKY";
     return retFlags;
 }
 
-bool addr::isPrimary() const
+bool AddressGroup::isPrimary() const
 {
     return isAddrPrimary;
 }
