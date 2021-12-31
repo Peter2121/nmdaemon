@@ -1,4 +1,4 @@
-#include "route_worker.h"
+#include "nmworkerroute.h"
 
 /*
  * Round up 'a' to next multiple of 'size', which must be a power of 2
@@ -12,18 +12,18 @@
 */
 #define NEXT_SA(ap) ap = (struct sockaddr *) ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (u_long)) : sizeof(u_long)))
 
-route_worker::route_worker()
+NmWorkerRoute::NmWorkerRoute()
 { }
 
-route_worker::~route_worker()
+NmWorkerRoute::~NmWorkerRoute()
 { }
 
-NmScope route_worker::getScope()
+NmScope NmWorkerRoute::getScope()
 {
     return NmScope::ROUTE;
 }
 
-json route_worker::execCmd(NmCommandData* pcmd)
+json NmWorkerRoute::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -49,7 +49,7 @@ json route_worker::execCmd(NmCommandData* pcmd)
     }
 }
 
-bool route_worker::isValidCmd(NmCommandData* pcmd)
+bool NmWorkerRoute::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -77,21 +77,21 @@ void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const address_base* strt)
     memcpy(psa6, strt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 */
-void route_worker::setPsaStruct(sockaddr_in *psa, const std::shared_ptr<AddressBase> spstrt)
+void NmWorkerRoute::setPsaStruct(sockaddr_in *psa, const std::shared_ptr<AddressBase> spstrt)
 {
     psa->sin_len = sizeof(struct sockaddr_in);
     psa->sin_family = spstrt->getFamily();
     memcpy(psa, spstrt->getSockAddr(), sizeof(struct sockaddr_in));
 }
 
-void route_worker::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<AddressBase> spstrt)
+void NmWorkerRoute::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<AddressBase> spstrt)
 {
     psa6->sin6_len = sizeof(struct sockaddr_in6);
     psa6->sin6_family = spstrt->getFamily();
     memcpy(psa6, spstrt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 
-bool route_worker::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
+bool NmWorkerRoute::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
 {
     std::unique_ptr<static_route> up_new_route=nullptr;
     std::unique_ptr<static_route6> up_new_route6=nullptr;
@@ -164,7 +164,7 @@ bool route_worker::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
     }
 }
 
-bool route_worker::delStaticRoute(std::shared_ptr<AddressGroup> stroute)
+bool NmWorkerRoute::delStaticRoute(std::shared_ptr<AddressGroup> stroute)
 {
     std::unique_ptr<static_route> up_old_route=nullptr;
     std::unique_ptr<static_route6> up_old_route6=nullptr;
@@ -333,7 +333,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     }
 }
 */
-json route_worker::execCmdRouteGet(NmCommandData* pcmd)
+json NmWorkerRoute::execCmdRouteGet(NmCommandData* pcmd)
 {
     std::shared_ptr<AddressGroup> sp_rt_addr=nullptr;
     std::unique_ptr<Interface> proute=nullptr;
@@ -366,7 +366,7 @@ json route_worker::execCmdRouteGet(NmCommandData* pcmd)
     return res_route;
 }
 
-json route_worker::execCmdDefRouteDel(NmCommandData*)
+json NmWorkerRoute::execCmdDefRouteDel(NmCommandData*)
 {
     auto spaddr = std::make_shared<AddressIp4>();
     auto spmask = std::make_shared<AddressIp4>();
@@ -388,7 +388,7 @@ json route_worker::execCmdDefRouteDel(NmCommandData*)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdDefRouteGet(NmCommandData*)
+json NmWorkerRoute::execCmdDefRouteGet(NmCommandData*)
 {
     json res_route = {};
     short family;
@@ -411,7 +411,7 @@ json route_worker::execCmdDefRouteGet(NmCommandData*)
     return res_route;
 }
 
-json route_worker::execCmdDefRouteGet6(NmCommandData*)
+json NmWorkerRoute::execCmdDefRouteGet6(NmCommandData*)
 {
     json res_route = {};
     short family;
@@ -434,7 +434,7 @@ json route_worker::execCmdDefRouteGet6(NmCommandData*)
     return res_route;
 }
 
-json route_worker::execCmdRouteSet(NmCommandData* pcmd)
+json NmWorkerRoute::execCmdRouteSet(NmCommandData* pcmd)
 {
     json cmd = {};
 
@@ -445,7 +445,7 @@ json route_worker::execCmdRouteSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if(!route_worker::setStaticRoute(rt_addr))
+    if(!NmWorkerRoute::setStaticRoute(rt_addr))
     {
         LOG_S(ERROR) << "Cannot set route";
         return JSON_RESULT_ERR;
@@ -455,7 +455,7 @@ json route_worker::execCmdRouteSet(NmCommandData* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdRouteDel(NmCommandData* pcmd)
+json NmWorkerRoute::execCmdRouteDel(NmCommandData* pcmd)
 {
     json cmd = {};
 
@@ -466,7 +466,7 @@ json route_worker::execCmdRouteDel(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if(!route_worker::delStaticRoute(rt_addr))
+    if(!NmWorkerRoute::delStaticRoute(rt_addr))
     {
         LOG_S(ERROR) << "Cannot delete route";
         return JSON_RESULT_ERR;
@@ -476,7 +476,7 @@ json route_worker::execCmdRouteDel(NmCommandData* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdDefRouteSet(NmCommandData* pcmd)
+json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
 {
     json cmd = {};
     std::string strDefAddr4 = "0.0.0.0";
@@ -513,7 +513,7 @@ json route_worker::execCmdDefRouteSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if(!route_worker::setStaticRoute(rt_addr))
+    if(!NmWorkerRoute::setStaticRoute(rt_addr))
     {
         LOG_S(ERROR) << "Cannot set default route";
         return JSON_RESULT_ERR;
@@ -523,7 +523,7 @@ json route_worker::execCmdDefRouteSet(NmCommandData* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdRouteList(NmCommandData* pcmd)
+json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
 {
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;
@@ -755,7 +755,7 @@ json route_worker::execCmdRouteList(NmCommandData* pcmd)
     }
 }
 
-std::unique_ptr<Interface> route_worker::getStaticRoute(std::shared_ptr<AddressGroup> sp_route)
+std::unique_ptr<Interface> NmWorkerRoute::getStaticRoute(std::shared_ptr<AddressGroup> sp_route)
 {
     std::unique_ptr<static_route> up_cur_route=nullptr;
     std::unique_ptr<static_route6> up_cur_route6=nullptr;

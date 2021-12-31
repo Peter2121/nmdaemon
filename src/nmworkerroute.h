@@ -1,5 +1,5 @@
-#ifndef ROUTE_WORKER_H
-#define ROUTE_WORKER_H
+#ifndef NMWORKERROUTE_H
+#define NMWORKERROUTE_H
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -38,7 +38,7 @@ typedef struct
       struct sockaddr_dl netmask;
 } static_route_link;
 
-class route_worker : public NmWorkerBase
+class NmWorkerRoute : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =
@@ -60,8 +60,8 @@ protected:
     void setPsaStruct(sockaddr_in *, const std::shared_ptr<AddressBase>);
     void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<AddressBase>);
 public:
-    route_worker();
-    ~route_worker();
+    NmWorkerRoute();
+    ~NmWorkerRoute();
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
@@ -76,4 +76,4 @@ public:
 //    json execCmdRouteList6(nmcommand_data*);
 };
 
-#endif // ROUTE_WORKER_H
+#endif // NMWORKERROUTE_H

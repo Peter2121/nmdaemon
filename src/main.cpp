@@ -35,7 +35,7 @@ std::shared_ptr<NmConfig> sp_conf;
 #include "nmworkerif.h"
 #endif
 #if defined (WORKER_ROUTE)
-#include "route_worker.h"
+#include "nmworkerroute.h"
 #endif
 #if defined (WORKER_WPA)
 #include "wpa_worker.h"
