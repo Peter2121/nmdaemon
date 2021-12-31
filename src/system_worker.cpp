@@ -225,7 +225,7 @@ json system_worker::execCmdRcConfRead(nmcommand_data*)
     if(rcconf_name.empty())
         rcconf_name = RCCONF_FILENAME_DEFAULT;
     LOG_S(INFO) << "execCmdRcConfRead: Trying to read from " << rcconf_name;
-    prcConf = std::make_unique<rcconf>(rcconf_name, 0);
+    prcConf = std::make_unique<RcConf>(rcconf_name, 0);
     if(!prcConf->iniLoad())
     {
         LOG_S(ERROR) << "execCmdRcConfRead: Cannot load " << rcconf_name;
@@ -255,7 +255,7 @@ json system_worker::execCmdRcConfWrite(nmcommand_data *pcmd)
     if(n_backups==0)
         LOG_S(WARNING) << "File " << rcconf_name << " will be overwritten, backups are disabled in " << sp_conf->getConfigFileName()
                        << " : " << CONF_KEY_RCCONF_FILE << "=" << str_nbackups;
-    prcConf = std::make_unique<rcconf>(rcconf_name, n_backups);
+    prcConf = std::make_unique<RcConf>(rcconf_name, n_backups);
     try {
         cmd_json = pcmd->getJsonData();
         jdata = cmd_json[JSON_PARAM_DATA];

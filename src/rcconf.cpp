@@ -1,27 +1,27 @@
 #include "rcconf.h"
 
-rcconf::rcconf(std::string path, short nbkp) : rcFileName(path), nBackups(nbkp)
+RcConf::RcConf(std::string path, short nbkp) : rcFileName(path), nBackups(nbkp)
 {
     rcIniFile = new CIniFile();
 }
 
-rcconf::~rcconf()
+RcConf::~RcConf()
 {
     delete rcIniFile;
 }
 
-bool rcconf::iniLoad()
+bool RcConf::iniLoad()
 {
     return rcIniFile->Load(rcFileName);
 }
 
-bool rcconf::iniSave()
+bool RcConf::iniSave()
 {
     return rcIniFile->Save(rcFileName);
 }
 
 // TODO: Decode ipv6 configuration
-json rcconf::getRcIpConfig()
+json RcConf::getRcIpConfig()
 {
     std::string strDefaultRouter = "";
     std::string key = "";
@@ -240,7 +240,7 @@ json rcconf::getRcIpConfig()
     return jret;
 }
 
-json rcconf::getIpConfFromString(std::string ifconfig)
+json RcConf::getIpConfFromString(std::string ifconfig)
 {
     unsigned int arrIntIp4Conf[12];
     unsigned int imask;
@@ -305,7 +305,7 @@ json rcconf::getIpConfFromString(std::string ifconfig)
     return jdata;
 }
 
-json rcconf::getRouteConfFromString(std::string rtconfig)
+json RcConf::getRouteConfFromString(std::string rtconfig)
 {
     unsigned int arrIntIp4Conf[12];
     const std::string quotes = "\"";
@@ -398,7 +398,7 @@ json rcconf::getRouteConfFromString(std::string rtconfig)
     return jdata;
 }
 
-std::string rcconf::getStrInetMaskFromPrefix(int prefix)
+std::string RcConf::getStrInetMaskFromPrefix(int prefix)
 {
     unsigned long lmask = (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF;
     return std::to_string(lmask>>24) + "." +
@@ -407,7 +407,7 @@ std::string rcconf::getStrInetMaskFromPrefix(int prefix)
               std::to_string(lmask&0xFF);
 }
 
-bool rcconf::rotateRcConfFile()
+bool RcConf::rotateRcConfFile()
 {
     std::string rc_file_name1;
     std::string rc_file_name2;
@@ -460,7 +460,7 @@ bool rcconf::rotateRcConfFile()
     return !error;
 }
 
-bool rcconf::setRcIpConfig(json rcdata)
+bool RcConf::setRcIpConfig(json rcdata)
 {
     json jar_interfaces = json::array();
     json jar_addresses = json::array();

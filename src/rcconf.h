@@ -15,7 +15,7 @@
 
 using json = nlohmann::json;
 
-class rcconf
+class RcConf
 {
 protected:
     static inline const std::string IFCONFIG_KEY_PREFIX = "ifconfig_";
@@ -37,8 +37,8 @@ protected:
     json getRouteConfFromString(std::string);
     short nBackups;
 public:
-    rcconf(std::string, short);
-    ~rcconf();
+    RcConf(std::string, short);
+    ~RcConf();
     bool iniLoad();
     bool iniSave();
     bool rotateRcConfFile();

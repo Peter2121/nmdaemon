@@ -33,7 +33,7 @@ protected:
     static inline const std::string RCCONF_FILENAME_DEFAULT = "/etc/rc.conf";
     static inline const std::string CONF_KEY_RCCONF_BACKUPS = "rcconf_backups";
     static inline const std::string RCCONF_BACKUPS_DEFAULT="5";
-    std::unique_ptr<rcconf> prcConf;
+    std::unique_ptr<RcConf> prcConf;
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:
