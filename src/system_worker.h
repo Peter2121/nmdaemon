@@ -15,7 +15,7 @@
 
 extern std::shared_ptr<NmConfig> sp_conf;
 
-class system_worker : public nmworker
+class system_worker : public NmWorker
 {
 protected:
     static constexpr nmcommand Cmds[] =

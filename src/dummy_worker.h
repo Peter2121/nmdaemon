@@ -3,7 +3,7 @@
 
 #include "nmworker.h"
 
-class dummy_worker : public nmworker
+class dummy_worker : public NmWorker
 {
 protected:
     static constexpr nmcommand Cmds[] =

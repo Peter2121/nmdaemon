@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     char buf[MAXBUF];
     bool res;
     std::vector<NmDaemon*> daemons;
-    std::vector<nmworker*> workers;
+    std::vector<NmWorker*> workers;
     std::vector<std::thread*> threads;
     std::string conf_value;
     std::string config_filename = DEFAULT_CONF_FILENAME;

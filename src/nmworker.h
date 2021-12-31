@@ -3,10 +3,10 @@
 
 #include "nmcommand_data.h"
 
-class nmworker
+class NmWorker
 {
 public:
-    virtual ~nmworker() {}
+    virtual ~NmWorker() {}
     virtual nmscope getScope() = 0;
     virtual json execCmd(nmcommand_data*) = 0;
     virtual bool isValidCmd(nmcommand_data*) = 0;

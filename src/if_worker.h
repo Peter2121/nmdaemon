@@ -12,7 +12,7 @@
 #include "interface.h"
 #include "tool.h"
 
-class if_worker : public nmworker
+class if_worker : public NmWorker
 {
 protected:
     static constexpr nmcommand Cmds[] =

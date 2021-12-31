@@ -27,10 +27,10 @@ protected:
     std::mutex sock_access_write;
     std::mutex work_access;
     std::queue<nmcommand_data*> requests;
-    std::vector<nmworker*> workers;
+    std::vector<NmWorker*> workers;
 
 public:
-    NmDaemon(std::vector<nmworker*>);
+    NmDaemon(std::vector<NmWorker*>);
     void sock_receiver(sockpp::unix_socket);
     void dispatcher(sockpp::unix_socket);
     void shutdown();

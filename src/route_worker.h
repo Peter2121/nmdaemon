@@ -38,7 +38,7 @@ typedef struct
       struct sockaddr_dl netmask;
 } static_route_link;
 
-class route_worker : public nmworker
+class route_worker : public NmWorker
 {
 protected:
     static constexpr nmcommand Cmds[] =

@@ -21,7 +21,7 @@
 
 namespace fs = std::filesystem;
 
-class wpa_worker : public nmworker
+class wpa_worker : public NmWorker
 {
 protected:
     static constexpr nmcommand Cmds[] =
