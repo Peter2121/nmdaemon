@@ -41,17 +41,17 @@ typedef struct
 class route_worker : public NmWorker
 {
 protected:
-    static constexpr nmcommand Cmds[] =
+    static constexpr NmCommand Cmds[] =
     {
-        { nmscope::ROUTE, nmcmd::RT_GET },
-        { nmscope::ROUTE, nmcmd::RT_DEF_GET },
-        { nmscope::ROUTE, nmcmd::RT_DEF6_GET },
-        { nmscope::ROUTE, nmcmd::RT_SET },
-        { nmscope::ROUTE, nmcmd::RT_DEF_SET },
-        { nmscope::ROUTE, nmcmd::RT_DEL },
-        { nmscope::ROUTE, nmcmd::RT_DEF_DEL },
-        { nmscope::ROUTE, nmcmd::RT_LIST },
-        { nmscope::ROUTE, nmcmd::RT_LIST6 }
+        { NmScope::ROUTE, NmCmd::RT_GET },
+        { NmScope::ROUTE, NmCmd::RT_DEF_GET },
+        { NmScope::ROUTE, NmCmd::RT_DEF6_GET },
+        { NmScope::ROUTE, NmCmd::RT_SET },
+        { NmScope::ROUTE, NmCmd::RT_DEF_SET },
+        { NmScope::ROUTE, NmCmd::RT_DEL },
+        { NmScope::ROUTE, NmCmd::RT_DEF_DEL },
+        { NmScope::ROUTE, NmCmd::RT_LIST },
+        { NmScope::ROUTE, NmCmd::RT_LIST6 }
     };
     bool setStaticRoute(std::shared_ptr<AddressGroup>);
     bool delStaticRoute(std::shared_ptr<AddressGroup>);
@@ -62,7 +62,7 @@ protected:
 public:
     route_worker();
     ~route_worker();
-    nmscope getScope();
+    NmScope getScope();
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
     json execCmdRouteSet(nmcommand_data*);

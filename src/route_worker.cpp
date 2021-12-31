@@ -18,31 +18,31 @@ route_worker::route_worker()
 route_worker::~route_worker()
 { }
 
-nmscope route_worker::getScope()
+NmScope route_worker::getScope()
 {
-    return nmscope::ROUTE;
+    return NmScope::ROUTE;
 }
 
 json route_worker::execCmd(nmcommand_data* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
-        case nmcmd::RT_GET :
+        case NmCmd::RT_GET :
             return execCmdRouteGet(pcmd);
-        case nmcmd::RT_DEF_GET :
+        case NmCmd::RT_DEF_GET :
             return execCmdDefRouteGet(pcmd);
-        case nmcmd::RT_SET :
+        case NmCmd::RT_SET :
             return execCmdRouteSet(pcmd);
-        case nmcmd::RT_DEF_SET :
+        case NmCmd::RT_DEF_SET :
             return execCmdDefRouteSet(pcmd);
-        case nmcmd::RT_LIST :
-        case nmcmd::RT_LIST6 :
+        case NmCmd::RT_LIST :
+        case NmCmd::RT_LIST6 :
             return execCmdRouteList(pcmd);
-        case nmcmd::RT_DEL :
+        case NmCmd::RT_DEL :
             return execCmdRouteDel(pcmd);
-        case nmcmd::RT_DEF6_GET :
+        case NmCmd::RT_DEF6_GET :
             return execCmdDefRouteGet6(pcmd);
-        case nmcmd::RT_DEF_DEL :
+        case NmCmd::RT_DEF_DEL :
             return execCmdDefRouteDel(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
@@ -546,9 +546,9 @@ json route_worker::execCmdRouteList(nmcommand_data* pcmd)
     nlohmann::json retIfListJson = {};
     nlohmann::json res_routes = {};
 
-    if(pcmd->getCommand().cmd == nmcmd::RT_LIST)
+    if(pcmd->getCommand().cmd == NmCmd::RT_LIST)
         family = AF_INET;
-    else if(pcmd->getCommand().cmd == nmcmd::RT_LIST6)
+    else if(pcmd->getCommand().cmd == NmCmd::RT_LIST6)
         family = AF_INET6;
     else
         return JSON_RESULT_ERR;

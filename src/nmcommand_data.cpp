@@ -8,30 +8,30 @@ nmcommand_data::nmcommand_data(std::string str_data)
         if (json_data.contains(JSON_PARAM_SCOPE))
         {
             std::string strScope = json_data[JSON_PARAM_SCOPE];
-            auto enumscope = magic_enum::enum_cast<nmscope>(strScope);
+            auto enumscope = magic_enum::enum_cast<NmScope>(strScope);
             if (enumscope.has_value())
                 command.scope = enumscope.value();
             else
-                command.scope = nmscope::NONE;
+                command.scope = NmScope::NONE;
         }
         else
-            command.scope = nmscope::NONE;
+            command.scope = NmScope::NONE;
         if (json_data.contains(JSON_PARAM_CMD))
         {
             std::string strCmd = json_data[JSON_PARAM_CMD];
-            auto enumcmd = magic_enum::enum_cast<nmcmd>(strCmd);
+            auto enumcmd = magic_enum::enum_cast<NmCmd>(strCmd);
             if (enumcmd.has_value())
                 command.cmd = enumcmd.value();
             else
-                command.cmd = nmcmd::NONE;
+                command.cmd = NmCmd::NONE;
         }
         else
-            command.cmd = nmcmd::NONE;
+            command.cmd = NmCmd::NONE;
     }
     else
     {
-        command.scope = nmscope::NONE;
-        command.cmd = nmcmd::NONE;
+        command.scope = NmScope::NONE;
+        command.cmd = NmCmd::NONE;
     }
 }
 
@@ -39,9 +39,9 @@ bool nmcommand_data::isValid()
 {
     if(json_data.is_discarded())
         return false;
-    if(command.scope == nmscope::NONE)
+    if(command.scope == NmScope::NONE)
         return false;
-    if(command.cmd == nmcmd::NONE)
+    if(command.cmd == NmCmd::NONE)
         return false;
 
     return true;
@@ -52,7 +52,7 @@ json nmcommand_data::getJsonData()
     return json_data;
 }
 
-nmcommand nmcommand_data::getCommand()
+NmCommand nmcommand_data::getCommand()
 {
     return command;
 }

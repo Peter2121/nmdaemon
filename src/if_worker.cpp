@@ -8,33 +8,33 @@ if_worker::~if_worker()
 {
 }
 
-nmscope if_worker::getScope()
+NmScope if_worker::getScope()
 {
-    return nmscope::INTERFACE;
+    return NmScope::INTERFACE;
 }
 
 json if_worker::execCmd(nmcommand_data* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
-        case nmcmd::IP_ADDR_SET :
+        case NmCmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
-        case nmcmd::IP4_ADDR_GET :
+        case NmCmd::IP4_ADDR_GET :
             return execCmdIpAddrGet(pcmd);
-        case nmcmd::IP_ADDR_ADD :
+        case NmCmd::IP_ADDR_ADD :
             return execCmdIpAddrAdd(pcmd);
-        case nmcmd::IP_ADDR_REMOVE :
+        case NmCmd::IP_ADDR_REMOVE :
             return execCmdIpAddrRemove(pcmd);
-        case nmcmd::MTU_GET :
+        case NmCmd::MTU_GET :
             return execCmdMtuGet(pcmd);
-        case nmcmd::MTU_SET :
+        case NmCmd::MTU_SET :
             return execCmdMtuSet(pcmd);
-        case nmcmd::IP4_DHCP_ENABLE :
+        case NmCmd::IP4_DHCP_ENABLE :
             return execCmdDHCPEnable(pcmd);
-        case nmcmd::IP6_ADDR_GET :
-        case nmcmd::IP6_DHCP_ENABLE :
-        case nmcmd::MAC_ADDR_GET :
-        case nmcmd::MAC_ADDR_SET :
+        case NmCmd::IP6_ADDR_GET :
+        case NmCmd::IP6_DHCP_ENABLE :
+        case NmCmd::MAC_ADDR_GET :
+        case NmCmd::MAC_ADDR_SET :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };

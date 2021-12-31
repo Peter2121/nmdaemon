@@ -15,19 +15,19 @@
 class if_worker : public NmWorker
 {
 protected:
-    static constexpr nmcommand Cmds[] =
+    static constexpr NmCommand Cmds[] =
     {
-        { nmscope::INTERFACE, nmcmd::IP_ADDR_SET },
-        { nmscope::INTERFACE, nmcmd::IP4_ADDR_GET },
-        { nmscope::INTERFACE, nmcmd::IP6_ADDR_GET },
-        { nmscope::INTERFACE, nmcmd::IP4_DHCP_ENABLE },
-        { nmscope::INTERFACE, nmcmd::IP6_DHCP_ENABLE },
-        { nmscope::INTERFACE, nmcmd::IP_ADDR_ADD },
-        { nmscope::INTERFACE, nmcmd::IP_ADDR_REMOVE },
-        { nmscope::INTERFACE, nmcmd::MTU_GET },
-        { nmscope::INTERFACE, nmcmd::MTU_SET },
-        { nmscope::INTERFACE, nmcmd::MAC_ADDR_GET },
-        { nmscope::INTERFACE, nmcmd::MAC_ADDR_SET }
+        { NmScope::INTERFACE, NmCmd::IP_ADDR_SET },
+        { NmScope::INTERFACE, NmCmd::IP4_ADDR_GET },
+        { NmScope::INTERFACE, NmCmd::IP6_ADDR_GET },
+        { NmScope::INTERFACE, NmCmd::IP4_DHCP_ENABLE },
+        { NmScope::INTERFACE, NmCmd::IP6_DHCP_ENABLE },
+        { NmScope::INTERFACE, NmCmd::IP_ADDR_ADD },
+        { NmScope::INTERFACE, NmCmd::IP_ADDR_REMOVE },
+        { NmScope::INTERFACE, NmCmd::MTU_GET },
+        { NmScope::INTERFACE, NmCmd::MTU_SET },
+        { NmScope::INTERFACE, NmCmd::MAC_ADDR_GET },
+        { NmScope::INTERFACE, NmCmd::MAC_ADDR_SET }
 //        { nmscope::INTERFACE, nmcmd::IF_ENABLE },
 //        { nmscope::INTERFACE, nmcmd::IF_DISABLE },
     };
@@ -46,7 +46,7 @@ protected:
 public:
     if_worker();
     ~if_worker();
-    nmscope getScope();
+    NmScope getScope();
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
     json execCmdIpAddrSet(nmcommand_data*);

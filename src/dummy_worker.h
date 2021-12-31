@@ -6,14 +6,14 @@
 class dummy_worker : public NmWorker
 {
 protected:
-    static constexpr nmcommand Cmds[] =
+    static constexpr NmCommand Cmds[] =
     {
-        { nmscope::DUMMY, nmcmd::TEST }
+        { NmScope::DUMMY, NmCmd::TEST }
     };
 public:
     dummy_worker();
     ~dummy_worker();
-    nmscope getScope();
+    NmScope getScope();
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
 };

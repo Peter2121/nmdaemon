@@ -11,13 +11,13 @@ using json = nlohmann::json;
 class nmcommand_data
 {
 protected:
-    nmcommand command;
+    NmCommand command;
     json json_data;
 public:
     nmcommand_data(std::string str_data);
     bool isValid();
     json getJsonData();
-    nmcommand getCommand();
+    NmCommand getCommand();
 };
 
 #endif // NMCOMMAND_DATA_H

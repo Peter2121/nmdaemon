@@ -23,34 +23,34 @@ wpa_worker::~wpa_worker()
     delete buf;
 }
 
-nmscope wpa_worker::getScope()
+NmScope wpa_worker::getScope()
 {
-    return nmscope::WPA;
+    return NmScope::WPA;
 }
 
 json wpa_worker::execCmd(nmcommand_data* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
-        case nmcmd::WPA_LIST_IF :
+        case NmCmd::WPA_LIST_IF :
             return execCmdWpaListIf(pcmd);
-        case nmcmd::WPA_LIST :
+        case NmCmd::WPA_LIST :
             return execCmdWpaList(pcmd);
-        case nmcmd::WPA_SCAN :
+        case NmCmd::WPA_SCAN :
             return execCmdWpaScan(pcmd);
-        case nmcmd::WPA_STATUS :
+        case NmCmd::WPA_STATUS :
             return execCmdWpaStatus(pcmd);
-        case nmcmd::WPA_SETPSK :
+        case NmCmd::WPA_SETPSK :
             return execCmdWpaSetPsk(pcmd);
-        case nmcmd::WPA_CONNECT :
+        case NmCmd::WPA_CONNECT :
             return execCmdWpaConnect(pcmd);
-        case nmcmd::WPA_DISCONNECT :
+        case NmCmd::WPA_DISCONNECT :
             return execCmdWpaDisconnect(pcmd);
-        case nmcmd::WPA_REASSOC :
+        case NmCmd::WPA_REASSOC :
             return execCmdWpaReassoc(pcmd);
-        case nmcmd::WPA_ADD :
+        case NmCmd::WPA_ADD :
             return execCmdWpaAdd(pcmd);
-        case nmcmd::WPA_REMOVE :
+        case NmCmd::WPA_REMOVE :
             return execCmdWpaRemove(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };

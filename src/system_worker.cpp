@@ -9,27 +9,27 @@ system_worker::~system_worker()
 {
 }
 
-nmscope system_worker::getScope()
+NmScope system_worker::getScope()
 {
-    return nmscope::SYSTEM;
+    return NmScope::SYSTEM;
 }
 
 json system_worker::execCmd(nmcommand_data* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
-        case nmcmd::IF_LIST :
+        case NmCmd::IF_LIST :
             return execCmdIfList(pcmd);
-        case nmcmd::IF_ADD :
-        case nmcmd::IF_REMOVE :
+        case NmCmd::IF_ADD :
+        case NmCmd::IF_REMOVE :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
-        case nmcmd::IF_ENABLE :
+        case NmCmd::IF_ENABLE :
             return execCmdIfEnable(pcmd);
-        case nmcmd::IF_DISABLE :
+        case NmCmd::IF_DISABLE :
             return execCmdIfDisable(pcmd);
-        case nmcmd::RCCONF_READ :
+        case NmCmd::RCCONF_READ :
             return execCmdRcConfRead(pcmd);
-        case nmcmd::RCCONF_WRITE :
+        case NmCmd::RCCONF_WRITE :
             return execCmdRcConfWrite(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };

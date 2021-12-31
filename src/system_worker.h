@@ -18,15 +18,15 @@ extern std::shared_ptr<NmConfig> sp_conf;
 class system_worker : public NmWorker
 {
 protected:
-    static constexpr nmcommand Cmds[] =
+    static constexpr NmCommand Cmds[] =
     {
-        { nmscope::SYSTEM, nmcmd::IF_ADD },
-        { nmscope::SYSTEM, nmcmd::IF_REMOVE },
-        { nmscope::SYSTEM, nmcmd::IF_ENABLE },
-        { nmscope::SYSTEM, nmcmd::IF_DISABLE },
-        { nmscope::SYSTEM, nmcmd::IF_LIST },
-        { nmscope::SYSTEM, nmcmd::RCCONF_READ },
-        { nmscope::SYSTEM, nmcmd::RCCONF_WRITE }
+        { NmScope::SYSTEM, NmCmd::IF_ADD },
+        { NmScope::SYSTEM, NmCmd::IF_REMOVE },
+        { NmScope::SYSTEM, NmCmd::IF_ENABLE },
+        { NmScope::SYSTEM, NmCmd::IF_DISABLE },
+        { NmScope::SYSTEM, NmCmd::IF_LIST },
+        { NmScope::SYSTEM, NmCmd::RCCONF_READ },
+        { NmScope::SYSTEM, NmCmd::RCCONF_WRITE }
     };
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
@@ -39,7 +39,7 @@ protected:
 public:
     system_worker();
     ~system_worker();
-    nmscope getScope();
+    NmScope getScope();
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
     json execCmdIfList(nmcommand_data*);

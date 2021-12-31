@@ -1,12 +1,12 @@
 #ifndef NMCOMMAND_H
 #define NMCOMMAND_H
 
-enum class nmscope
+enum class NmScope
 {
     NONE, DUMMY, SYSTEM, INTERFACE, ROUTE, WPA
 };
 
-enum class nmcmd
+enum class NmCmd
 {
     NONE, TEST,
 //  system_worker
@@ -24,10 +24,10 @@ enum class nmcmd
     WPA_LIST_IF, WPA_LIST, WPA_SCAN, WPA_STATUS, WPA_SETPSK, WPA_CONNECT, WPA_DISCONNECT, WPA_REASSOC, WPA_ADD, WPA_REMOVE
 };
 
-struct nmcommand
+struct NmCommand
 {
-    nmscope scope;
-    nmcmd cmd;
+    NmScope scope;
+    NmCmd cmd;
 };
 
 #endif // NMCOMMAND_H

@@ -24,18 +24,18 @@ namespace fs = std::filesystem;
 class wpa_worker : public NmWorker
 {
 protected:
-    static constexpr nmcommand Cmds[] =
+    static constexpr NmCommand Cmds[] =
     {
-        { nmscope::WPA, nmcmd::WPA_LIST_IF },
-        { nmscope::WPA, nmcmd::WPA_LIST },
-        { nmscope::WPA, nmcmd::WPA_SCAN },
-        { nmscope::WPA, nmcmd::WPA_STATUS },
-        { nmscope::WPA, nmcmd::WPA_SETPSK },
-        { nmscope::WPA, nmcmd::WPA_CONNECT },
-        { nmscope::WPA, nmcmd::WPA_DISCONNECT },
-        { nmscope::WPA, nmcmd::WPA_REASSOC },
-        { nmscope::WPA, nmcmd::WPA_ADD },
-        { nmscope::WPA, nmcmd::WPA_REMOVE }
+        { NmScope::WPA, NmCmd::WPA_LIST_IF },
+        { NmScope::WPA, NmCmd::WPA_LIST },
+        { NmScope::WPA, NmCmd::WPA_SCAN },
+        { NmScope::WPA, NmCmd::WPA_STATUS },
+        { NmScope::WPA, NmCmd::WPA_SETPSK },
+        { NmScope::WPA, NmCmd::WPA_CONNECT },
+        { NmScope::WPA, NmCmd::WPA_DISCONNECT },
+        { NmScope::WPA, NmCmd::WPA_REASSOC },
+        { NmScope::WPA, NmCmd::WPA_ADD },
+        { NmScope::WPA, NmCmd::WPA_REMOVE }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -73,7 +73,7 @@ public:
     wpa_worker();
     wpa_worker(std::string);
     ~wpa_worker();
-    nmscope getScope();
+    NmScope getScope();
     json execCmd(nmcommand_data*);
     bool isValidCmd(nmcommand_data*);
     json execCmdWpaListIf(nmcommand_data*);
