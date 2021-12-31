@@ -3,10 +3,10 @@
 
 #include <exception>
 
-class nmexception : public std::exception
+class NmException : public std::exception
 {
 public:
-    nmexception();
+    NmException();
     virtual const char* what() const throw()
     {
       return "Exception in nmdaemon";

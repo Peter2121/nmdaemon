@@ -14,7 +14,7 @@ protected:
     const short family = AF_LINK;
     struct sockaddr_storage* sock_addr;
     std::string strAddr;
-    nmexception nmExcept;
+    NmException nmExcept;
     void setLinkAddr();
 public:
     AddressLink(const struct sockaddr_dl*);

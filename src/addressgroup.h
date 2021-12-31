@@ -30,7 +30,7 @@ protected:
     int flags;
     bool isAddrUp;
     bool isAddrPrimary;
-    nmexception nmExcept;
+    NmException nmExcept;
     bool isValidIp4() const;
     bool isValidIp6() const;
 public:

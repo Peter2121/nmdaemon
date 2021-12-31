@@ -1,6 +1,6 @@
 #include "nmexception.h"
 
-nmexception::nmexception()
+NmException::NmException()
 {
 
 }
