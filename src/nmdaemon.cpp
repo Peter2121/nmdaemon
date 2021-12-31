@@ -1,6 +1,6 @@
 #include "nmdaemon.h"
 
-NmDaemon::NmDaemon(std::vector<NmWorker*> wrks) : req_access(), work_access(), requests()
+NmDaemon::NmDaemon(std::vector<NmWorkerBase*> wrks) : req_access(), work_access(), requests()
 {
     running_sock_receiver = false;
     running_dispatcher = false;

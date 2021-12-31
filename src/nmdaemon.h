@@ -12,7 +12,7 @@
 #include "sockpp/version.h"
 
 #include "nmcommanddata.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 #include "nmconfig.h"
 
 class NmDaemon
@@ -27,10 +27,10 @@ protected:
     std::mutex sock_access_write;
     std::mutex work_access;
     std::queue<NmCommandData*> requests;
-    std::vector<NmWorker*> workers;
+    std::vector<NmWorkerBase*> workers;
 
 public:
-    NmDaemon(std::vector<NmWorker*>);
+    NmDaemon(std::vector<NmWorkerBase*>);
     void sock_receiver(sockpp::unix_socket);
     void dispatcher(sockpp::unix_socket);
     void shutdown();

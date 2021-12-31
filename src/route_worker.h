@@ -9,7 +9,7 @@
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 #include "interface.h"
 #include "addressgroup.h"
 #include "tool.h"
@@ -38,7 +38,7 @@ typedef struct
       struct sockaddr_dl netmask;
 } static_route_link;
 
-class route_worker : public NmWorker
+class route_worker : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =

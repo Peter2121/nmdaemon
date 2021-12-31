@@ -1,9 +1,9 @@
 #ifndef NMWORKERDUMMY_H
 #define NMWORKERDUMMY_H
 
-#include "nmworker.h"
+#include "nmworkerbase.h"
 
-class NmWorkerDummy : public NmWorker
+class NmWorkerDummy : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =

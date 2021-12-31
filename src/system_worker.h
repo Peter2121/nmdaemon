@@ -8,14 +8,14 @@
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
 #include "nmdaemon.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 #include "interface.h"
 #include "tool.h"
 #include "rcconf.h"
 
 extern std::shared_ptr<NmConfig> sp_conf;
 
-class system_worker : public NmWorker
+class system_worker : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =

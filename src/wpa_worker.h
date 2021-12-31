@@ -15,13 +15,13 @@
 #include "sockpp/socket.h"
 #include "sockpp/unix_dgram_socket.h"
 #include "sockpp/version.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 #include "addressgroup.h"
 #include "tool.h"
 
 namespace fs = std::filesystem;
 
-class wpa_worker : public NmWorker
+class wpa_worker : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =

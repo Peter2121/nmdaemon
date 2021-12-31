@@ -1,15 +1,15 @@
-#ifndef NMWORKER_H
-#define NMWORKER_H
+#ifndef NMWORKERBASE_H
+#define NMWORKERBASE_H
 
 #include "nmcommanddata.h"
 
-class NmWorker
+class NmWorkerBase
 {
 public:
-    virtual ~NmWorker() {}
+    virtual ~NmWorkerBase() {}
     virtual NmScope getScope() = 0;
     virtual json execCmd(NmCommandData*) = 0;
     virtual bool isValidCmd(NmCommandData*) = 0;
 };
 
-#endif // NMWORKER_H
+#endif // NMWORKERBASE_H

@@ -8,11 +8,11 @@
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
 #include "sockpp/version.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 #include "interface.h"
 #include "tool.h"
 
-class if_worker : public NmWorker
+class if_worker : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =

@@ -19,7 +19,7 @@
 #include "sockpp/version.h"
 
 #include "nmdaemon.h"
-#include "nmworker.h"
+#include "nmworkerbase.h"
 
 std::shared_ptr<NmConfig> sp_conf;
 
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     char buf[MAXBUF];
     bool res;
     std::vector<NmDaemon*> daemons;
-    std::vector<NmWorker*> workers;
+    std::vector<NmWorkerBase*> workers;
     std::vector<std::thread*> threads;
     std::string conf_value;
     std::string config_filename = DEFAULT_CONF_FILENAME;
