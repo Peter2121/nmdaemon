@@ -32,7 +32,7 @@ std::shared_ptr<NmConfig> sp_conf;
 #include "system_worker.h"
 #endif
 #if defined (WORKER_INTERFACE)
-#include "if_worker.h"
+#include "nmworkerif.h"
 #endif
 #if defined (WORKER_ROUTE)
 #include "route_worker.h"

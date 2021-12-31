@@ -27,7 +27,7 @@ add_executable(nmdaemon
         src/addressip6.cpp
         src/addresslink.cpp
         src/nmworkerdummy.cpp
-        src/if_worker.cpp
+        src/nmworkerif.cpp
         src/interface.cpp
         src/main.cpp
         src/nmcommanddata.cpp

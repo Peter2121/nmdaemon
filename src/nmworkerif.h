@@ -1,5 +1,5 @@
-#ifndef IF_WORKER_H
-#define IF_WORKER_H
+#ifndef NMWORKERIF_H
+#define NMWORKERIF_H
 
 #include <thread>
 #include <ifaddrs.h>
@@ -12,7 +12,7 @@
 #include "interface.h"
 #include "tool.h"
 
-class if_worker : public NmWorkerBase
+class NmWorkerIf : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =
@@ -44,8 +44,8 @@ protected:
     bool enableDHCP();
 //    addr* getAddrFromJson(json);
 public:
-    if_worker();
-    ~if_worker();
+    NmWorkerIf();
+    ~NmWorkerIf();
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
@@ -60,4 +60,4 @@ public:
 //    json execCmdIfDisable(nmcommand_data*);
 };
 
-#endif // IF_WORKER_H
+#endif // NMWORKERIF_H
