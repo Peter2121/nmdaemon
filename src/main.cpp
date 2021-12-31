@@ -21,7 +21,7 @@
 #include "nmdaemon.h"
 #include "nmworker.h"
 
-std::shared_ptr<nmconfig> sp_conf;
+std::shared_ptr<NmConfig> sp_conf;
 
 #include "rcconf.h"
 #include "workers.h"
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
         config_filename = argv[1];
     }
 
-    sp_conf = std::make_shared<nmconfig>(config_filename);
+    sp_conf = std::make_shared<NmConfig>(config_filename);
     try
     {
         if(!sp_conf->iniLoad())

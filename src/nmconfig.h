@@ -21,7 +21,7 @@ rcconf_backups=5
 
 *******************************/
 
-class nmconfig
+class NmConfig
 {
 protected:
     static inline const std::string sections[] =
@@ -36,8 +36,8 @@ protected:
     CIniFile* confIniFile;
     bool isValidSection(const std::string) const;
 public:
-    nmconfig(std::string);
-    ~nmconfig();
+    NmConfig(std::string);
+    ~NmConfig();
     bool iniLoad();
     std::string getConfigFileName() const;
     std::string getConfigValue(const std::string, const std::string) const;

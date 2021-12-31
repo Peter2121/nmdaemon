@@ -13,7 +13,7 @@
 #include "tool.h"
 #include "rcconf.h"
 
-extern std::shared_ptr<nmconfig> sp_conf;
+extern std::shared_ptr<NmConfig> sp_conf;
 
 class system_worker : public nmworker
 {

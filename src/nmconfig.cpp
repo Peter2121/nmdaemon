@@ -1,21 +1,21 @@
 #include "nmconfig.h"
 
-nmconfig::nmconfig(std::string filename) : confFileName(filename)
+NmConfig::NmConfig(std::string filename) : confFileName(filename)
 {
     confIniFile = new CIniFile();
 }
 
-nmconfig::~nmconfig()
+NmConfig::~NmConfig()
 {
     delete confIniFile;
 }
 
-bool nmconfig::iniLoad()
+bool NmConfig::iniLoad()
 {
     return confIniFile->Load(confFileName);
 }
 
-bool nmconfig::isValidSection(std::string section) const
+bool NmConfig::isValidSection(std::string section) const
 {
     for(auto s : sections)
     {
@@ -26,7 +26,7 @@ bool nmconfig::isValidSection(std::string section) const
     return false;
 }
 
-std::string nmconfig::getConfigValue(std::string section, std::string key) const
+std::string NmConfig::getConfigValue(std::string section, std::string key) const
 {
     std::string ret_val = "";
 
@@ -37,7 +37,7 @@ std::string nmconfig::getConfigValue(std::string section, std::string key) const
     return ret_val;
 }
 
-std::string nmconfig::getConfigFileName() const
+std::string NmConfig::getConfigFileName() const
 {
     return confFileName;
 }
