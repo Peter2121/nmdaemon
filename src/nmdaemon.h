@@ -15,7 +15,7 @@
 #include "nmworker.h"
 #include "nmconfig.h"
 
-class nmdaemon
+class NmDaemon
 {
 protected:
     const unsigned long NM_MAXBUF = 8192;
@@ -30,7 +30,7 @@ protected:
     std::vector<nmworker*> workers;
 
 public:
-    nmdaemon(std::vector<nmworker*>);
+    NmDaemon(std::vector<nmworker*>);
     void sock_receiver(sockpp::unix_socket);
     void dispatcher(sockpp::unix_socket);
     void shutdown();

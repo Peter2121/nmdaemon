@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     const int MAXBUF = 512;
     char buf[MAXBUF];
     bool res;
-    std::vector<nmdaemon*> daemons;
+    std::vector<NmDaemon*> daemons;
     std::vector<nmworker*> workers;
     std::vector<std::thread*> threads;
     std::string conf_value;
@@ -262,9 +262,9 @@ int main(int argc, char* argv[])
             LOG_S(ERROR) << "Error accepting incoming connection: " << sockAcc.last_error_str();
         }
         else {
-            nmdaemon* daemon = new nmdaemon(workers);
+            NmDaemon* daemon = new NmDaemon(workers);
             daemons.push_back(daemon);
-            std::thread thr(&nmdaemon::sock_receiver, daemon, std::move(sock));
+            std::thread thr(&NmDaemon::sock_receiver, daemon, std::move(sock));
             threads.push_back(&thr);
             thr.detach();
         }

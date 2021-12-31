@@ -1,6 +1,6 @@
 #include "nmdaemon.h"
 
-nmdaemon::nmdaemon(std::vector<nmworker*> wrks) : req_access(), work_access(), requests()
+NmDaemon::NmDaemon(std::vector<nmworker*> wrks) : req_access(), work_access(), requests()
 {
     running_sock_receiver = false;
     running_dispatcher = false;
@@ -8,13 +8,13 @@ nmdaemon::nmdaemon(std::vector<nmworker*> wrks) : req_access(), work_access(), r
     workers = wrks;
 }
 
-void nmdaemon::shutdown()
+void NmDaemon::shutdown()
 {
     stop_receiver = true;
     stop_dispatcher = true;
 }
 
-void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
+void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
 {
     unsigned long nread=0;
     unsigned long nwrite=0;
@@ -29,7 +29,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
     }
     running_sock_receiver = true;
 
-    std::thread dispatch_thread(&nmdaemon::dispatcher, this, sockin.clone());
+    std::thread dispatch_thread(&NmDaemon::dispatcher, this, sockin.clone());
 
     std::unique_lock<std::mutex> ulmut_req(req_access);
     req_access.unlock();
@@ -96,7 +96,7 @@ void nmdaemon::sock_receiver(sockpp::unix_socket sockin)
     LOG_S(INFO) << "Receiver stopped";
 }
 
-void nmdaemon::dispatcher(sockpp::unix_socket sockout)
+void NmDaemon::dispatcher(sockpp::unix_socket sockout)
 {
     json jsonRes;
     std::string strResult;
