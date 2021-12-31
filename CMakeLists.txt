@@ -36,7 +36,7 @@ add_executable(nmdaemon
         src/nmexception.cpp
         src/nmworkerroute.cpp
         src/nmworkersys.cpp
-        src/wpa_worker.cpp
+        src/nmworkerwpa.cpp
         src/tool.cpp
         src/rcconf.cpp
         src/loguru/loguru.cpp

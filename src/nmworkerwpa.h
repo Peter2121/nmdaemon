@@ -1,5 +1,5 @@
-#ifndef WPA_WORKER_H
-#define WPA_WORKER_H
+#ifndef NMWORKERWPA_H
+#define NMWORKERWPA_H
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -21,7 +21,7 @@
 
 namespace fs = std::filesystem;
 
-class wpa_worker : public NmWorkerBase
+class NmWorkerWpa : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =
@@ -70,9 +70,9 @@ protected:
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
 public:
-    wpa_worker();
-    wpa_worker(std::string);
-    ~wpa_worker();
+    NmWorkerWpa();
+    NmWorkerWpa(std::string);
+    ~NmWorkerWpa();
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
@@ -89,4 +89,4 @@ public:
 };
 
 
-#endif // WPA_WORKER_H
+#endif // NMWORKERWPA_H
