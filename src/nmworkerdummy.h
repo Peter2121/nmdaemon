@@ -1,9 +1,9 @@
-#ifndef DUMMY_WORKER_H
-#define DUMMY_WORKER_H
+#ifndef NMWORKERDUMMY_H
+#define NMWORKERDUMMY_H
 
 #include "nmworker.h"
 
-class dummy_worker : public NmWorker
+class NmWorkerDummy : public NmWorker
 {
 protected:
     static constexpr NmCommand Cmds[] =
@@ -11,11 +11,11 @@ protected:
         { NmScope::DUMMY, NmCmd::TEST }
     };
 public:
-    dummy_worker();
-    ~dummy_worker();
+    NmWorkerDummy();
+    ~NmWorkerDummy();
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
 };
 
-#endif // DUMMY_WORKER_H
+#endif // NMWORKERDUMMY_H

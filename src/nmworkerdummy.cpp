@@ -1,22 +1,22 @@
-#include "dummy_worker.h"
+#include "nmworkerdummy.h"
 
-dummy_worker::dummy_worker()
+NmWorkerDummy::NmWorkerDummy()
 { }
 
-dummy_worker::~dummy_worker()
+NmWorkerDummy::~NmWorkerDummy()
 { }
 
-NmScope dummy_worker::getScope()
+NmScope NmWorkerDummy::getScope()
 {
     return NmScope::DUMMY;
 }
 
-json dummy_worker::execCmd(NmCommandData*)
+json NmWorkerDummy::execCmd(NmCommandData*)
 {
     return { { JSON_PARAM_RESULT, JSON_PARAM_SUCC } };
 }
 
-bool dummy_worker::isValidCmd(NmCommandData* pcmd)
+bool NmWorkerDummy::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;

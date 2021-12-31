@@ -26,7 +26,7 @@ std::shared_ptr<NmConfig> sp_conf;
 #include "rcconf.h"
 #include "workers.h"
 #if defined (WORKER_DUMMY)
-#include "dummy_worker.h"
+#include "nmworkerdummy.h"
 #endif
 #if defined (WORKER_SYSTEM)
 #include "system_worker.h"
