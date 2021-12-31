@@ -30,7 +30,7 @@ add_executable(nmdaemon
         src/if_worker.cpp
         src/interface.cpp
         src/main.cpp
-        src/nmcommand_data.cpp
+        src/nmcommanddata.cpp
         src/nmconfig.cpp
         src/nmdaemon.cpp
         src/nmexception.cpp

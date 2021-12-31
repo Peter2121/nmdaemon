@@ -13,7 +13,7 @@ NmScope if_worker::getScope()
     return NmScope::INTERFACE;
 }
 
-json if_worker::execCmd(nmcommand_data* pcmd)
+json if_worker::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -41,7 +41,7 @@ json if_worker::execCmd(nmcommand_data* pcmd)
     }
 }
 
-bool if_worker::isValidCmd(nmcommand_data* pcmd)
+bool if_worker::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -295,7 +295,7 @@ addr* if_worker::getAddrFromJson(json cmd)
     return if_addr;
 }
 */
-json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
+json if_worker::execCmdIpAddrSet(NmCommandData* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
@@ -360,7 +360,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
+json if_worker::execCmdIpAddrAdd(NmCommandData* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
@@ -389,7 +389,7 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
+json if_worker::execCmdIpAddrRemove(NmCommandData* pcmd)
 {
     std::string str_ifaddr = "";
     std::string str_ifmask = "";
@@ -418,7 +418,7 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json if_worker::execCmdMtuGet(nmcommand_data* pcmd)
+json if_worker::execCmdMtuGet(NmCommandData* pcmd)
 {
     struct ifreq ifr;
     json cmd = {};
@@ -452,7 +452,7 @@ json if_worker::execCmdMtuGet(nmcommand_data* pcmd)
     return res;
 }
 
-json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
+json if_worker::execCmdMtuSet(NmCommandData* pcmd)
 {
     struct ifreq ifr;
     int mtu = 0;
@@ -497,7 +497,7 @@ json if_worker::execCmdMtuSet(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
+json if_worker::execCmdIpAddrGet(NmCommandData *pcmd)
 {
     json cmd = {};
     json res = {};
@@ -536,7 +536,7 @@ bool if_worker::killDHCPClient()
     return Tool::termDHCPClient(ifName, SIGKILL);
 }
 
-json if_worker::execCmdDHCPEnable(nmcommand_data* pcmd)
+json if_worker::execCmdDHCPEnable(NmCommandData* pcmd)
 {
     json cmd = {};
 

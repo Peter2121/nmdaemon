@@ -40,13 +40,13 @@ public:
     system_worker();
     ~system_worker();
     NmScope getScope();
-    json execCmd(nmcommand_data*);
-    bool isValidCmd(nmcommand_data*);
-    json execCmdIfList(nmcommand_data*);
-    json execCmdIfEnable(nmcommand_data*);
-    json execCmdIfDisable(nmcommand_data*);
-    json execCmdRcConfRead(nmcommand_data*);
-    json execCmdRcConfWrite(nmcommand_data*);
+    json execCmd(NmCommandData*);
+    bool isValidCmd(NmCommandData*);
+    json execCmdIfList(NmCommandData*);
+    json execCmdIfEnable(NmCommandData*);
+    json execCmdIfDisable(NmCommandData*);
+    json execCmdRcConfRead(NmCommandData*);
+    json execCmdRcConfWrite(NmCommandData*);
 };
 
 #endif // SYS_WORKER_H

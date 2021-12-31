@@ -65,7 +65,7 @@ protected:
     bool isValidWpaIf(std::string);
     json getJsonFromBufTable(std::string);
     json getJsonFromBufLines(std::string);
-    std::string getParamFromCommand(nmcommand_data*, std::string);
+    std::string getParamFromCommand(NmCommandData*, std::string);
     bool setNetworkParam(std::string, int, std::string, std::string, bool);
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
@@ -74,18 +74,18 @@ public:
     wpa_worker(std::string);
     ~wpa_worker();
     NmScope getScope();
-    json execCmd(nmcommand_data*);
-    bool isValidCmd(nmcommand_data*);
-    json execCmdWpaListIf(nmcommand_data*);
-    json execCmdWpaList(nmcommand_data*);
-    json execCmdWpaScan(nmcommand_data*);
-    json execCmdWpaStatus(nmcommand_data*);
-    json execCmdWpaSetPsk(nmcommand_data*);
-    json execCmdWpaConnect(nmcommand_data*);
-    json execCmdWpaDisconnect(nmcommand_data*);
-    json execCmdWpaReassoc(nmcommand_data*);
-    json execCmdWpaAdd(nmcommand_data*);
-    json execCmdWpaRemove(nmcommand_data*);
+    json execCmd(NmCommandData*);
+    bool isValidCmd(NmCommandData*);
+    json execCmdWpaListIf(NmCommandData*);
+    json execCmdWpaList(NmCommandData*);
+    json execCmdWpaScan(NmCommandData*);
+    json execCmdWpaStatus(NmCommandData*);
+    json execCmdWpaSetPsk(NmCommandData*);
+    json execCmdWpaConnect(NmCommandData*);
+    json execCmdWpaDisconnect(NmCommandData*);
+    json execCmdWpaReassoc(NmCommandData*);
+    json execCmdWpaAdd(NmCommandData*);
+    json execCmdWpaRemove(NmCommandData*);
 };
 
 

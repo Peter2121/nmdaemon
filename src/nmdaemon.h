@@ -11,7 +11,7 @@
 #include "sockpp/unix_acceptor.h"
 #include "sockpp/version.h"
 
-#include "nmcommand_data.h"
+#include "nmcommanddata.h"
 #include "nmworker.h"
 #include "nmconfig.h"
 
@@ -26,7 +26,7 @@ protected:
     std::mutex req_access;
     std::mutex sock_access_write;
     std::mutex work_access;
-    std::queue<nmcommand_data*> requests;
+    std::queue<NmCommandData*> requests;
     std::vector<NmWorker*> workers;
 
 public:

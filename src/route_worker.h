@@ -63,16 +63,16 @@ public:
     route_worker();
     ~route_worker();
     NmScope getScope();
-    json execCmd(nmcommand_data*);
-    bool isValidCmd(nmcommand_data*);
-    json execCmdRouteSet(nmcommand_data*);
-    json execCmdRouteGet(nmcommand_data*);
-    json execCmdDefRouteSet(nmcommand_data*);
-    json execCmdDefRouteGet(nmcommand_data*);
-    json execCmdDefRouteGet6(nmcommand_data*);
-    json execCmdRouteList(nmcommand_data*);
-    json execCmdRouteDel(nmcommand_data*);
-    json execCmdDefRouteDel(nmcommand_data*);
+    json execCmd(NmCommandData*);
+    bool isValidCmd(NmCommandData*);
+    json execCmdRouteSet(NmCommandData*);
+    json execCmdRouteGet(NmCommandData*);
+    json execCmdDefRouteSet(NmCommandData*);
+    json execCmdDefRouteGet(NmCommandData*);
+    json execCmdDefRouteGet6(NmCommandData*);
+    json execCmdRouteList(NmCommandData*);
+    json execCmdRouteDel(NmCommandData*);
+    json execCmdDefRouteDel(NmCommandData*);
 //    json execCmdRouteList6(nmcommand_data*);
 };
 

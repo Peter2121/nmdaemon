@@ -1,6 +1,6 @@
-#include "nmcommand_data.h"
+#include "nmcommanddata.h"
 
-nmcommand_data::nmcommand_data(std::string str_data)
+NmCommandData::NmCommandData(std::string str_data)
 {
     json_data = json::parse(str_data, nullptr, false);
     if(!json_data.is_discarded())
@@ -35,7 +35,7 @@ nmcommand_data::nmcommand_data(std::string str_data)
     }
 }
 
-bool nmcommand_data::isValid()
+bool NmCommandData::isValid()
 {
     if(json_data.is_discarded())
         return false;
@@ -47,12 +47,12 @@ bool nmcommand_data::isValid()
     return true;
 }
 
-json nmcommand_data::getJsonData()
+json NmCommandData::getJsonData()
 {
     return json_data;
 }
 
-NmCommand nmcommand_data::getCommand()
+NmCommand NmCommandData::getCommand()
 {
     return command;
 }

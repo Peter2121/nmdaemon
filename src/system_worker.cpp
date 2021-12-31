@@ -14,7 +14,7 @@ NmScope system_worker::getScope()
     return NmScope::SYSTEM;
 }
 
-json system_worker::execCmd(nmcommand_data* pcmd)
+json system_worker::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -36,7 +36,7 @@ json system_worker::execCmd(nmcommand_data* pcmd)
     }
 }
 
-bool system_worker::isValidCmd(nmcommand_data* pcmd)
+bool system_worker::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -50,7 +50,7 @@ bool system_worker::isValidCmd(nmcommand_data* pcmd)
     return false;
 }
 
-json system_worker::execCmdIfList(nmcommand_data*)
+json system_worker::execCmdIfList(NmCommandData*)
 {
     struct ifaddrs * ifaddrs_ptr;
     nlohmann::json retIfListJson;
@@ -165,7 +165,7 @@ bool system_worker::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 */
-json system_worker::execCmdIfEnable(nmcommand_data* pcmd) {
+json system_worker::execCmdIfEnable(NmCommandData* pcmd) {
     struct ifreq ifr;
     std::string ifname = "";
     const int cmdflag=IFF_UP;
@@ -191,7 +191,7 @@ json system_worker::execCmdIfEnable(nmcommand_data* pcmd) {
     return JSON_RESULT_SUCCESS;
 }
 
-json system_worker::execCmdIfDisable(nmcommand_data* pcmd) {
+json system_worker::execCmdIfDisable(NmCommandData* pcmd) {
     struct ifreq ifr;
     std::string ifname = "";
     const int cmdflag=IFF_UP;
@@ -217,7 +217,7 @@ json system_worker::execCmdIfDisable(nmcommand_data* pcmd) {
     return JSON_RESULT_SUCCESS;
 }
 
-json system_worker::execCmdRcConfRead(nmcommand_data*)
+json system_worker::execCmdRcConfRead(NmCommandData*)
 {
     std::string rcconf_name;
     if( sp_conf!=nullptr )
@@ -234,7 +234,7 @@ json system_worker::execCmdRcConfRead(nmcommand_data*)
     return prcConf->getRcIpConfig();
 }
 
-json system_worker::execCmdRcConfWrite(nmcommand_data *pcmd)
+json system_worker::execCmdRcConfWrite(NmCommandData *pcmd)
 {
     json cmd_json = {};
     json jdata = {};

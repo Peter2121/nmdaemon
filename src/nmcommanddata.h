@@ -1,5 +1,5 @@
-#ifndef NMCOMMAND_DATA_H
-#define NMCOMMAND_DATA_H
+#ifndef NMCOMMANDDATA_H
+#define NMCOMMANDDATA_H
 
 #include "json/json.hpp"
 #include "magic_enum/magic_enum.hpp"
@@ -8,16 +8,16 @@
 
 using json = nlohmann::json;
 
-class nmcommand_data
+class NmCommandData
 {
 protected:
     NmCommand command;
     json json_data;
 public:
-    nmcommand_data(std::string str_data);
+    NmCommandData(std::string str_data);
     bool isValid();
     json getJsonData();
     NmCommand getCommand();
 };
 
-#endif // NMCOMMAND_DATA_H
+#endif // NMCOMMANDDATA_H

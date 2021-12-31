@@ -28,7 +28,7 @@ NmScope wpa_worker::getScope()
     return NmScope::WPA;
 }
 
-json wpa_worker::execCmd(nmcommand_data* pcmd)
+json wpa_worker::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -57,7 +57,7 @@ json wpa_worker::execCmd(nmcommand_data* pcmd)
     }
 }
 
-bool wpa_worker::isValidCmd(nmcommand_data* pcmd)
+bool wpa_worker::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -85,7 +85,7 @@ bool wpa_worker::isValidWpaIf(std::string ifn)
     return true;
 }
 
-json wpa_worker::execCmdWpaListIf(nmcommand_data*)
+json wpa_worker::execCmdWpaListIf(NmCommandData*)
 {
     std::vector<std::string> ifs;
     nlohmann::json retIfListJson;
@@ -183,7 +183,7 @@ json wpa_worker::getJsonFromBufTable(std::string param_name)
     return jret;
 }
 
-json wpa_worker::execCmdWpaList(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaList(NmCommandData* pcmd)
 {
     std::string strCmd;
     json cmd = {};
@@ -200,7 +200,7 @@ json wpa_worker::execCmdWpaList(nmcommand_data* pcmd)
     return getJsonFromBufTable(JSON_PARAM_NETWORKS);
 }
 
-json wpa_worker::execCmdWpaScan(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaScan(NmCommandData* pcmd)
 {
     sockpp::unix_dgram_socket sock;
     std::string strCmd;
@@ -363,7 +363,7 @@ bool wpa_worker::wpaCtrlCmd(std::string strCmd, std::string strWait, std::string
     return true;
 }
 
-json wpa_worker::execCmdWpaStatus(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaStatus(NmCommandData* pcmd)
 {
     std::string strCmd = COMMAND_STATUS;
     json cmd = {};
@@ -379,7 +379,7 @@ json wpa_worker::execCmdWpaStatus(nmcommand_data* pcmd)
     return getJsonFromBufLines(JSON_PARAM_SUCC);
 }
 
-std::string wpa_worker::getParamFromCommand(nmcommand_data* pcmd, std::string param)
+std::string wpa_worker::getParamFromCommand(NmCommandData* pcmd, std::string param)
 {
     std::string param_value = "";
     json cmd = {};
@@ -394,7 +394,7 @@ std::string wpa_worker::getParamFromCommand(nmcommand_data* pcmd, std::string pa
     return param_value;
 }
 
-json wpa_worker::execCmdWpaAdd(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaAdd(NmCommandData* pcmd)
 {
     std::string strBuf;
     int new_id = 0;
@@ -575,7 +575,7 @@ bool wpa_worker::setNetworkParam(std::string ifname, int id, std::string param_n
     return true;
 }
 
-json wpa_worker::execCmdWpaRemove(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaRemove(NmCommandData* pcmd)
 {
     std::string ssid = "";
     std::string bssid = "";
@@ -661,7 +661,7 @@ bool wpa_worker::removeNetwork(std::string ifname, int idnet)
     return true;
 }
 
-json wpa_worker::execCmdWpaConnect(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaConnect(NmCommandData* pcmd)
 {
     std::string ssid = "";
     std::string bssid = "";
@@ -807,7 +807,7 @@ json wpa_worker::execCmdWpaConnect(nmcommand_data* pcmd)
     return getJsonFromBufLines(strResult);
 }
 
-json wpa_worker::execCmdWpaDisconnect(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaDisconnect(NmCommandData* pcmd)
 {
     std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
@@ -827,7 +827,7 @@ json wpa_worker::execCmdWpaDisconnect(nmcommand_data* pcmd)
     return getJsonFromBufLines(JSON_PARAM_SUCC);
 }
 
-json wpa_worker::execCmdWpaReassoc(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaReassoc(NmCommandData* pcmd)
 {
     const int MAXLINE = 32;
     char line[MAXLINE];
@@ -860,7 +860,7 @@ json wpa_worker::execCmdWpaReassoc(nmcommand_data* pcmd)
     return getJsonFromBufLines(strResult);
 }
 
-json wpa_worker::execCmdWpaSetPsk(nmcommand_data* pcmd)
+json wpa_worker::execCmdWpaSetPsk(NmCommandData* pcmd)
 {
     int id = -1;
 

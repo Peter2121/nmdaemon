@@ -23,7 +23,7 @@ NmScope route_worker::getScope()
     return NmScope::ROUTE;
 }
 
-json route_worker::execCmd(nmcommand_data* pcmd)
+json route_worker::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -49,7 +49,7 @@ json route_worker::execCmd(nmcommand_data* pcmd)
     }
 }
 
-bool route_worker::isValidCmd(nmcommand_data* pcmd)
+bool route_worker::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -333,7 +333,7 @@ bool route_worker::getStaticRoute(std::shared_ptr<addr> stroute)
     }
 }
 */
-json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
+json route_worker::execCmdRouteGet(NmCommandData* pcmd)
 {
     std::shared_ptr<AddressGroup> sp_rt_addr=nullptr;
     std::unique_ptr<Interface> proute=nullptr;
@@ -366,7 +366,7 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
     return res_route;
 }
 
-json route_worker::execCmdDefRouteDel(nmcommand_data*)
+json route_worker::execCmdDefRouteDel(NmCommandData*)
 {
     auto spaddr = std::make_shared<AddressIp4>();
     auto spmask = std::make_shared<AddressIp4>();
@@ -388,7 +388,7 @@ json route_worker::execCmdDefRouteDel(nmcommand_data*)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdDefRouteGet(nmcommand_data*)
+json route_worker::execCmdDefRouteGet(NmCommandData*)
 {
     json res_route = {};
     short family;
@@ -411,7 +411,7 @@ json route_worker::execCmdDefRouteGet(nmcommand_data*)
     return res_route;
 }
 
-json route_worker::execCmdDefRouteGet6(nmcommand_data*)
+json route_worker::execCmdDefRouteGet6(NmCommandData*)
 {
     json res_route = {};
     short family;
@@ -434,7 +434,7 @@ json route_worker::execCmdDefRouteGet6(nmcommand_data*)
     return res_route;
 }
 
-json route_worker::execCmdRouteSet(nmcommand_data* pcmd)
+json route_worker::execCmdRouteSet(NmCommandData* pcmd)
 {
     json cmd = {};
 
@@ -455,7 +455,7 @@ json route_worker::execCmdRouteSet(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdRouteDel(nmcommand_data* pcmd)
+json route_worker::execCmdRouteDel(NmCommandData* pcmd)
 {
     json cmd = {};
 
@@ -476,7 +476,7 @@ json route_worker::execCmdRouteDel(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdDefRouteSet(nmcommand_data* pcmd)
+json route_worker::execCmdDefRouteSet(NmCommandData* pcmd)
 {
     json cmd = {};
     std::string strDefAddr4 = "0.0.0.0";
@@ -523,7 +523,7 @@ json route_worker::execCmdDefRouteSet(nmcommand_data* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json route_worker::execCmdRouteList(nmcommand_data* pcmd)
+json route_worker::execCmdRouteList(NmCommandData* pcmd)
 {
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;

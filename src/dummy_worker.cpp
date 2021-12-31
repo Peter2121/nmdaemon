@@ -11,12 +11,12 @@ NmScope dummy_worker::getScope()
     return NmScope::DUMMY;
 }
 
-json dummy_worker::execCmd(nmcommand_data*)
+json dummy_worker::execCmd(NmCommandData*)
 {
     return { { JSON_PARAM_RESULT, JSON_PARAM_SUCC } };
 }
 
-bool dummy_worker::isValidCmd(nmcommand_data* pcmd)
+bool dummy_worker::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;

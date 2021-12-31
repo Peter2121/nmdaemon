@@ -55,7 +55,7 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
         if(nread <= 0)
             break;
         strBuf = std::string(buf);
-        nmcommand_data* request = new nmcommand_data(strBuf);
+        NmCommandData* request = new NmCommandData(strBuf);
         res = false;
         if(request->isValid())
         {
@@ -123,7 +123,7 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
         if(!requests.empty())
         {
             req_access.lock();
-            nmcommand_data* request = requests.front();
+            NmCommandData* request = requests.front();
             requests.pop();
             req_access.unlock();
             memset(&buf, 0, NM_MAXBUF*sizeof(char));

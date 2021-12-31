@@ -14,8 +14,8 @@ public:
     dummy_worker();
     ~dummy_worker();
     NmScope getScope();
-    json execCmd(nmcommand_data*);
-    bool isValidCmd(nmcommand_data*);
+    json execCmd(NmCommandData*);
+    bool isValidCmd(NmCommandData*);
 };
 
 #endif // DUMMY_WORKER_H
