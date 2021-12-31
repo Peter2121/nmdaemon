@@ -29,7 +29,7 @@ std::shared_ptr<NmConfig> sp_conf;
 #include "nmworkerdummy.h"
 #endif
 #if defined (WORKER_SYSTEM)
-#include "system_worker.h"
+#include "nmworkersys.h"
 #endif
 #if defined (WORKER_INTERFACE)
 #include "nmworkerif.h"

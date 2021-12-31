@@ -1,20 +1,20 @@
-#include "system_worker.h"
+#include "nmworkersys.h"
 
-system_worker::system_worker()
+NmWorkerSys::NmWorkerSys()
 {
     prcConf = nullptr;
 }
 
-system_worker::~system_worker()
+NmWorkerSys::~NmWorkerSys()
 {
 }
 
-NmScope system_worker::getScope()
+NmScope NmWorkerSys::getScope()
 {
     return NmScope::SYSTEM;
 }
 
-json system_worker::execCmd(NmCommandData* pcmd)
+json NmWorkerSys::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
@@ -36,7 +36,7 @@ json system_worker::execCmd(NmCommandData* pcmd)
     }
 }
 
-bool system_worker::isValidCmd(NmCommandData* pcmd)
+bool NmWorkerSys::isValidCmd(NmCommandData* pcmd)
 {
     if( pcmd->getCommand().scope != getScope() )
         return false;
@@ -50,7 +50,7 @@ bool system_worker::isValidCmd(NmCommandData* pcmd)
     return false;
 }
 
-json system_worker::execCmdIfList(NmCommandData*)
+json NmWorkerSys::execCmdIfList(NmCommandData*)
 {
     struct ifaddrs * ifaddrs_ptr;
     nlohmann::json retIfListJson;
@@ -165,7 +165,7 @@ bool system_worker::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 */
-json system_worker::execCmdIfEnable(NmCommandData* pcmd) {
+json NmWorkerSys::execCmdIfEnable(NmCommandData* pcmd) {
     struct ifreq ifr;
     std::string ifname = "";
     const int cmdflag=IFF_UP;
@@ -191,7 +191,7 @@ json system_worker::execCmdIfEnable(NmCommandData* pcmd) {
     return JSON_RESULT_SUCCESS;
 }
 
-json system_worker::execCmdIfDisable(NmCommandData* pcmd) {
+json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
     struct ifreq ifr;
     std::string ifname = "";
     const int cmdflag=IFF_UP;
@@ -217,7 +217,7 @@ json system_worker::execCmdIfDisable(NmCommandData* pcmd) {
     return JSON_RESULT_SUCCESS;
 }
 
-json system_worker::execCmdRcConfRead(NmCommandData*)
+json NmWorkerSys::execCmdRcConfRead(NmCommandData*)
 {
     std::string rcconf_name;
     if( sp_conf!=nullptr )
@@ -234,7 +234,7 @@ json system_worker::execCmdRcConfRead(NmCommandData*)
     return prcConf->getRcIpConfig();
 }
 
-json system_worker::execCmdRcConfWrite(NmCommandData *pcmd)
+json NmWorkerSys::execCmdRcConfWrite(NmCommandData *pcmd)
 {
     json cmd_json = {};
     json jdata = {};

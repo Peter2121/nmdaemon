@@ -15,7 +15,7 @@
 
 extern std::shared_ptr<NmConfig> sp_conf;
 
-class system_worker : public NmWorkerBase
+class NmWorkerSys : public NmWorkerBase
 {
 protected:
     static constexpr NmCommand Cmds[] =
@@ -37,8 +37,8 @@ protected:
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:
-    system_worker();
-    ~system_worker();
+    NmWorkerSys();
+    ~NmWorkerSys();
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
