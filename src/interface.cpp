@@ -100,7 +100,7 @@ const nlohmann::json Interface::getIfJson() const
     std::vector<nlohmann::json> vectAddrsJson;
 
     retIfJson[JSON_PARAM_IF_NAME] = strName;
-    retIfJson[JSON_PARAM_DHCP_ENABLED] = tool::isDHCPEnabled(strName);
+    retIfJson[JSON_PARAM_DHCP_ENABLED] = Tool::isDHCPEnabled(strName);
 
     for(auto addr : spVectAddrs)
     {

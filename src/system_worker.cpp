@@ -178,13 +178,13 @@ json system_worker::execCmdIfEnable(nmcommand_data* pcmd) {
         LOG_S(ERROR) << "Exception in execCmdIfEnable - cannot get ifname";
         return JSON_RESULT_ERR;
     }
-    int curflags = tool::getIfFlags(ifname);
+    int curflags = Tool::getIfFlags(ifname);
     if(curflags==0)
     {
         return JSON_RESULT_ERR;
     }
     curflags |= cmdflag;
-    if(!tool::setIfFlags(ifname, curflags))
+    if(!Tool::setIfFlags(ifname, curflags))
     {
         return JSON_RESULT_ERR;
     }
@@ -204,13 +204,13 @@ json system_worker::execCmdIfDisable(nmcommand_data* pcmd) {
         LOG_S(ERROR) << "Exception in execCmdIfDisable - cannot get ifname";
         return JSON_RESULT_ERR;
     }
-    int curflags = tool::getIfFlags(ifname);
+    int curflags = Tool::getIfFlags(ifname);
     if(curflags==0)
     {
         return JSON_RESULT_ERR;
     }
     curflags &= ~cmdflag;
-    if(!tool::setIfFlags(ifname, curflags))
+    if(!Tool::setIfFlags(ifname, curflags))
     {
         return JSON_RESULT_ERR;
     }

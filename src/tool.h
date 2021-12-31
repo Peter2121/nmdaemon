@@ -21,7 +21,7 @@ using json = nlohmann::json;
 
 class AddressGroup;
 
-class tool
+class Tool
 {
 protected:
     static inline const std::string DHCP_CLIENT_PROCESS = "dhclient";

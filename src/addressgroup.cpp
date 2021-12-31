@@ -40,7 +40,7 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
             else
                 throw nmExcept;
 
-            def_addr = tool::getIfPrimaryAddr4(if_name);
+            def_addr = Tool::getIfPrimaryAddr4(if_name);
             if( !def_addr.empty() && (def_addr==spIpAddress->getStrAddr()) )
                 isAddrPrimary = true;
             switch(ipType)
@@ -378,14 +378,14 @@ bool AddressGroup::isValidIp4() const
             if(spIpData!=nullptr)
             {
                 bcast_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;
-                return tool::isValidBcast4(addr_nbo, mask_nbo, bcast_nbo);
+                return Tool::isValidBcast4(addr_nbo, mask_nbo, bcast_nbo);
             }
             return false;
         case AddressGroupType::PPP:
             if(spIpData!=nullptr)
             {
                 gw_nbo = ((struct sockaddr_in*)(spIpData->getSockAddr()))->sin_addr.s_addr;
-                return tool::isValidGw4(addr_nbo, mask_nbo, gw_nbo);
+                return Tool::isValidGw4(addr_nbo, mask_nbo, gw_nbo);
             }
             return false;
         default:

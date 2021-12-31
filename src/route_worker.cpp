@@ -347,7 +347,7 @@ json route_worker::execCmdRouteGet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    sp_rt_addr = tool::getAddrFromJson(cmd);
+    sp_rt_addr = Tool::getAddrFromJson(cmd);
     if(sp_rt_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -438,7 +438,7 @@ json route_worker::execCmdRouteSet(nmcommand_data* pcmd)
 {
     json cmd = {};
 
-    auto rt_addr = tool::getAddrFromJson(pcmd->getJsonData());
+    auto rt_addr = Tool::getAddrFromJson(pcmd->getJsonData());
     if(rt_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -459,7 +459,7 @@ json route_worker::execCmdRouteDel(nmcommand_data* pcmd)
 {
     json cmd = {};
 
-    auto rt_addr = tool::getAddrFromJson(pcmd->getJsonData());
+    auto rt_addr = Tool::getAddrFromJson(pcmd->getJsonData());
     if(rt_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -506,7 +506,7 @@ json route_worker::execCmdDefRouteSet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    auto rt_addr = tool::getAddrFromJson(cmd);
+    auto rt_addr = Tool::getAddrFromJson(cmd);
     if(rt_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";

@@ -310,7 +310,7 @@ json if_worker::execCmdIpAddrSet(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    auto if_addr = tool::getAddrFromJson(cmd);
+    auto if_addr = Tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -374,7 +374,7 @@ json if_worker::execCmdIpAddrAdd(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    auto if_addr = tool::getAddrFromJson(cmd);
+    auto if_addr = Tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -403,7 +403,7 @@ json if_worker::execCmdIpAddrRemove(nmcommand_data* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    std::shared_ptr<AddressGroup> if_addr = tool::getAddrFromJson(cmd);
+    std::shared_ptr<AddressGroup> if_addr = Tool::getAddrFromJson(cmd);
     if(if_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
@@ -507,7 +507,7 @@ json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
     cmd = pcmd->getJsonData();
     ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
 
-    str_addr = tool::getIfPrimaryAddr4(ifName);
+    str_addr = Tool::getIfPrimaryAddr4(ifName);
     if(!str_addr.empty())
     {
         res_data[JSON_PARAM_IPV4_ADDR] = str_addr;
@@ -523,17 +523,17 @@ json if_worker::execCmdIpAddrGet(nmcommand_data *pcmd)
 
 bool if_worker::isDHCPEnabled()
 {
-    return tool::isDHCPEnabled(ifName);
+    return Tool::isDHCPEnabled(ifName);
 }
 
 bool if_worker::termDHCPClient()
 {
-    return tool::termDHCPClient(ifName);
+    return Tool::termDHCPClient(ifName);
 }
 
 bool if_worker::killDHCPClient()
 {
-    return tool::termDHCPClient(ifName, SIGKILL);
+    return Tool::termDHCPClient(ifName, SIGKILL);
 }
 
 json if_worker::execCmdDHCPEnable(nmcommand_data* pcmd)

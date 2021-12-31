@@ -1,7 +1,7 @@
 #include "tool.h"
 #include "addressgroup.h"
 
-std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
+std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
 {
     json cmd_json_data = {};
     std::string str_ifaddr = "";
@@ -134,7 +134,7 @@ std::shared_ptr<AddressGroup> tool::getAddrFromJson(json cmd)
     return sp_addr;
 }
 
-int tool::getIfFlags(std::string ifname)
+int Tool::getIfFlags(std::string ifname)
 {
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(struct ifreq));
@@ -150,7 +150,7 @@ int tool::getIfFlags(std::string ifname)
     return ((ifr.ifr_flags & 0xffff) | (ifr.ifr_flagshigh << 16));
 }
 
-bool tool::setIfFlags(std::string ifname, int setflags)
+bool Tool::setIfFlags(std::string ifname, int setflags)
 {
     sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
     struct ifreq ifr;
@@ -168,7 +168,7 @@ bool tool::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 
-std::string tool::getIfPrimaryAddr4(std::string ifname)
+std::string Tool::getIfPrimaryAddr4(std::string ifname)
 {
     struct ifreq ifr;
     std::string str_addr4;
@@ -197,7 +197,7 @@ std::string tool::getIfPrimaryAddr4(std::string ifname)
     return str_addr4;
 }
 
-bool tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
+bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )
         return false;
@@ -221,7 +221,7 @@ bool tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
     return true;
 }
 
-bool tool::isValidBcast4(uint32_t addr, uint32_t mask, uint32_t bcast)
+bool Tool::isValidBcast4(uint32_t addr, uint32_t mask, uint32_t bcast)
 {
     if( (addr==0) || (mask==0) || (bcast==0) )
         return false;
@@ -241,7 +241,7 @@ bool tool::isValidBcast4(uint32_t addr, uint32_t mask, uint32_t bcast)
     return true;
 }
 
-std::vector<std::tuple<int, std::string, std::string>> tool::getActiveProcesses()
+std::vector<std::tuple<int, std::string, std::string>> Tool::getActiveProcesses()
 {
     char errbuf[_POSIX2_LINE_MAX];
     int nentries = 0;
@@ -309,7 +309,7 @@ std::vector<std::tuple<int, std::string, std::string>> tool::getActiveProcesses(
     return vect_procs;
 }
 
-bool tool::isDHCPEnabled(std::string ifname)
+bool Tool::isDHCPEnabled(std::string ifname)
 {
     std::vector<std::tuple<int, std::string, std::string>> procs = getActiveProcesses();
     bool found=false;
@@ -327,7 +327,7 @@ bool tool::isDHCPEnabled(std::string ifname)
     return found;
 }
 
-int tool::getDHCPClientPid(std::string ifname)
+int Tool::getDHCPClientPid(std::string ifname)
 {
     std::vector<std::tuple<int, std::string, std::string>> procs = getActiveProcesses();
     int pid = 0;
@@ -345,7 +345,7 @@ int tool::getDHCPClientPid(std::string ifname)
     return pid;
 }
 
-bool tool::termDHCPClient(std::string ifname, short signal) // signal = SIGTERM (default), SIGKILL
+bool Tool::termDHCPClient(std::string ifname, short signal) // signal = SIGTERM (default), SIGKILL
 {
     int pid = getDHCPClientPid(ifname);
     if(pid>0)
