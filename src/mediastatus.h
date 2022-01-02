@@ -1,0 +1,9 @@
+#ifndef MEDIASTATUS_H
+#define MEDIASTATUS_H
+
+enum class MediaStatus
+{
+    UNKNOWN, ACTIVE, ASSOCIATED, RUNNING, NO_CARRIER
+};
+
+#endif // MEDIASTATUS_H

@@ -18,6 +18,7 @@ const std::string JSON_DATA_ERR_INVALID_COMMAND = "INVALID COMMAND";
 const std::string JSON_DATA_ERR_INTERNAL_ERROR = "INTERNAL ERROR";
 const std::string JSON_PARAM_ADDR_TYPE = "ADDRESS TYPE";
 const std::string JSON_PARAM_ADDR_PRIMARY = "PRIMARY";
+const std::string JSON_PARAM_ADDR_RUNNING = "RUNNING";
 const std::string JSON_PARAM_IPV4_ADDR = "IPV4 ADDRESS";
 const std::string JSON_PARAM_IPV6_ADDR = "IPV6 ADDRESS";
 const std::string JSON_PARAM_LINK_ADDR = "LINK ADDRESS";

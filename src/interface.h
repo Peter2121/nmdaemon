@@ -7,6 +7,7 @@
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "addressgroup.h"
+#include "mediastatus.h"
 
 class Interface
 {
@@ -16,6 +17,8 @@ protected:
     bool hasIPv4;
     bool hasIPv6;
     bool isIfUp;
+    bool isDhcpEnabled;
+    MediaStatus ifStatus;
 public:
     Interface(std::string);
     Interface() : Interface("") {}
@@ -25,6 +28,10 @@ public:
     std::string getName() const;
     const nlohmann::json getIfJson() const;
     const nlohmann::json getIfString() const;
+    MediaStatus getStatus() const;
+    void setStatus(MediaStatus);
+    void setDhcpStatus(bool);
+    bool getDhcpStatus() const;
     ~Interface();
 };
 

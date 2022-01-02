@@ -1,6 +1,7 @@
 #include "interface.h"
 
-Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false), isIfUp(false)
+Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false),
+                                         isIfUp(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN)
 {
 }
 
@@ -100,7 +101,12 @@ const nlohmann::json Interface::getIfJson() const
     std::vector<nlohmann::json> vectAddrsJson;
 
     retIfJson[JSON_PARAM_IF_NAME] = strName;
-    retIfJson[JSON_PARAM_DHCP_ENABLED] = Tool::isDHCPEnabled(strName);
+
+    if(ifStatus != MediaStatus::UNKNOWN)
+        retIfJson[JSON_PARAM_STATUS] = std::string(magic_enum::enum_name(ifStatus));
+
+    if(isDhcpEnabled)
+        retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
 
     for(auto addr : spVectAddrs)
     {
@@ -113,3 +119,22 @@ const nlohmann::json Interface::getIfJson() const
     return retIfJson;
 }
 
+MediaStatus Interface::getStatus() const
+{
+    return ifStatus;
+}
+
+void Interface::setStatus(MediaStatus status)
+{
+    ifStatus = status;
+}
+
+void Interface::setDhcpStatus(bool status)
+{
+    isDhcpEnabled = status;
+}
+
+bool Interface::getDhcpStatus() const
+{
+    return isDhcpEnabled;
+}

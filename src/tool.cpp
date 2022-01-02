@@ -197,6 +197,88 @@ std::string Tool::getIfPrimaryAddr4(std::string ifname)
     return str_addr4;
 }
 
+MediaStatus Tool::getMediaStatus(std::string if_name)
+// Used code from /usr/src/sbin/ifconfig/ifmedia.c
+{
+    struct ifmediareq ifmr;
+    bool xmedia = true;
+    int *media_list = nullptr;
+    MediaStatus status = MediaStatus::UNKNOWN;
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+
+    memset(&ifmr, 0, sizeof(ifmr));
+    strlcpy(ifmr.ifm_name, if_name.c_str(), sizeof(ifmr.ifm_name));
+
+    if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
+        xmedia = false;
+    if (!xmedia && ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)&ifmr) < 0)
+    {
+        /** Interface doesn't support SIOC{G,S}IFMEDIA. **/
+        return status;
+    }
+
+    if (ifmr.ifm_count == 0)
+    {
+//		warnx("%s: no media types?", name);
+        return status;
+    }
+
+    media_list = new (std::nothrow) int[ifmr.ifm_count];
+    if(media_list == nullptr)
+    {
+        LOG_S(ERROR) << "Error in getMediaStatus: cannot allocate memory";
+        return status;
+    }
+    ifmr.ifm_ulist = media_list;
+
+    if (xmedia)
+    {
+        if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
+        {
+            LOG_S(ERROR) << "Error in getMediaStatus: SIOCGIFXMEDIA ioctl failed";
+            return status;
+        }
+    }
+    else
+    {
+        if (ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)&ifmr) < 0)
+        {
+            LOG_S(ERROR) << "Error in getMediaStatus: SIOCGIFMEDIA ioctl failed";
+            return status;
+        }
+    }
+
+    if (ifmr.ifm_status & IFM_AVALID)
+    {
+        switch (IFM_TYPE(ifmr.ifm_active))
+        {
+            case IFM_ETHER:
+            case IFM_ATM:
+                if (ifmr.ifm_status & IFM_ACTIVE)
+                    status = MediaStatus::ACTIVE;
+                else
+                    status = MediaStatus::NO_CARRIER;
+                break;
+            case IFM_IEEE80211:
+                if (ifmr.ifm_status & IFM_ACTIVE)
+                {
+                    /* NB: only sta mode associates */
+                    if (IFM_OPMODE(ifmr.ifm_active) == IFM_IEEE80211_STA)
+                        status = MediaStatus::ASSOCIATED;
+                    else
+                        status = MediaStatus::RUNNING;
+                } else
+                    status = MediaStatus::NO_CARRIER;
+                break;
+        }
+    }
+
+    if(media_list != nullptr)
+        delete[](media_list);
+
+    return status;
+}
+
 bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )

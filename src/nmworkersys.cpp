@@ -74,7 +74,9 @@ json NmWorkerSys::execCmdIfList(NmCommandData*)
 
     for (auto iface=ifMap.begin(); iface!=ifMap.end(); ++iface)
     {
-      vectIfsJson.push_back(iface->second.getIfJson());
+        iface->second.setDhcpStatus(Tool::isDHCPEnabled(iface->first));
+        iface->second.setStatus(Tool::getMediaStatus(iface->first));
+        vectIfsJson.push_back(iface->second.getIfJson());
     }
 
     nlohmann::json addrJson;

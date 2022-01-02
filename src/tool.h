@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
+#include <net/if_media.h>
+#include <string.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "json/json.hpp"
@@ -16,10 +18,17 @@
 #include "sockpp/version.h"
 #include "nmcommand.h"
 #include "nmjsonconst.h"
+#include "mediastatus.h"
 
 using json = nlohmann::json;
 
 class AddressGroup;
+
+#define	IFM_OPMODE(x) \
+    ((x) & (IFM_IEEE80211_ADHOC | IFM_IEEE80211_HOSTAP | \
+     IFM_IEEE80211_IBSS | IFM_IEEE80211_WDS | IFM_IEEE80211_MONITOR | \
+     IFM_IEEE80211_MBSS))
+#define	IFM_IEEE80211_STA	0
 
 class Tool
 {
@@ -37,6 +46,7 @@ public:
     static bool isDHCPEnabled(std::string);
     static bool termDHCPClient(std::string, short sig=SIGTERM);
     static int getDHCPClientPid(std::string);
+    static MediaStatus getMediaStatus(std::string);
 };
 
 #endif // TOOL_H

@@ -1,6 +1,6 @@
 #include "addressgroup.h"
 
-AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
+AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrRunning(false), isAddrPrimary(false)
 {
     if(ifa==nullptr)
         throw nmExcept;
@@ -25,6 +25,11 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
         isAddrUp = true;
     else
         isAddrUp = false;
+
+    if( (ifa->ifa_flags & IFF_RUNNING) != 0 )
+        isAddrRunning = true;
+    else
+        isAddrRunning = false;
 
     std::string if_name = std::string(ifa->ifa_name);
     std::string def_addr;
@@ -109,13 +114,13 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrPrimary(false)
 AddressGroup::AddressGroup( std::shared_ptr<AddressBase> addr,
             std::shared_ptr<AddressBase> mask,
             std::shared_ptr<AddressBase> data,
-            AddressGroupType type, bool up, int fl, bool primary) :
-                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrPrimary(primary)
+            AddressGroupType type, bool up, int fl, bool primary, bool running) :
+                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrRunning(running), isAddrPrimary(primary)
 {
 }
 
 AddressGroup::AddressGroup() :
-    ipType(AddressGroupType::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrPrimary(false)
+    ipType(AddressGroupType::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrRunning(false), isAddrPrimary(false)
 {
 }
 
@@ -233,6 +238,8 @@ const nlohmann::json AddressGroup::getAddrJson() const
     retAddrJson[JSON_PARAM_ADDR_TYPE] = strMainTitle;
     if(isAddrPrimary)
         retAddrJson[JSON_PARAM_ADDR_PRIMARY] = isAddrPrimary;
+
+//    retAddrJson[JSON_PARAM_ADDR_RUNNING] = isAddrRunning;
 
     if(spIpAddress != nullptr)
     {
@@ -509,4 +516,9 @@ const std::string JSON_DATA_RTFLAG_STICKY = "STICKY";
 bool AddressGroup::isPrimary() const
 {
     return isAddrPrimary;
+}
+
+bool AddressGroup::isRunning() const
+{
+    return isAddrRunning;
 }
