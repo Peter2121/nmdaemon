@@ -40,6 +40,10 @@ std::shared_ptr<NmConfig> sp_conf;
 #if defined (WORKER_WPA)
 #include "nmworkerwpa.h"
 #endif
+#if defined (WORKER_WIFI)
+#include "nmworkerieee80211.h"
+#endif
+
 
 /*
 void run_echo(sockpp::unix_socket sock)
@@ -219,6 +223,10 @@ int main(int argc, char* argv[])
 
 #if defined (WORKER_WPA)
     workers.push_back(new WORKER_WPA());
+#endif
+
+#if defined (WORKER_WIFI)
+    workers.push_back(new WORKER_WIFI());
 #endif
 
     sockpp::socket_initializer sockInit;

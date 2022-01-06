@@ -105,6 +105,9 @@ const nlohmann::json Interface::getIfJson() const
     if(ifStatus != MediaStatus::UNKNOWN)
         retIfJson[JSON_PARAM_STATUS] = std::string(magic_enum::enum_name(ifStatus));
 
+    if(!mediaDesc.empty())
+        retIfJson[JSON_PARAM_MEDIA] = mediaDesc;
+
     if(isDhcpEnabled)
         retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
 
@@ -137,4 +140,14 @@ void Interface::setDhcpStatus(bool status)
 bool Interface::getDhcpStatus() const
 {
     return isDhcpEnabled;
+}
+
+const std::string &Interface::getMediaDesc() const
+{
+    return mediaDesc;
+}
+
+void Interface::setMediaDesc(const std::string &newMediaDesc)
+{
+    mediaDesc = newMediaDesc;
 }

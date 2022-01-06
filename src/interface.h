@@ -19,6 +19,7 @@ protected:
     bool isIfUp;
     bool isDhcpEnabled;
     MediaStatus ifStatus;
+    std::string mediaDesc;
 public:
     Interface(std::string);
     Interface() : Interface("") {}
@@ -33,6 +34,8 @@ public:
     void setDhcpStatus(bool);
     bool getDhcpStatus() const;
     ~Interface();
+    const std::string &getMediaDesc() const;
+    void setMediaDesc(const std::string &newMediaDesc);
 };
 
 #endif // INTERFACE_H

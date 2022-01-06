@@ -5,6 +5,7 @@ project(nmdaemon)
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
+find_library(80211_LIBRARY 80211)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,8 +40,9 @@ add_executable(nmdaemon
         src/nmworkerwpa.cpp
         src/tool.cpp
         src/rcconf.cpp
+        src/nmworkerieee80211.cpp
         src/loguru/loguru.cpp
         src/inifile/inifile.cpp
         )
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} sockpp)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} sockpp)

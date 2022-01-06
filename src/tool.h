@@ -19,6 +19,7 @@
 #include "nmcommand.h"
 #include "nmjsonconst.h"
 #include "mediastatus.h"
+//#include "mediadesc.h"
 
 using json = nlohmann::json;
 
@@ -47,6 +48,9 @@ public:
     static bool termDHCPClient(std::string, short sig=SIGTERM);
     static int getDHCPClientPid(std::string);
     static MediaStatus getMediaStatus(std::string);
+    static std::string getMediaDesc(std::string);
+    static std::unique_ptr<struct ifmediareq> getMediaState(std::string);
+    static std::string getDescWord(int ifmw, int print_toptype);
 };
 
 #endif // TOOL_H

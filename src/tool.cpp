@@ -1,5 +1,6 @@
 #include "tool.h"
 #include "addressgroup.h"
+#include "mediadesc.h"
 
 std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
 {
@@ -197,88 +198,6 @@ std::string Tool::getIfPrimaryAddr4(std::string ifname)
     return str_addr4;
 }
 
-MediaStatus Tool::getMediaStatus(std::string if_name)
-// Used code from /usr/src/sbin/ifconfig/ifmedia.c
-{
-    struct ifmediareq ifmr;
-    bool xmedia = true;
-    int *media_list = nullptr;
-    MediaStatus status = MediaStatus::UNKNOWN;
-    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
-
-    memset(&ifmr, 0, sizeof(ifmr));
-    strlcpy(ifmr.ifm_name, if_name.c_str(), sizeof(ifmr.ifm_name));
-
-    if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
-        xmedia = false;
-    if (!xmedia && ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)&ifmr) < 0)
-    {
-        /** Interface doesn't support SIOC{G,S}IFMEDIA. **/
-        return status;
-    }
-
-    if (ifmr.ifm_count == 0)
-    {
-//		warnx("%s: no media types?", name);
-        return status;
-    }
-
-    media_list = new (std::nothrow) int[ifmr.ifm_count];
-    if(media_list == nullptr)
-    {
-        LOG_S(ERROR) << "Error in getMediaStatus: cannot allocate memory";
-        return status;
-    }
-    ifmr.ifm_ulist = media_list;
-
-    if (xmedia)
-    {
-        if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
-        {
-            LOG_S(ERROR) << "Error in getMediaStatus: SIOCGIFXMEDIA ioctl failed";
-            return status;
-        }
-    }
-    else
-    {
-        if (ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)&ifmr) < 0)
-        {
-            LOG_S(ERROR) << "Error in getMediaStatus: SIOCGIFMEDIA ioctl failed";
-            return status;
-        }
-    }
-
-    if (ifmr.ifm_status & IFM_AVALID)
-    {
-        switch (IFM_TYPE(ifmr.ifm_active))
-        {
-            case IFM_ETHER:
-            case IFM_ATM:
-                if (ifmr.ifm_status & IFM_ACTIVE)
-                    status = MediaStatus::ACTIVE;
-                else
-                    status = MediaStatus::NO_CARRIER;
-                break;
-            case IFM_IEEE80211:
-                if (ifmr.ifm_status & IFM_ACTIVE)
-                {
-                    /* NB: only sta mode associates */
-                    if (IFM_OPMODE(ifmr.ifm_active) == IFM_IEEE80211_STA)
-                        status = MediaStatus::ASSOCIATED;
-                    else
-                        status = MediaStatus::RUNNING;
-                } else
-                    status = MediaStatus::NO_CARRIER;
-                break;
-        }
-    }
-
-    if(media_list != nullptr)
-        delete[](media_list);
-
-    return status;
-}
-
 bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )
@@ -448,5 +367,218 @@ bool Tool::termDHCPClient(std::string ifname, short signal) // signal = SIGTERM 
     return true;
 }
 
+std::unique_ptr<struct ifmediareq> Tool::getMediaState(std::string ifname)
+{
+    bool xmedia = true;
+    std::unique_ptr<struct ifmediareq> ifmr = std::make_unique<struct ifmediareq>();
+    std::unique_ptr<int[]> media_list;
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
 
+    memset(ifmr.get(), 0, sizeof(struct ifmediareq));
+    strlcpy(ifmr.get()->ifm_name, ifname.c_str(), sizeof(ifmr.get()->ifm_name));
 
+    if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)ifmr.get()) < 0)
+        xmedia = false;
+    if (!xmedia && ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)ifmr.get()) < 0)
+    {
+        LOG_S(ERROR) << "Error in getMediaState: Interface " << ifname << " doesn't support SIOCGIF(X)MEDIA";
+        sock.close();
+        return ifmr;
+    }
+
+    if (ifmr->ifm_count != 0)
+    {
+        media_list = std::make_unique<int[]>(ifmr->ifm_count);
+        ifmr->ifm_ulist = &media_list[0];
+
+        if (xmedia)
+        {
+            if (ioctl(sock.handle(), SIOCGIFXMEDIA, (caddr_t)ifmr.get()) < 0)
+            {
+                LOG_S(ERROR) << "Error in getMediaState: SIOCGIFXMEDIA ioctl failed for interface " << ifname;
+            }
+        }
+        else
+        {
+            if (ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)ifmr.get()) < 0)
+            {
+                LOG_S(ERROR) << "Error in getMediaState: SIOCGIFMEDIA ioctl failed for interface " << ifname;
+            }
+        }
+    }
+    sock.close();
+    return ifmr;
+}
+
+MediaStatus Tool::getMediaStatus(std::string ifname)
+{
+    MediaStatus status = MediaStatus::UNKNOWN;
+    std::unique_ptr<struct ifmediareq> ifmr = Tool::getMediaState(ifname);
+    if(ifmr==nullptr)
+        return status;
+
+    if (ifmr->ifm_status & IFM_AVALID)
+    {
+        switch (IFM_TYPE(ifmr->ifm_active))
+        {
+            case IFM_ETHER:
+            case IFM_ATM:
+                if (ifmr->ifm_status & IFM_ACTIVE)
+                    status = MediaStatus::ACTIVE;
+                else
+                    status = MediaStatus::NO_CARRIER;
+                break;
+            case IFM_IEEE80211:
+                if (ifmr->ifm_status & IFM_ACTIVE)
+                {
+                    /* NB: only sta mode associates */
+                    if (IFM_OPMODE(ifmr->ifm_active) == IFM_IEEE80211_STA)
+                        status = MediaStatus::ASSOCIATED;
+                    else
+                        status = MediaStatus::RUNNING;
+                }
+                else
+                    status = MediaStatus::NO_CARRIER;
+                break;
+        }
+    }
+    return status;
+}
+
+std::string Tool::getMediaDesc(std::string ifname)
+{
+    std::string str_desc;
+    std::unique_ptr<struct ifmediareq> ifmr = Tool::getMediaState(ifname);
+    if(ifmr==nullptr)
+        return str_desc;
+
+    str_desc += getDescWord(ifmr->ifm_current, 1);
+
+    if (ifmr->ifm_active != ifmr->ifm_current)
+    {
+        str_desc += " (";
+        str_desc += getDescWord(ifmr->ifm_active, 0);
+        str_desc += ")";
+    }
+
+    return str_desc;
+}
+
+// ifconfig code is used here
+std::string Tool::getDescWord(int ifmw, int print_toptype)
+{
+    std::string str_desc_word;
+    struct ifmedia_description *desc;
+    struct ifmedia_description *desc1;
+    struct ifmedia_type_to_subtype *ttos;
+    int seen_option = 0;
+    bool found = false;
+
+    /* Find the top-level interface type. */
+//    desc = get_toptype_desc(ifmw);
+    for (desc = ifm_type_descriptions; desc->ifmt_string != NULL; desc++)
+    {
+        if (IFM_TYPE(ifmw) == desc->ifmt_word)
+            break;
+    }
+
+//    ttos = get_toptype_ttos(ifmw);
+    for (desc1 = ifm_type_descriptions, ttos = ifmedia_types_to_subtypes;
+        desc1->ifmt_string != NULL; desc1++, ttos++)
+    {
+        if (IFM_TYPE(ifmw) == desc1->ifmt_word)
+            break;
+    }
+
+    if (desc->ifmt_string == NULL)
+    {
+        return str_desc_word;
+    }
+    else if (print_toptype)
+    {
+        str_desc_word += std::string(desc->ifmt_string);
+    }
+    /* Find subtype. */
+//    desc = get_subtype_desc(ifmw, ttos);
+    for (int i = 0; ttos->subtypes[i].desc != NULL; i++)
+    {
+        if (ttos->subtypes[i].alias>0)
+            continue;
+        desc = nullptr;
+        found = false;
+        for (desc = ttos->subtypes[i].desc; desc->ifmt_string != NULL; desc++)
+        {
+            if (IFM_SUBTYPE(ifmw) == desc->ifmt_word)
+            {
+                found = true;
+                break;
+            }
+        }
+        if(found)
+            break;
+    }
+
+    if (desc == nullptr)
+    {
+        return str_desc_word;
+    }
+
+    if (print_toptype)
+        str_desc_word += " ";
+
+    if(desc->ifmt_string != NULL)
+        str_desc_word += std::string(desc->ifmt_string);
+
+    if (print_toptype)
+    {
+//        desc = get_mode_desc(ifmw, ttos);
+        for (int i = 0; ttos->modes[i].desc != NULL; i++)
+        {
+            if (ttos->modes[i].alias)
+                continue;
+            desc = nullptr;
+            found = false;
+            for (desc = ttos->modes[i].desc; desc->ifmt_string != NULL; desc++)
+            {
+                if (IFM_MODE(ifmw) == desc->ifmt_word)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if(found)
+                break;
+        }
+        if (desc != nullptr && desc->ifmt_string != NULL && strcasecmp("autoselect", desc->ifmt_string))
+            str_desc_word += " mode " + std::string(desc->ifmt_string);
+    }
+
+    /* Find options. */
+    for (int i = 0; ttos->options[i].desc != NULL; i++)
+    {
+        if (ttos->options[i].alias)
+            continue;
+        desc = nullptr;
+        for (desc = ttos->options[i].desc; desc->ifmt_string != NULL; desc++)
+        {
+            if (ifmw & desc->ifmt_word)
+            {
+                if (seen_option == 0)
+                    str_desc_word += " <";
+                if(seen_option++ > 0)
+                    str_desc_word += ",";
+                str_desc_word += std::string(desc->ifmt_string);
+//                printf("%s%s", seen_option++ ? "," : "", desc->ifmt_string);
+            }
+        }
+    }
+    if(seen_option > 0)
+        str_desc_word += ">";
+
+    if (print_toptype && IFM_INST(ifmw) != 0)
+    {
+        str_desc_word += " instance ";
+        str_desc_word += std::to_string(IFM_INST(ifmw));
+    }
+    return str_desc_word;
+}
