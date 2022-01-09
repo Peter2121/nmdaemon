@@ -49,6 +49,7 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
         sockin.write_n(strBuf.c_str(), sizeof(buf));
     }
 */
+    memset(buf, 0, sizeof(buf));
     while (true)
     {
         nread = sockin.read(buf, sizeof(buf));

@@ -381,7 +381,7 @@ std::unique_ptr<struct ifmediareq> Tool::getMediaState(std::string ifname)
         xmedia = false;
     if (!xmedia && ioctl(sock.handle(), SIOCGIFMEDIA, (caddr_t)ifmr.get()) < 0)
     {
-        LOG_S(ERROR) << "Error in getMediaState: Interface " << ifname << " doesn't support SIOCGIF(X)MEDIA";
+        LOG_S(WARNING) << "Warning: Interface " << ifname << " doesn't support SIOCGIF(X)MEDIA";
         sock.close();
         return ifmr;
     }
