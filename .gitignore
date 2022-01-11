@@ -1,3 +1,4 @@
 build*
 src/config.h
-src/nwworkers.h
+src/nmworkers.h
+src/nmworkers.cpp

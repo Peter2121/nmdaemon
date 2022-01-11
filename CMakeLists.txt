@@ -38,11 +38,18 @@ set(WORKERS_SOURCES
     src/nmworkerieee80211.cpp
     )
 
-set(WORKERS_INCLUDE_FILE src/nwworkers.h)
+set(WORKERS_INCLUDE_FILE src/nmworkers.h)
 file(REMOVE ${WORKERS_INCLUDE_FILE})
 
 foreach(WORKER_HEADER ${WORKERS_HEADERS})
     file(APPEND ${WORKERS_INCLUDE_FILE} "#include \"${WORKER_HEADER}\"\n")
+endforeach()
+
+set(WORKERS_CLASSES_FILE src/nmworkers.cpp)
+file(REMOVE ${WORKERS_CLASSES_FILE})
+
+foreach(WORKER_CLASS ${WORKERS_CLASSES})
+    file(APPEND ${WORKERS_CLASSES_FILE} "workers.push_back(new ${WORKER_CLASS}());\n")
 endforeach()
 
 find_library(PTHREAD_LIBRARY pthread)
