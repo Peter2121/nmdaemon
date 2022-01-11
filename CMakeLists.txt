@@ -38,6 +38,13 @@ set(WORKERS_SOURCES
     src/nmworkerieee80211.cpp
     )
 
+set(WORKERS_INCLUDE_FILE src/nwworkers.h)
+file(REMOVE ${WORKERS_INCLUDE_FILE})
+
+foreach(WORKER_HEADER ${WORKERS_HEADERS})
+    file(APPEND ${WORKERS_INCLUDE_FILE} "#include \"${WORKER_HEADER}\"\n")
+endforeach()
+
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
