@@ -18,6 +18,7 @@
 #include "sockpp/unix_acceptor.h"
 #include "sockpp/version.h"
 
+#include "config.h"
 #include "nmdaemon.h"
 #include "nmworkerbase.h"
 
@@ -117,6 +118,7 @@ int main(int argc, char* argv[])
     memset(&buf, 0, MAXBUF*sizeof(char));
     sp_conf = nullptr;
 
+    std::cout << "nmdaemon v." << SOFTWARE_VERSION << " is starting..." << std::endl;
     if(argc>1)
     {
 //      Actually we process only the first argument - the name of configuration file

@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.18)
 
 project(nmdaemon)
 
+string(TIMESTAMP TODAY "%Y%m%d%H%M")
+set (VERSION_MAJOR 0)
+set (VERSION_MINOR 0)
+set (VERSION_PATCH ${TODAY})
+set (SOFTWARE_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+configure_file("src/config.h.in" ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h @ONLY)
+
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
