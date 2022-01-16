@@ -23,7 +23,7 @@ enum class NmCmd
 //  wpa_worker
     WPA_LIST_IF, WPA_LIST, WPA_SCAN, WPA_STATUS, WPA_SETPSK, WPA_CONNECT, WPA_DISCONNECT, WPA_REASSOC, WPA_ADD, WPA_REMOVE,
 //  IEEE80211 worker
-    NET_LIST
+    NET_LIST, IF_STATUS
 };
 
 struct NmCommand

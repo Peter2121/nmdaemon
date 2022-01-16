@@ -39,6 +39,7 @@ const std::string JSON_PARAM_NETWORK = "NETWORK";
 const std::string JSON_PARAM_NETWORKS = "NETWORKS";
 const std::string JSON_PARAM_SSID = "SSID";
 const std::string JSON_PARAM_BSSID = "BSSID";
+const std::string JSON_PARAM_MESHID = "MESHID";
 const std::string JSON_PARAM_CHANNEL = "CHANNEL";
 const std::string JSON_PARAM_MAX_RATE = "MAX_RATE";
 const std::string JSON_PARAM_SIGNAL = "SIGNAL";

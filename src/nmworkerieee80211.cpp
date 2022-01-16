@@ -23,6 +23,8 @@ json NmWorkerIeee80211::execCmd(NmCommandData* pcmd)
     {
         case NmCmd::NET_LIST :
             return execCmdNetList(pcmd);
+        case NmCmd::IF_STATUS :
+            return execCmdIfStatus(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -313,3 +315,136 @@ int NmWorkerIeee80211::getMaxRate(const uint8_t rates[15], uint8_t nrates)
     return maxrate / 2;
 }
 
+// ifconfig code is used here (ieee80211_status)
+json NmWorkerIeee80211::execCmdIfStatus(NmCommandData* pcmd)
+{
+    uint8_t zerobssid[IEEE80211_ADDR_LEN];
+    struct ieee80211req ireq;
+    std::string ifname;
+    std::string str_op_mode;
+    json cmd_json = {};
+    json data_json = {};
+    json ret_json = {};
+    std::vector<std::string> vect_ssids;
+    int len = 0;
+    int len_ssid = 0;
+    int n_ssid = 0;
+    short constexpr DATA_LEN = 32;
+    uint8_t data[DATA_LEN];
+    char ssid[IEEE80211_NWID_LEN+1];
+
+    try {
+        cmd_json = pcmd->getJsonData();
+        ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfStatus - cannot get ifname";
+        return JSON_RESULT_ERR;
+    }
+
+    memset(zerobssid, 0, sizeof(zerobssid));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+
+    memset(&ireq, 0, sizeof(ireq));
+    strlcpy(ireq.i_name, ifname.c_str(), sizeof(ireq.i_name));
+    memset(data, 0, sizeof(data));
+
+    ireq.i_type = IEEE80211_IOC_SSID;
+    ireq.i_val = -1;
+    ireq.i_data = data;
+    ireq.i_len = sizeof(data);
+
+    if (ioctl(sock.handle(), SIOCG80211, &ireq) < 0)
+    {
+        LOG_S(ERROR) << "Error in execCmdIfStatus: cannot get 80211 ssid of interface " << ifname;
+        sock.close();
+        return JSON_RESULT_ERR;
+    }
+    len = ireq.i_len;
+
+    IfMr = Tool::getMediaState(ifname);
+    if(IfMr==nullptr)
+    {
+        LOG_S(ERROR) << "Error in execCmdIfStatus: cannot get media state";
+        sock.close();
+        return JSON_RESULT_ERR;
+    }
+
+    memset(&ireq, 0, sizeof(ireq));
+    strlcpy(ireq.i_name, ifname.c_str(), sizeof(ireq.i_name));
+
+    if(IfMr->ifm_current & IFM_IEEE80211_MBSS)
+    {
+        memset(data, 0, sizeof(data));
+        str_op_mode = JSON_PARAM_MESHID;
+        ireq.i_type = IEEE80211_IOC_MESH_ID;
+        ireq.i_val = 0;
+        ireq.i_data = data;
+        ireq.i_len = sizeof(data);
+        if (ioctl(sock.handle(), SIOCG80211, &ireq) < 0)
+        {
+            LOG_S(ERROR) << "Error in execCmdIfStatus: cannot get 80211 mesh ssid";
+            sock.close();
+            return JSON_RESULT_ERR;
+        }
+        len = ireq.i_len;
+    }
+    else
+    {
+        str_op_mode = JSON_PARAM_SSID;
+        if (lib80211_get80211val(sock.handle(), ifname.c_str(), IEEE80211_IOC_NUMSSIDS, &n_ssid) < 0)
+            n_ssid = 0;
+//      I don't know why ifconfig supports such strange configuration, but I implement it too
+        if(n_ssid>1)
+        {
+            for (int i = 0; i < n_ssid; i++)
+            {
+                memset(data, 0, sizeof(data));
+                ireq.i_type = IEEE80211_IOC_SSID;
+                ireq.i_val = i;
+                ireq.i_data = data;
+                ireq.i_len = sizeof(data);
+                if ( (ioctl(sock.handle(), SIOCG80211, &ireq) >= 0) && (ireq.i_len > 0) )
+                {
+                    memset(ssid, 0, sizeof(ssid));
+                    len_ssid = copyEssid(ssid, IEEE80211_NWID_LEN, data, ireq.i_len);
+                    if(len_ssid>0)
+                        vect_ssids.push_back(std::string(ssid));
+                    else
+                        vect_ssids.push_back("");
+                }
+            }
+        }
+    }
+
+    if(vect_ssids.empty())
+    {
+        memset(ssid, 0, sizeof(ssid));
+        len_ssid = copyEssid(ssid, IEEE80211_NWID_LEN, data, len);
+        if(len_ssid>0)
+            data_json[str_op_mode] = std::string(ssid);
+        else
+            data_json[str_op_mode] = "";
+    }
+    else
+    {
+        data_json[str_op_mode] = vect_ssids;
+    }
+
+    memset(data, 0, sizeof(data));
+    if( ( lib80211_get80211(sock.handle(), ifname.c_str(), IEEE80211_IOC_BSSID, data, IEEE80211_ADDR_LEN) < 0 ) ||
+        (memcmp(data, zerobssid, sizeof(zerobssid)) == 0) )
+    {
+        LOG_S(ERROR) << "Error in execCmdIfStatus: cannot get bssid for interface " << ifname;
+        data_json[JSON_PARAM_BSSID] = "";
+    }
+    else
+    {
+        data_json[JSON_PARAM_BSSID] = ether_ntoa((struct ether_addr *)data);
+    }
+
+    ret_json[JSON_PARAM_DATA] = data_json;
+    ret_json[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+
+    return ret_json;
+}

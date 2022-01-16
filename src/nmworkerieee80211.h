@@ -30,7 +30,8 @@ class NmWorkerIeee80211 : public NmWorkerBase
 protected:
     static constexpr NmCommand Cmds[] =
     {
-        { NmScope::WIFI, NmCmd::NET_LIST }
+        { NmScope::WIFI, NmCmd::NET_LIST },
+        { NmScope::WIFI, NmCmd::IF_STATUS }
     };
     static constexpr short MAXCHAN = 1536;
     struct ieee80211req_chaninfo *ChanInfo;
@@ -50,6 +51,7 @@ public:
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
     json execCmdNetList(NmCommandData*);
+    json execCmdIfStatus(NmCommandData*);
 };
 
 #endif // NMWORKERIEEE80211_H
