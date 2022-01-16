@@ -29,3 +29,5 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_DISCONNECT", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_REASSOC", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WIFI", "CMD" : "NET_LIST", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WIFI", "CMD" : "IF_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
