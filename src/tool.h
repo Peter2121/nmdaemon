@@ -35,6 +35,12 @@ class Tool
 {
 protected:
     static inline const std::string DHCP_CLIENT_PROCESS = "dhclient";
+    static inline const std::string MEDIA_BL_PREFIXES[] =
+    {
+        "tun",
+        "tap",
+        "lo"
+    };
 public:
     static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
@@ -51,6 +57,7 @@ public:
     static std::string getMediaDesc(std::string);
     static std::unique_ptr<struct ifmediareq> getMediaState(std::string);
     static std::string getDescWord(int ifmw, int print_toptype);
+    static bool isMediaStatusSupported(std::string);
 };
 
 #endif // TOOL_H

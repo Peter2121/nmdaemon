@@ -533,7 +533,7 @@ char* NmWorkerWpa::searchLineInBuf(const char* mask)
     char* ptr1 = strstr(buf, mask);
     if(ptr1==nullptr)
     {
-        LOG_S(ERROR) << "searchLineInBuf cannot find " << mask << " in buf";
+        LOG_S(WARNING) << "searchLineInBuf cannot find " << mask << " in buf";
         return ptr1;
     }
     while(true)
@@ -728,7 +728,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
         {
             strSearch = "ssid="+ssid;
             ptr1=searchLineInBuf(strSearch.c_str());
-            if(ptr1!=nullptr)
+            if( (ptr1!=nullptr) && (std::string(ptr1)==strSearch) )
             {
                 LOG_S(WARNING) << "Already connected to network " << ssid;
                 ptr1[strlen(ptr1)]='\n';

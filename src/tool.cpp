@@ -366,12 +366,25 @@ bool Tool::termDHCPClient(std::string ifname, short signal) // signal = SIGTERM 
     }
     return true;
 }
+bool Tool::isMediaStatusSupported(std::string ifname)
+{
+    for(auto prefix : MEDIA_BL_PREFIXES)
+    {
+        if(ifname.starts_with(prefix))
+            return false;
+    }
+    return true;
+}
 
 std::unique_ptr<struct ifmediareq> Tool::getMediaState(std::string ifname)
 {
     bool xmedia = true;
     std::unique_ptr<struct ifmediareq> ifmr = std::make_unique<struct ifmediareq>();
     std::unique_ptr<int[]> media_list;
+
+    if(!isMediaStatusSupported(ifname))
+        return ifmr;
+
     sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
 
     memset(ifmr.get(), 0, sizeof(struct ifmediareq));
