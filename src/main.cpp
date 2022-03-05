@@ -36,7 +36,6 @@ static inline const std::string CONF_KEY_SOCKET_USER = "socket_user";
 static inline const std::string CONF_KEY_SOCKET_GROUP = "socket_group";
 static inline const std::string CONF_KEY_SOCKET_MOD = "socket_mod";
 static inline const std::string CONF_KEY_LOG_LEVEL = "stderr_log_level";
-
 static inline const std::string DEFAULT_SOCKET_PATH = "/var/run/nmd.socket";
 static inline const std::string DEFAULT_SOCKET_USER = "root";
 static inline const std::string DEFAULT_SOCKET_GROUP = "wheel";
