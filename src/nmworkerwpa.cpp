@@ -857,6 +857,15 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
         }
     }
+    else
+    {
+        try {
+            id = std::stoi(netid);
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "execCmdWpaConnect cannot convert NETID to integer: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+    }
 
     std::string strCmd = COMMAND_STATUS;
     if(!wpaCtrlCmd(strCmd, ifname))
