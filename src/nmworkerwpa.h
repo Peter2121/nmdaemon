@@ -29,6 +29,7 @@ protected:
         { NmScope::WPA, NmCmd::WPA_LIST_IF },
         { NmScope::WPA, NmCmd::WPA_LIST },
         { NmScope::WPA, NmCmd::WPA_SCAN },
+        { NmScope::WPA, NmCmd::WPA_SCAN_RESULTS },
         { NmScope::WPA, NmCmd::WPA_STATUS },
         { NmScope::WPA, NmCmd::WPA_SETPSK },
         { NmScope::WPA, NmCmd::WPA_CONNECT },
@@ -85,6 +86,7 @@ public:
     json execCmdWpaListIf(NmCommandData*);
     json execCmdWpaList(NmCommandData*);
     json execCmdWpaScan(NmCommandData*);
+    json execCmdWpaScanResults(NmCommandData*);
     json execCmdWpaStatus(NmCommandData*);
     json execCmdWpaSetPsk(NmCommandData*);
     json execCmdWpaConnect(NmCommandData*);

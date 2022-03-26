@@ -38,6 +38,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaList(pcmd);
         case NmCmd::WPA_SCAN :
             return execCmdWpaScan(pcmd);
+        case NmCmd::WPA_SCAN_RESULTS :
+            return execCmdWpaScanResults(pcmd);
         case NmCmd::WPA_STATUS :
             return execCmdWpaStatus(pcmd);
         case NmCmd::WPA_SETPSK :
@@ -212,6 +214,25 @@ json NmWorkerWpa::execCmdWpaScan(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     strCmd = COMMAND_SCAN;
     if(!wpaCtrlCmd(strCmd, "CTRL-EVENT-SCAN-RESULTS", ifname))
+        return JSON_RESULT_ERR;
+
+    strCmd=COMMAND_SCAN_RESULTS;
+
+    if(!wpaCtrlCmd(strCmd, ifname))
+        return JSON_RESULT_ERR;
+
+    return getJsonFromBufTable(JSON_PARAM_NETWORKS);
+}
+
+json NmWorkerWpa::execCmdWpaScanResults(NmCommandData* pcmd)
+{
+    sockpp::unix_dgram_socket sock;
+    std::string strCmd;
+    json cmd = {};
+    std::string ifname = "";
+
+    ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
         return JSON_RESULT_ERR;
 
     strCmd=COMMAND_SCAN_RESULTS;
@@ -553,7 +574,7 @@ std::string NmWorkerWpa::getParamFromCommand(NmCommandData* pcmd, std::string pa
         cmd = pcmd->getJsonData();
         param_value = cmd[JSON_PARAM_DATA][param];
     } catch (std::exception& e) {
-        LOG_S(WARNING) << "Exception in getIfNameFromCommand - cannot get parameter " << param << " from json";
+        LOG_S(WARNING) << "Exception in getParamFromCommand - cannot get parameter " << param << " from json";
     }
 
     return param_value;
@@ -746,7 +767,7 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
     std::string bssid = "";
     char* ptr1 = nullptr;
     char* ptr2 = nullptr;
-    int idnet = 0;
+    int id = -1;
 
     std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
@@ -760,6 +781,15 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
         if(ssid.empty() && bssid.empty())
         {
             LOG_S(ERROR) << "NETID or SSID or BSSID is required to remove network";
+            return JSON_RESULT_ERR;
+        }
+    }
+    else
+    {
+        try {
+            id = std::stoi(netid);
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "execCmdWpaRemove cannot convert NETID to integer: " << e.what();
             return JSON_RESULT_ERR;
         }
     }
@@ -794,12 +824,12 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
     {
         ptr2 = strstr(ptr1, "\t");
         try {
-            idnet = std::stoi(ptr1);
+            id = std::stoi(ptr1);
         } catch (std::exception& e) {
             LOG_S(ERROR) << "execCmdWpaRemove cannot convert NETID to integer: " << e.what();
             return JSON_RESULT_ERR;
         }
-        if( (ptr2==nullptr) || (idnet<0) )
+        if( (ptr2==nullptr) || (id<0) )
         {
             LOG_S(ERROR) << "execCmdWpaRemove received incorrect data from wpa daemon - cannot find network ID in: " << ptr1;
             return JSON_RESULT_ERR;
@@ -807,7 +837,7 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
         ptr2[0]=0;
     }
 
-    if(!removeNetwork(ifname, idnet))
+    if(!removeNetwork(ifname, id))
         return JSON_RESULT_ERR;
 
     return JSON_RESULT_SUCCESS;
