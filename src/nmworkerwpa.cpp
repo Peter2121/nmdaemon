@@ -44,6 +44,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaStatus(pcmd);
         case NmCmd::WPA_SETPSK :
             return execCmdWpaSetPsk(pcmd);
+        case NmCmd::WPA_SETPARAM :
+            return execCmdWpaSetNetParam(pcmd);
         case NmCmd::WPA_CONNECT :
             return execCmdWpaConnect(pcmd);
         case NmCmd::WPA_DISCONNECT :
@@ -191,7 +193,7 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     json cmd = {};
     std::string ifname = "";
 
-    ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
@@ -209,7 +211,7 @@ json NmWorkerWpa::execCmdWpaScan(NmCommandData* pcmd)
     json cmd = {};
     std::string ifname = "";
 
-    ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
     strCmd = COMMAND_SCAN;
@@ -231,7 +233,7 @@ json NmWorkerWpa::execCmdWpaScanResults(NmCommandData* pcmd)
     json cmd = {};
     std::string ifname = "";
 
-    ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
@@ -555,7 +557,7 @@ json NmWorkerWpa::execCmdWpaStatus(NmCommandData* pcmd)
     json cmd = {};
     std::string ifname = "";
 
-    ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
@@ -565,7 +567,8 @@ json NmWorkerWpa::execCmdWpaStatus(NmCommandData* pcmd)
     return getJsonFromBufLines(JSON_PARAM_SUCC);
 }
 
-std::string NmWorkerWpa::getParamFromCommand(NmCommandData* pcmd, std::string param)
+std::string NmWorkerWpa::getStringParamFromCommand(NmCommandData* pcmd, std::string param)
+// Returns empty string if the parameter was not found
 {
     std::string param_value = "";
     json cmd = {};
@@ -574,12 +577,66 @@ std::string NmWorkerWpa::getParamFromCommand(NmCommandData* pcmd, std::string pa
         cmd = pcmd->getJsonData();
         param_value = cmd[JSON_PARAM_DATA][param];
     } catch (std::exception& e) {
-        LOG_S(WARNING) << "Exception in getParamFromCommand - cannot get parameter " << param << " from json";
+        LOG_S(WARNING) << "Exception in getStringParamFromCommand - cannot get parameter " << param << " from json";
     }
 
     return param_value;
 }
 
+bool NmWorkerWpa::getBoolParamFromCommand(NmCommandData* pcmd, std::string param)
+// Returns FALSE if the parameter was not found
+{
+    bool param_value = false;
+    json cmd = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        param_value = cmd[JSON_PARAM_DATA][param];
+    } catch (std::exception& e) {
+        LOG_S(WARNING) << "Exception in getBoolParamFromCommand - cannot get parameter " << param << " from json";
+    }
+
+    return param_value;
+}
+
+int NmWorkerWpa::getIntParamFromCommand(NmCommandData* pcmd, std::string param)
+// Returns -1 if the parameter was not found
+{
+    int param_value = -1;
+    json cmd = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        param_value = cmd[JSON_PARAM_DATA][param];
+    } catch (std::exception& e) {
+        LOG_S(WARNING) << "Exception in getIntParamFromCommand - cannot get parameter " << param << " from json";
+    }
+
+    return param_value;
+}
+
+/*
+TODO: https://www.freebsd.org/cgi/man.cgi?wpa_supplicant.conf(5) https://wiki.netbsd.org/tutorials/how_to_use_wpa_supplicant/
+
+WEP:
+key_mgmt=NONE
+wep_tx_keyidx=0 OR wep_tx_keyidx=1
+wep_key0=42FEEDDEAFBABEDEAFBEEFAA55 (HEX key)
+wep_key1="FreeBSDr0cks!" (ASCII key)
+
+OPEN NETWORK:
+key_mgmt=NONE
+
+WPA-EAP:
+key_mgmt=WPA-EAP
+eap=PEAP OR eap=TTLS
+identity="user@example.com"
+password="foobar"
+anonymous_identity="anonymous@example.com" OPTIONAL FOR eap=TTLS
+ca_cert="/etc/cert/ca.pem"
+phase1=...
+phase2=...
+*/
 json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
 {
     std::string strBuf;
@@ -598,19 +655,19 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
     json jdata {};
     json jret {};
 
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
-    std::string ssid = getParamFromCommand(pcmd, JSON_PARAM_SSID);
-    std::string bssid = getParamFromCommand(pcmd, JSON_PARAM_BSSID);
+    std::string ssid = getStringParamFromCommand(pcmd, JSON_PARAM_SSID);
+    std::string bssid = getStringParamFromCommand(pcmd, JSON_PARAM_BSSID);
     if(ssid.empty() && bssid.empty())
     {
         LOG_S(ERROR) << "SSID or BSSID (or both) is required to add network";
         return JSON_RESULT_ERR;
     }
 
-    std::string psk = getParamFromCommand(pcmd, JSON_PARAM_PSK);
+    std::string psk = getStringParamFromCommand(pcmd, JSON_PARAM_PSK);
 
     std::string strCmd = COMMAND_LIST;
     if(!wpaCtrlCmd(strCmd, ifname))
@@ -765,31 +822,26 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
 {
     std::string ssid = "";
     std::string bssid = "";
+    std::string netid;
     char* ptr1 = nullptr;
     char* ptr2 = nullptr;
     int id = -1;
 
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
-    std::string netid = getParamFromCommand(pcmd, JSON_PARAM_NETID);
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id>=0)
+        netid = std::to_string(id);
+
     if(netid.empty())
     {
-        ssid = getParamFromCommand(pcmd, JSON_PARAM_SSID);
-        bssid = getParamFromCommand(pcmd, JSON_PARAM_BSSID);
+        ssid = getStringParamFromCommand(pcmd, JSON_PARAM_SSID);
+        bssid = getStringParamFromCommand(pcmd, JSON_PARAM_BSSID);
         if(ssid.empty() && bssid.empty())
         {
             LOG_S(ERROR) << "NETID or SSID or BSSID is required to remove network";
-            return JSON_RESULT_ERR;
-        }
-    }
-    else
-    {
-        try {
-            id = std::stoi(netid);
-        } catch (std::exception& e) {
-            LOG_S(ERROR) << "execCmdWpaRemove cannot convert NETID to integer: " << e.what();
             return JSON_RESULT_ERR;
         }
     }
@@ -867,32 +919,27 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     const int MAXLINE = 32;
     char* ptr1 = nullptr;
     char* ptr2 = nullptr;
+    std::string netid;
     int id = -1;
 
     char line[MAXLINE];
     memset(line, 0, MAXLINE*sizeof(char));
 
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
-    std::string netid = getParamFromCommand(pcmd, JSON_PARAM_NETID);
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id>=0)
+        netid = std::to_string(id);
+
     if(netid.empty())
     {
-        ssid = getParamFromCommand(pcmd, JSON_PARAM_SSID);
-        bssid = getParamFromCommand(pcmd, JSON_PARAM_BSSID);
+        ssid = getStringParamFromCommand(pcmd, JSON_PARAM_SSID);
+        bssid = getStringParamFromCommand(pcmd, JSON_PARAM_BSSID);
         if(ssid.empty() && bssid.empty())
         {
             LOG_S(ERROR) << "NETID or SSID or BSSID is required to connect to network";
-            return JSON_RESULT_ERR;
-        }
-    }
-    else
-    {
-        try {
-            id = std::stoi(netid);
-        } catch (std::exception& e) {
-            LOG_S(ERROR) << "execCmdWpaConnect cannot convert NETID to integer: " << e.what();
             return JSON_RESULT_ERR;
         }
     }
@@ -1016,7 +1063,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
 
 json NmWorkerWpa::execCmdWpaDisconnect(NmCommandData* pcmd)
 {
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
@@ -1041,7 +1088,7 @@ json NmWorkerWpa::execCmdWpaReassoc(NmCommandData* pcmd)
     char* ptr2 = nullptr;
     std::string strResult = "";
 
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
@@ -1071,36 +1118,52 @@ json NmWorkerWpa::execCmdWpaSetPsk(NmCommandData* pcmd)
 {
     int id = -1;
 
-    std::string ifname = getParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
-    std::string psk = getParamFromCommand(pcmd, JSON_PARAM_PSK);
+    std::string psk = getStringParamFromCommand(pcmd, JSON_PARAM_PSK);
     if(psk.empty())
         return JSON_RESULT_ERR;
 
-    std::string netid = getParamFromCommand(pcmd, JSON_PARAM_NETID);
-    if(netid.empty())
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id<0)
         return JSON_RESULT_ERR;
 
-    try {
-        id = std::stoi(netid.c_str());
-    } catch (std::exception& e) {
-        LOG_S(ERROR) << "execCmdWpaSetPsk cannot convert NETID to integer: " << e.what();
-        return JSON_RESULT_ERR;
-    }
-
-
-    if(id>=0)
+    if(!setNetworkParam(ifname, id, "psk", psk, true))
     {
-        if(!setNetworkParam(ifname, id, "psk", psk, true))
-        {
-            return JSON_RESULT_ERR;
-        }
-        return JSON_RESULT_SUCCESS;
+        return JSON_RESULT_ERR;
     }
 
-    LOG_S(ERROR) << "execCmdWpaSetPsk received incorrect NETID: " << id;
-    return JSON_RESULT_ERR;
+    return JSON_RESULT_SUCCESS;
 }
 
+json NmWorkerWpa::execCmdWpaSetNetParam(NmCommandData* pcmd)
+{
+    int id = -1;
+
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    std::string param_name = getStringParamFromCommand(pcmd, JSON_PARAM_NET_PARAM_NAME);
+    if(param_name.empty())
+        return JSON_RESULT_ERR;
+
+    std::string param_value = getStringParamFromCommand(pcmd, JSON_PARAM_NET_PARAM_VALUE);
+    if(param_value.empty())
+        return JSON_RESULT_ERR;
+
+    bool param_quotes = getBoolParamFromCommand(pcmd, JSON_PARAM_NET_PARAM_QUOTES);
+
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id<0)
+        return JSON_RESULT_ERR;
+
+    if(!setNetworkParam(ifname, id, param_name, param_value, param_quotes))
+    {
+        return JSON_RESULT_ERR;
+    }
+
+    return JSON_RESULT_SUCCESS;
+}

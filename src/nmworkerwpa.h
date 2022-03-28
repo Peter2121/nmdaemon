@@ -32,6 +32,7 @@ protected:
         { NmScope::WPA, NmCmd::WPA_SCAN_RESULTS },
         { NmScope::WPA, NmCmd::WPA_STATUS },
         { NmScope::WPA, NmCmd::WPA_SETPSK },
+        { NmScope::WPA, NmCmd::WPA_SETPARAM },
         { NmScope::WPA, NmCmd::WPA_CONNECT },
         { NmScope::WPA, NmCmd::WPA_DISCONNECT },
         { NmScope::WPA, NmCmd::WPA_REASSOC },
@@ -55,6 +56,7 @@ protected:
     static inline const std::string RESULT_NOT_FOUND = "CTRL-EVENT-NETWORK-NOT-FOUND";
     static inline const std::string RESULT_TEMP_DISABLED = "CTRL-EVENT-SSID-TEMP-DISABLED";
     static inline const std::string RESULT_WRONG_KEY = "reason=WRONG_KEY";
+    static inline const std::string RESULT_CONN_FAILED = "reason=CONN_FAILED";
     static inline const std::string RESULT_HANDSHAKE_FAILED = "4-Way Handshake failed";
 
     static constexpr int BUF_LEN = 4096;
@@ -72,7 +74,9 @@ protected:
     bool isValidWpaIf(std::string);
     json getJsonFromBufTable(std::string);
     json getJsonFromBufLines(std::string);
-    std::string getParamFromCommand(NmCommandData*, std::string);
+    std::string getStringParamFromCommand(NmCommandData*, std::string);
+    bool getBoolParamFromCommand(NmCommandData*, std::string);
+    int getIntParamFromCommand(NmCommandData*, std::string);
     bool setNetworkParam(std::string, int, std::string, std::string, bool);
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
@@ -89,6 +93,7 @@ public:
     json execCmdWpaScanResults(NmCommandData*);
     json execCmdWpaStatus(NmCommandData*);
     json execCmdWpaSetPsk(NmCommandData*);
+    json execCmdWpaSetNetParam(NmCommandData*);
     json execCmdWpaConnect(NmCommandData*);
     json execCmdWpaDisconnect(NmCommandData*);
     json execCmdWpaReassoc(NmCommandData*);

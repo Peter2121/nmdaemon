@@ -22,11 +22,12 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
-{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr", PSK: "rrrrrrrr" } }
-{ "SCOPE" : "WPA", "CMD" : "WPA_SETPSK", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : "28", "PSK" : "rrrrrrrr" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr", "PSK": "rrrrrrrr" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_SETPSK", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 28, "PSK" : "rrrrrrrr" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_SETPARAM", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 37, "PARAM_NAME" : "key_mgmt", "PARAM_VALUE" : "NONE", "PARAM_QUOTES" : false } }
 { "SCOPE" : "WPA", "CMD" : "WPA_REMOVE", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr" } }
-{ "SCOPE" : "WPA", "CMD" : "WPA_REMOVE", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : "30" } }
-{ "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : "28" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_REMOVE", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 30 } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 28 } }
 { "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_DISCONNECT", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_REASSOC", "DATA" : { "INTERFACE NAME" : "wlan0" } }
