@@ -79,7 +79,7 @@ json NmWorkerIeee80211::execCmdNetList(NmCommandData* pcmd)
     }
     if (len < (int)sizeof(struct ieee80211req_scan_result))
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: incorrect data received from lib80211";
+        LOG_S(ERROR) << "Error in execCmdNetList: incorrect data received from lib80211 for interface " << ifname;
         sock.close();
         return JSON_RESULT_ERR;
     }
@@ -435,7 +435,7 @@ json NmWorkerIeee80211::execCmdIfStatus(NmCommandData* pcmd)
     if( ( lib80211_get80211(sock.handle(), ifname.c_str(), IEEE80211_IOC_BSSID, data, IEEE80211_ADDR_LEN) < 0 ) ||
         (memcmp(data, zerobssid, sizeof(zerobssid)) == 0) )
     {
-        LOG_S(ERROR) << "Error in execCmdIfStatus: cannot get bssid for interface " << ifname;
+        LOG_S(INFO) << "execCmdIfStatus: cannot get bssid for interface " << ifname << " - disconnected?";
         data_json[JSON_PARAM_BSSID] = "";
     }
     else

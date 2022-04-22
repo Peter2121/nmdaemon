@@ -56,6 +56,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaAdd(pcmd);
         case NmCmd::WPA_REMOVE :
             return execCmdWpaRemove(pcmd);
+        case NmCmd::WPA_RESET :
+            return execCmdWpaReset(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -206,24 +208,229 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
 
 json NmWorkerWpa::execCmdWpaScan(NmCommandData* pcmd)
 {
+    int res,i;
     sockpp::unix_dgram_socket sock;
-    std::string strCmd;
-    json cmd = {};
-    std::string ifname = "";
+    bool need_reset = false;
+    short retry = 0;
+    short MAX_RETRIES = 2;
 
-    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
-    strCmd = COMMAND_SCAN;
-    if(!wpaCtrlCmd(strCmd, "CTRL-EVENT-SCAN-RESULTS", ifname))
+
+    const std::string srv_sock = srvSockAddrDir + ifname;
+
+    if (!sock.bind(sockpp::unix_address(cliSockAddr)))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot connect to client socket " << cliSockAddr << " : " << sock.last_error_str();
         return JSON_RESULT_ERR;
+    }
 
-    strCmd=COMMAND_SCAN_RESULTS;
-
-    if(!wpaCtrlCmd(strCmd, ifname))
+    if (!sock.connect(sockpp::unix_address(srv_sock)))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot connect to server socket " << srv_sock << " : " << sock.last_error_str();
+        sock.close();
+        unlink(cliSockAddr.c_str());
         return JSON_RESULT_ERR;
+    }
 
-    return getJsonFromBufTable(JSON_PARAM_NETWORKS);
+    LOG_S(INFO) << "execCmdWpaScan sending command: " << COMMAND_ATTACH;
+    if (sock.send(COMMAND_ATTACH) != ssize_t(COMMAND_ATTACH.length()))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot write to socket: " << sock.last_error_str();
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+send_scan:
+    if(retry>MAX_RETRIES)
+    {
+        LOG_S(ERROR) << "Too many retries to scan networks in execCmdWpaScan";
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    LOG_S(INFO) << "execCmdWpaScan sending command: " << COMMAND_SCAN;
+    if (sock.send(COMMAND_SCAN) != ssize_t(COMMAND_SCAN.length()))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot write to socket: " << sock.last_error_str();
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    for(i=0; i<=WAIT_CYCLES; i++)
+    {
+        memset(buf, 0, BUF_LEN*sizeof(char));
+        res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+        std::this_thread::sleep_for(WAIT_TIME);
+        if(res>0)
+        {
+            LOG_S(INFO) << "execCmdWpaScan received data: " << buf;
+            if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
+                /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
+                /* See wpa_ctrl.c:559 */
+                continue;
+            else
+                break;
+        }
+    }
+    if(i==WAIT_CYCLES+1)
+    {
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    if( (res>8) && (strncmp(buf, "FAIL-BUSY", 9)==0) )
+    {
+        need_reset = true;
+        goto send_reset;
+    }
+
+    if( !((res>1) && (strncmp(buf, "OK", 2)==0)) )
+    {
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    for(i=0; i<=2*WAIT_CYCLES; i++)
+    {
+        memset(buf, 0, BUF_LEN*sizeof(char));
+        res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+        std::this_thread::sleep_for(WAIT_TIME);
+        if(res>0)
+        {
+            LOG_S(INFO) << "wpaCtrlCmd received data: " << buf;
+
+            if ( (res>(int)RESULT_REJECT_SCAN.length()) && (buf[0]=='<') && (strstr(buf, RESULT_REJECT_SCAN.c_str())!=nullptr) )
+            {
+                need_reset = true;
+                break;
+            }
+
+            if ( (res>(int)RESULT_FAILED_SCAN.length()) && (buf[0]=='<') && (strstr(buf, RESULT_FAILED_SCAN.c_str())!=nullptr) )
+            {
+                need_reset = true;
+                break;
+            }
+
+            if ( (res>(int)RESULT_SCAN_RESULTS.length()) && (buf[0]=='<') && (strstr(buf, RESULT_SCAN_RESULTS.c_str())!=nullptr) )
+                break;
+        }
+    }
+
+    if( (i<2*WAIT_CYCLES+1) && !need_reset )    // OK, try to get scan results
+    {
+        LOG_S(INFO) << "execCmdWpaScan sending command: " << COMMAND_SCAN_RESULTS;
+        if (sock.send(COMMAND_SCAN_RESULTS) != ssize_t(COMMAND_SCAN_RESULTS.length()))
+        {
+            LOG_S(ERROR) << "execCmdWpaScan cannot write to socket: " << sock.last_error_str();
+            sock.close();
+            unlink(cliSockAddr.c_str());
+            return JSON_RESULT_ERR;
+        }
+
+        for(i=0; i<=WAIT_CYCLES; i++)
+        {
+            memset(buf, 0, BUF_LEN*sizeof(char));
+            res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+            std::this_thread::sleep_for(WAIT_TIME);
+            if(res>0)
+            {
+                LOG_S(INFO) << "execCmdWpaScan received data: " << buf;
+                if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
+                    /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
+                    /* See wpa_ctrl.c:559 */
+                    continue;
+                else
+                    break;
+            }
+        }
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        if(i==WAIT_CYCLES+1)
+            return JSON_RESULT_ERR;
+        else
+            return getJsonFromBufTable(JSON_PARAM_NETWORKS);
+    }
+
+    if(i==2*WAIT_CYCLES+1)  // Strange error - unexpected answer
+    {
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+send_reset:
+    LOG_S(INFO) << "execCmdWpaScan sending command: " << COMMAND_FLUSH;
+    if (sock.send(COMMAND_FLUSH) != ssize_t(COMMAND_FLUSH.length()))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot write to socket: " << sock.last_error_str();
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    for(i=0; i<=WAIT_CYCLES; i++)
+    {
+        memset(buf, 0, BUF_LEN*sizeof(char));
+        res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+        std::this_thread::sleep_for(WAIT_TIME);
+        if(res>0)
+        {
+            LOG_S(INFO) << "execCmdWpaScan received data: " << buf;
+            if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
+                /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
+                /* See wpa_ctrl.c:559 */
+                continue;
+            else
+                break;
+        }
+    }
+    if(i==WAIT_CYCLES+1)
+    {
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    LOG_S(INFO) << "execCmdWpaScan sending command: " << COMMAND_RECONFIGURE;
+    if (sock.send(COMMAND_RECONFIGURE) != ssize_t(COMMAND_RECONFIGURE.length()))
+    {
+        LOG_S(ERROR) << "execCmdWpaScan cannot write to socket: " << sock.last_error_str();
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+
+    for(i=0; i<=WAIT_CYCLES; i++)
+    {
+        memset(buf, 0, BUF_LEN*sizeof(char));
+        res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+        std::this_thread::sleep_for(WAIT_TIME);
+        if(res>0)
+        {
+            LOG_S(INFO) << "execCmdWpaScan received data: " << buf;
+            if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
+                /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
+                /* See wpa_ctrl.c:559 */
+                continue;
+            else
+                break;
+        }
+    }
+    if(i==WAIT_CYCLES+1)
+    {
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        return JSON_RESULT_ERR;
+    }
+    retry++;
+    goto send_scan;
 }
 
 json NmWorkerWpa::execCmdWpaScanResults(NmCommandData* pcmd)
@@ -347,6 +554,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
 // <3>CTRL-EVENT-NETWORK-NOT-FOUND
 // <3>CTRL-EVENT-SSID-TEMP-DISABLED id=28 ssid="AEX-Peter" auth_failures=1 duration=10 reason=WRONG_KEY
 // <3>WPA: 4-Way Handshake failed - pre-shared key may be incorrect
+// <3>Association request to the driver failed
 //
 //  Wait for result of sending command - it should be "OK"
     for(i=0; i<=WAIT_CYCLES; i++)
@@ -398,6 +606,11 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
                 conn_status = RESULT_HANDSHAKE_FAILED;
                 break;
             }
+            if ( (res>(int)RESULT_DRIVER_REQUEST_FAILED.length()) && (buf[0]=='<') && (strstr(buf, RESULT_DRIVER_REQUEST_FAILED.c_str())!=nullptr) )
+            {
+                conn_status = RESULT_DRIVER_REQUEST_FAILED;
+                break;
+            }
             if ( (res>(int)RESULT_TEMP_DISABLED.length()) && (buf[0]=='<') && (strstr(buf, RESULT_TEMP_DISABLED.c_str())!=nullptr) )
             {
                 // Is it really the response for our request?
@@ -430,7 +643,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
             idFound = true;
             ptr2[strlen(ptr2)]='\n';
         }
-        strncpy(line, "wpa_state=COMPLETED", MAXLINE);
+        strncpy(line, RESULT_COMPLETED.c_str(), MAXLINE);
         ptr2 = searchLineInBuf(line);
         if(ptr2==nullptr)
             strResult = JSON_PARAM_ERR;
@@ -449,6 +662,11 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
 //  PSK incorrect
     {
         return JSON_RESULT_AUTH_FAILED;
+    }
+    else if(conn_status == RESULT_DRIVER_REQUEST_FAILED)
+//  Driver request failed
+    {
+        return JSON_RESULT_DRV_REQ_FAILED;
     }
     else if(conn_status == RESULT_TEMP_DISABLED)
     {
@@ -914,7 +1132,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     std::string bssid = "";
     std::string strSearch = "";
     std::string strResult = JSON_PARAM_SUCC;
-    bool idFound = false;
+    //bool idFound = false;
     bool isConnected = false;
     const int MAXLINE = 32;
     char* ptr1 = nullptr;
@@ -947,7 +1165,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     std::string strCmd = COMMAND_STATUS;
     if(!wpaCtrlCmd(strCmd, ifname))
         return JSON_RESULT_ERR;
-    ptr1 = searchLineInBuf("wpa_state=COMPLETED");
+    ptr1 = searchLineInBuf(RESULT_COMPLETED.c_str());
     if(ptr1!=nullptr)
     {
         isConnected = true;
@@ -1104,7 +1322,7 @@ json NmWorkerWpa::execCmdWpaReassoc(NmCommandData* pcmd)
     if(!wpaCtrlCmd(strCmd, ifname))
         return JSON_RESULT_ERR;
 
-    strncpy(line, "wpa_state=COMPLETED", MAXLINE);
+    strncpy(line, RESULT_COMPLETED.c_str(), MAXLINE);
     ptr2 = searchLineInBuf(line);
     if(ptr2==nullptr)
         strResult = JSON_PARAM_ERR;
@@ -1162,6 +1380,35 @@ json NmWorkerWpa::execCmdWpaSetNetParam(NmCommandData* pcmd)
 
     if(!setNetworkParam(ifname, id, param_name, param_value, param_quotes))
     {
+        return JSON_RESULT_ERR;
+    }
+
+    return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerWpa::execCmdWpaReset(NmCommandData* pcmd)
+{
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    return resetWpaStatus(ifname);
+}
+
+json NmWorkerWpa::resetWpaStatus(std::string ifname)
+{
+    std::string strCmd = COMMAND_FLUSH;
+
+    if(!wpaCtrlCmd(strCmd, ifname))
+    {
+        LOG_S(WARNING) << "execCmdWpaReset did not receive OK for " << strCmd << " command";
+        return JSON_RESULT_ERR;
+    }
+
+    strCmd = COMMAND_RECONFIGURE;
+    if(!wpaCtrlCmd(strCmd, ifname))
+    {
+        LOG_S(WARNING) << "execCmdWpaReset did not receive OK for " << strCmd << " command";
         return JSON_RESULT_ERR;
     }
 

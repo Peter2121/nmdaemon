@@ -37,7 +37,8 @@ protected:
         { NmScope::WPA, NmCmd::WPA_DISCONNECT },
         { NmScope::WPA, NmCmd::WPA_REASSOC },
         { NmScope::WPA, NmCmd::WPA_ADD },
-        { NmScope::WPA, NmCmd::WPA_REMOVE }
+        { NmScope::WPA, NmCmd::WPA_REMOVE },
+        { NmScope::WPA, NmCmd::WPA_RESET }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -52,12 +53,19 @@ protected:
     static inline const std::string COMMAND_ATTACH = "ATTACH";
     static inline const std::string COMMAND_DISCONNECT = "DISCONNECT";
     static inline const std::string COMMAND_REASSOCIATE = "REASSOCIATE";
+    static inline const std::string COMMAND_FLUSH = "FLUSH";
+    static inline const std::string COMMAND_RECONFIGURE = "RECONFIGURE";
     static inline const std::string RESULT_CONNECTED = "CTRL-EVENT-CONNECTED";
     static inline const std::string RESULT_NOT_FOUND = "CTRL-EVENT-NETWORK-NOT-FOUND";
     static inline const std::string RESULT_TEMP_DISABLED = "CTRL-EVENT-SSID-TEMP-DISABLED";
+    static inline const std::string RESULT_SCAN_RESULTS = "CTRL-EVENT-SCAN-RESULTS";
     static inline const std::string RESULT_WRONG_KEY = "reason=WRONG_KEY";
     static inline const std::string RESULT_CONN_FAILED = "reason=CONN_FAILED";
     static inline const std::string RESULT_HANDSHAKE_FAILED = "4-Way Handshake failed";
+    static inline const std::string RESULT_DRIVER_REQUEST_FAILED = "Association request to the driver failed";
+    static inline const std::string RESULT_COMPLETED = "wpa_state=COMPLETED";
+    static inline const std::string RESULT_REJECT_SCAN = "<3>Reject scan trigger since one is already pending";
+    static inline const std::string RESULT_FAILED_SCAN = "<4>Failed to initiate AP scan";
 
     static constexpr int BUF_LEN = 4096;
     static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
@@ -80,6 +88,7 @@ protected:
     bool setNetworkParam(std::string, int, std::string, std::string, bool);
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
+    json resetWpaStatus(std::string);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);
@@ -99,6 +108,7 @@ public:
     json execCmdWpaReassoc(NmCommandData*);
     json execCmdWpaAdd(NmCommandData*);
     json execCmdWpaRemove(NmCommandData*);
+    json execCmdWpaReset(NmCommandData*);
 };
 
 
