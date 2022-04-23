@@ -85,6 +85,7 @@ set(SOURCES
     src/nmexception.cpp
     src/tool.cpp
     src/rcconf.cpp
+    src/wpasocket.cpp
     src/loguru/loguru.cpp
     src/inifile/inifile.cpp
     )

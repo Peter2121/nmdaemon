@@ -18,6 +18,7 @@
 #include "nmworkerbase.h"
 #include "addressgroup.h"
 #include "tool.h"
+#include "wpasocket.h"
 
 namespace fs = std::filesystem;
 
@@ -66,9 +67,11 @@ protected:
     static inline const std::string RESULT_COMPLETED = "wpa_state=COMPLETED";
     static inline const std::string RESULT_REJECT_SCAN = "<3>Reject scan trigger since one is already pending";
     static inline const std::string RESULT_FAILED_SCAN = "<4>Failed to initiate AP scan";
+    static inline const std::string RESULT_FAIL_BUSY = "FAIL-BUSY";
 
     static constexpr int BUF_LEN = 4096;
     static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
+    static constexpr std::chrono::milliseconds WAIT_RECONFIGURE_TIME = std::chrono::milliseconds(2000);
     static constexpr int WAIT_CYCLES = 10;
 
     char* buf = nullptr;
@@ -76,6 +79,8 @@ protected:
     const std::string defSsaDir = "/var/run/wpa_supplicant/";
     std::string cliSockAddr;
     std::string srvSockAddrDir;
+    bool wpaCtrlCmd(WpaSocket*, const std::string);
+    bool wpaCtrlCmd(WpaSocket*, const std::string, const std::string);
     bool wpaCtrlCmd(const std::string, const std::string);
     bool wpaCtrlCmd(const std::string, const std::string, const std::string);
     json wpaConnectCmd(int, std::string);
