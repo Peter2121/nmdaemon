@@ -58,6 +58,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaRemove(pcmd);
         case NmCmd::WPA_RESET :
             return execCmdWpaReset(pcmd);
+        case NmCmd::WPA_SAVE :
+            return execCmdWpaSave(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -521,7 +523,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
     {
         memset(buf, 0, BUF_LEN*sizeof(char));
         res = psock->sockReceiveDontwait(buf, BUF_LEN);
-        std::this_thread::sleep_for(WAIT_TIME);
+        std::this_thread::sleep_for(WAIT_CONNECT_TIME);
         if(res>0)
         {
             LOG_S(INFO) << "wpaConnectCmd received data: " << buf;
@@ -1412,6 +1414,28 @@ json NmWorkerWpa::resetWpaStatus(std::string ifname)
     if(!wpaCtrlCmd(strCmd, ifname))
     {
         LOG_S(WARNING) << "execCmdWpaReset did not receive OK for " << strCmd << " command";
+        return JSON_RESULT_ERR;
+    }
+
+    return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerWpa::execCmdWpaSave(NmCommandData* pcmd)
+{
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    return saveWpaConfig(ifname);
+}
+
+json NmWorkerWpa::saveWpaConfig(std::string ifname)
+{
+    std::string strCmd = COMMAND_SAVE;
+
+    if(!wpaCtrlCmd(strCmd, ifname))
+    {
+        LOG_S(WARNING) << "saveWpaConfig did not receive OK for " << strCmd << " command";
         return JSON_RESULT_ERR;
     }
 

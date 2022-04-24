@@ -39,7 +39,8 @@ protected:
         { NmScope::WPA, NmCmd::WPA_REASSOC },
         { NmScope::WPA, NmCmd::WPA_ADD },
         { NmScope::WPA, NmCmd::WPA_REMOVE },
-        { NmScope::WPA, NmCmd::WPA_RESET }
+        { NmScope::WPA, NmCmd::WPA_RESET },
+        { NmScope::WPA, NmCmd::WPA_SAVE }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -56,6 +57,7 @@ protected:
     static inline const std::string COMMAND_REASSOCIATE = "REASSOCIATE";
     static inline const std::string COMMAND_FLUSH = "FLUSH";
     static inline const std::string COMMAND_RECONFIGURE = "RECONFIGURE";
+    static inline const std::string COMMAND_SAVE = "SAVE_CONFIG";
     static inline const std::string RESULT_CONNECTED = "CTRL-EVENT-CONNECTED";
     static inline const std::string RESULT_NOT_FOUND = "CTRL-EVENT-NETWORK-NOT-FOUND";
     static inline const std::string RESULT_TEMP_DISABLED = "CTRL-EVENT-SSID-TEMP-DISABLED";
@@ -71,7 +73,8 @@ protected:
 
     static constexpr int BUF_LEN = 4096;
     static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
-    static constexpr std::chrono::milliseconds WAIT_RECONFIGURE_TIME = std::chrono::milliseconds(2000);
+    static constexpr std::chrono::milliseconds WAIT_RECONFIGURE_TIME = std::chrono::milliseconds(3000);
+    static constexpr std::chrono::milliseconds WAIT_CONNECT_TIME = std::chrono::milliseconds(1000);
     static constexpr int WAIT_CYCLES = 10;
 
     char* buf = nullptr;
@@ -94,6 +97,7 @@ protected:
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
+    json saveWpaConfig(std::string);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);
@@ -114,6 +118,7 @@ public:
     json execCmdWpaAdd(NmCommandData*);
     json execCmdWpaRemove(NmCommandData*);
     json execCmdWpaReset(NmCommandData*);
+    json execCmdWpaSave(NmCommandData*);
 };
 
 
