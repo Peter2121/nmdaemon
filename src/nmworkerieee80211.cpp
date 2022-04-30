@@ -21,10 +21,12 @@ json NmWorkerIeee80211::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
-        case NmCmd::NET_LIST :
-            return execCmdNetList(pcmd);
-        case NmCmd::IF_STATUS :
-            return execCmdIfStatus(pcmd);
+        case NmCmd::WIFI_SCAN :
+            return execCmdScan(pcmd);
+        case NmCmd::WIFI_SCAN_RESULTS :
+            return execCmdScanResults(pcmd);
+        case NmCmd::WIFI_STATUS :
+            return execCmdStatus(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -45,7 +47,79 @@ bool NmWorkerIeee80211::isValidCmd(NmCommandData* pcmd)
 }
 
 // ifconfig code is used here
-json NmWorkerIeee80211::execCmdNetList(NmCommandData* pcmd)
+json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
+{
+    struct ieee80211_scan_req sr;
+    struct ieee80211req ireq;
+//    int sroute;
+    std::string ifname;
+    json cmd_json = {};
+    const short BUFSIZE = 2048;
+//    char buf[2048];
+    struct if_announcemsghdr *ifan;
+    struct rt_msghdr *rtm;
+
+    try {
+        cmd_json = pcmd->getJsonData();
+        ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdScan - cannot get ifname";
+        return JSON_RESULT_ERR;
+    }
+
+    std::unique_ptr<char[]> buf = std::make_unique<char[]>(BUFSIZE);
+    sockpp::socket sock = sockpp::socket::create(PF_ROUTE, SOCK_RAW);
+//    sroute = socket(PF_ROUTE, SOCK_RAW, 0);
+//    if (sroute < 0) {
+//        perror("socket(PF_ROUTE,SOCK_RAW)");
+//        return;
+//    }
+    memset(buf.get(), 0, BUFSIZE);
+    memset(&ireq, 0, sizeof(ireq));
+    strlcpy(ireq.i_name, ifname.c_str(), sizeof(ireq.i_name));
+    ireq.i_type = IEEE80211_IOC_SCAN_REQ;
+
+    memset(&sr, 0, sizeof(sr));
+    sr.sr_flags = IEEE80211_IOC_SCAN_ACTIVE
+            | IEEE80211_IOC_SCAN_BGSCAN
+            | IEEE80211_IOC_SCAN_NOPICK
+            | IEEE80211_IOC_SCAN_ONCE;
+    sr.sr_duration = IEEE80211_IOC_SCAN_FOREVER;
+    sr.sr_nssid = 0;
+
+    ireq.i_data = &sr;
+    ireq.i_len = sizeof(sr);
+
+    if (ioctl(sock.handle(), SIOCS80211, &ireq) == 0)
+    {
+        do {
+            if (read(sock.handle(), buf.get(), BUFSIZE) < 0)
+            {
+                LOG_S(ERROR) << "Error in execCmdScan - cannot read from PF_ROUTE socket";
+                sock.close();
+                return JSON_RESULT_ERR;
+            }
+            rtm = (struct rt_msghdr *) buf.get();
+            if (rtm->rtm_version != RTM_VERSION)
+            {
+                LOG_S(ERROR) << "Error in execCmdScan: RTM version mismatch, expected " << RTM_VERSION << " got " << rtm->rtm_version;
+                sock.close();
+                return JSON_RESULT_ERR;
+            }
+            ifan = (struct if_announcemsghdr *) rtm;
+        } while (rtm->rtm_type != RTM_IEEE80211 || ifan->ifan_what != RTM_IEEE80211_SCAN);
+    }
+    else
+    {
+        LOG_S(ERROR) << "ioctl error in execCmdScan";
+        return JSON_RESULT_ERR;
+    }
+    sock.close();
+    return execCmdScanResults(pcmd);
+}
+
+// ifconfig code is used here
+json NmWorkerIeee80211::execCmdScanResults(NmCommandData* pcmd)
 {
     constexpr int BUFSIZE = 24*1024;
     std::string ifname;
@@ -65,7 +139,7 @@ json NmWorkerIeee80211::execCmdNetList(NmCommandData* pcmd)
         cmd_json = pcmd->getJsonData();
         ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
     } catch (std::exception& e) {
-        LOG_S(ERROR) << "Exception in execCmdNetList - cannot get ifname";
+        LOG_S(ERROR) << "Exception in execCmdScanResults - cannot get ifname";
         return JSON_RESULT_ERR;
     }
 
@@ -73,31 +147,31 @@ json NmWorkerIeee80211::execCmdNetList(NmCommandData* pcmd)
 
     if (lib80211_get80211len(sock.handle(), ifname.c_str(), IEEE80211_IOC_SCAN_RESULTS, (void*)&buf[0], sizeof(uint8_t[BUFSIZE]), &len) < 0)
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: unable to get network scan results";
+        LOG_S(ERROR) << "Error in execCmdScanResults: unable to get network scan results";
         sock.close();
         return JSON_RESULT_ERR;
     }
     if (len < (int)sizeof(struct ieee80211req_scan_result))
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: incorrect data received from lib80211 for interface " << ifname;
+        LOG_S(ERROR) << "Error in execCmdScanResults: incorrect data received from lib80211 for interface " << ifname;
         sock.close();
         return JSON_RESULT_ERR;
     }
 
     if(!getChanInfo(sock.handle(), ifname))
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: unable to get channels information";
+        LOG_S(ERROR) << "Error in execCmdScanResults: unable to get channels information";
     }
 
     IfMr = Tool::getMediaState(ifname);
     if(IfMr==nullptr)
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: cannot get media state";
+        LOG_S(ERROR) << "Error in execCmdScanResults: cannot get media state";
     }
 
     if (lib80211_get80211val(sock.handle(), ifname.c_str(), IEEE80211_IOC_HTCONF, &HtConf) < 0)
     {
-        LOG_S(ERROR) << "Error in execCmdNetList: unable to get HtConf";
+        LOG_S(ERROR) << "Error in execCmdScanResults: unable to get HtConf";
     }
 
     cp = (uint8_t*)&buf[0];
@@ -144,7 +218,10 @@ json NmWorkerIeee80211::execCmdNetList(NmCommandData* pcmd)
         net[JSON_PARAM_MAX_RATE] = getMaxRate(sr->isr_rates, sr->isr_nrates);
         net[JSON_PARAM_SIGNAL] = (sr->isr_rssi/2)+sr->isr_noise;
         net[JSON_PARAM_NOISE] = sr->isr_noise;
-        cp += sr->isr_len, len -= sr->isr_len;
+        net[JSON_PARAM_CAPS] = getCaps(sr->isr_capinfo);
+        net[JSON_PARAM_IES] =  getIEs(vp + sr->isr_ssid_len + sr->isr_meshid_len, sr->isr_ie_len);
+        cp += sr->isr_len;
+        len -= sr->isr_len;
         vect_nets.push_back(net);
     } while (len >= (int)sizeof(struct ieee80211req_scan_result));
 
@@ -316,7 +393,7 @@ int NmWorkerIeee80211::getMaxRate(const uint8_t rates[15], uint8_t nrates)
 }
 
 // ifconfig code is used here (ieee80211_status)
-json NmWorkerIeee80211::execCmdIfStatus(NmCommandData* pcmd)
+json NmWorkerIeee80211::execCmdStatus(NmCommandData* pcmd)
 {
     uint8_t zerobssid[IEEE80211_ADDR_LEN];
     struct ieee80211req ireq;
@@ -447,4 +524,85 @@ json NmWorkerIeee80211::execCmdIfStatus(NmCommandData* pcmd)
     ret_json[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
 
     return ret_json;
+}
+
+// ifconfig code is used here (ifieee80211.c)
+std::string NmWorkerIeee80211::getCaps(int capinfo)
+{
+    std::string caps = "";
+
+    if (capinfo & IEEE80211_CAPINFO_ESS)
+        caps += "E";
+    if (capinfo & IEEE80211_CAPINFO_IBSS)
+        caps += "I";
+    if (capinfo & IEEE80211_CAPINFO_CF_POLLABLE)
+        caps += "c";
+    if (capinfo & IEEE80211_CAPINFO_CF_POLLREQ)
+        caps += "C";
+    if (capinfo & IEEE80211_CAPINFO_PRIVACY)
+        caps += "P";
+    if (capinfo & IEEE80211_CAPINFO_SHORT_PREAMBLE)
+        caps += "S";
+    if (capinfo & IEEE80211_CAPINFO_PBCC)
+        caps += "B";
+    if (capinfo & IEEE80211_CAPINFO_CHNL_AGILITY)
+        caps += "A";
+    if (capinfo & IEEE80211_CAPINFO_SHORT_SLOTTIME)
+        caps += "s";
+    if (capinfo & IEEE80211_CAPINFO_RSN)
+        caps += "R";
+    if (capinfo & IEEE80211_CAPINFO_DSSSOFDM)
+        caps += "D";
+    return caps;
+}
+
+std::string NmWorkerIeee80211::getIEs(const u_int8_t *vp, int ielen)
+{
+    std::string ies = "";
+    while (ielen > 0) {
+        switch (vp[0]) {
+            case IEEE80211_ELEMID_VENDOR:
+                if (iswpaoui(vp))
+                    ies += "WPA ";
+                else if ( iswmeinfo(vp) || iswmeparam(vp) )
+                    ies += "WME ";
+                else if (isatherosoui(vp))
+                    ies += "ATH ";
+                else if (iswpsoui(vp))
+                    ies += "WPS ";
+                else if (istdmaoui(vp))
+                    ies += "TDMA ";
+                break;
+            case IEEE80211_ELEMID_RSN:
+                ies += "RSN ";
+                break;
+            case IEEE80211_ELEMID_HTCAP:
+                ies += "HTCAP ";
+                break;
+            case IEEE80211_ELEMID_MESHCONF:
+                ies += "MESHCONF ";
+                break;
+            case IEEE80211_ELEMID_VHT_CAP:
+                ies += "VHTCAP ";
+                break;
+            case IEEE80211_ELEMID_VHT_OPMODE:
+                ies += "VHTOPMODE ";
+                break;
+            case IEEE80211_ELEMID_VHT_PWR_ENV:
+                ies += "VHTPWRENV ";
+                break;
+            case IEEE80211_ELEMID_BSSLOAD:
+                ies += "BSSLOAD ";
+                break;
+            case IEEE80211_ELEMID_APCHANREP:
+                ies += "APCHANREP ";
+                break;
+            default:
+                break;
+        }
+        ielen -= 2+vp[1];
+        vp += 2+vp[1];
+    }
+    ies.erase(ies.find_last_not_of(" ") + 1);
+    return ies;
 }

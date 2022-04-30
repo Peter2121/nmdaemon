@@ -37,5 +37,6 @@
 | WPA          | WPA_REASSOC      | Works           | *Not Applicable* | *Not Applicable* |
 | WPA          | WPA_ADD          | Works           | *Not Applicable* | *Not Applicable* |
 | WPA          | WPA_REMOVE       | Works           | *Not Applicable* | *Not Applicable* |
-| WIFI         | NET_LIST         | Works           | *Not Applicable* | *Not Applicable* |
-| WIFI         | IF_STATUS        | Works           | *Not Applicable* | *Not Applicable* |
+| WIFI         | WIFI\_SCAN_RESULTS| Works           | *Not Applicable* | *Not Applicable* |
+| WIFI         | WIFI_SCAN        | Works           | *Not Applicable* | *Not Applicable* |
+| WIFI         | WIFI_STATUS      | Works           | *Not Applicable* | *Not Applicable* |
