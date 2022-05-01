@@ -840,16 +840,6 @@ int NmWorkerWpa::getIntParamFromCommand(NmCommandData* pcmd, std::string param)
 
 /*
 TODO: https://www.freebsd.org/cgi/man.cgi?wpa_supplicant.conf(5) https://wiki.netbsd.org/tutorials/how_to_use_wpa_supplicant/
-
-WEP:
-key_mgmt=NONE
-wep_tx_keyidx=0 OR wep_tx_keyidx=1
-wep_key0=42FEEDDEAFBABEDEAFBEEFAA55 (HEX key)
-wep_key1="FreeBSDr0cks!" (ASCII key)
-
-OPEN NETWORK:
-key_mgmt=NONE
-
 WPA-EAP:
 key_mgmt=WPA-EAP
 eap=PEAP OR eap=TTLS
@@ -890,6 +880,7 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    std::string profile = getStringParamFromCommand(pcmd, JSON_PARAM_PROFILE);
     std::string psk = getStringParamFromCommand(pcmd, JSON_PARAM_PSK);
 
     std::string strCmd = COMMAND_LIST;
@@ -937,9 +928,76 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
         }
     }
 
-    if(!psk.empty())
+    if( profile.empty() || (profile==JSON_DATA_WPA_PROFILE_WPA_PSK) || (profile==JSON_DATA_WPA_PROFILE_WPA2_PSK) )
     {
-        if(!setNetworkParam(ifname, new_id, "psk", psk, true))
+        if(!psk.empty())
+        {
+            if(!setNetworkParam(ifname, new_id, "psk", psk, true))
+            {
+                removeNetwork(ifname, new_id);
+                return JSON_RESULT_ERR;
+            }
+        }
+    }
+    else if(profile==JSON_DATA_WPA_PROFILE_WEP)
+    {
+        if(!psk.empty())
+        {
+            if(!setNetworkParam(ifname, new_id, "wep_key0", psk, true))
+            {
+                removeNetwork(ifname, new_id);
+                return JSON_RESULT_ERR;
+            }
+            /***** This parameter set to 0 is ignored by wpa_supplicant
+            if(!setNetworkParam(ifname, new_id, "wep_tx_keyidx", "0", false))
+            {
+                removeNetwork(ifname, new_id);
+                return JSON_RESULT_ERR;
+            }
+            */
+            if(!setNetworkParam(ifname, new_id, "key_mgmt", "NONE", false))
+            {
+                removeNetwork(ifname, new_id);
+                return JSON_RESULT_ERR;
+            }
+        }
+        else
+        {
+            LOG_S(ERROR) << "Error in execCmdWpaAdd - WEP profile needs PSK to use as network key";
+            removeNetwork(ifname, new_id);
+            return JSON_RESULT_ERR;
+        }
+    }
+    else if(profile==JSON_DATA_WPA_PROFILE_OPEN)
+    {
+        if(!setNetworkParam(ifname, new_id, "key_mgmt", "NONE", false))
+        {
+            removeNetwork(ifname, new_id);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    if( (profile==JSON_DATA_WPA_PROFILE_WPA_PSK) || (profile==JSON_DATA_WPA_PROFILE_WPA2_PSK) )
+    {
+        if(!setNetworkParam(ifname, new_id, "key_mgmt", "WPA-PSK", false))
+        {
+            removeNetwork(ifname, new_id);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    if(profile==JSON_DATA_WPA_PROFILE_WPA_PSK)
+    {
+        if(!setNetworkParam(ifname, new_id, "proto", "WPA", false))
+        {
+            removeNetwork(ifname, new_id);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    if(profile==JSON_DATA_WPA_PROFILE_WPA2_PSK)
+    {
+        if(!setNetworkParam(ifname, new_id, "proto", "RSN", false))
         {
             removeNetwork(ifname, new_id);
             return JSON_RESULT_ERR;
@@ -1138,7 +1196,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     std::string strSearch = "";
     std::string strResult = JSON_PARAM_SUCC;
     //bool idFound = false;
-    bool isConnected = false;
+    //bool isConnected = false;
     const int MAXLINE = 32;
     char* ptr1 = nullptr;
     char* ptr2 = nullptr;
@@ -1173,7 +1231,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     ptr1 = searchLineInBuf(RESULT_COMPLETED.c_str());
     if(ptr1!=nullptr)
     {
-        isConnected = true;
+//        isConnected = true;
         ptr1[strlen(ptr1)]='\n';
         if(!netid.empty())
         {
@@ -1251,37 +1309,6 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
         netid = std::to_string(id);
     }
     return wpaConnectCmd(id, ifname);
-/*
-    strCmd = COMMAND_SELECT + " " + netid;
-    if(!wpaCtrlCmd(strCmd, RESULT_CONNECTED, ifname))
-    {
-        LOG_S(WARNING) << "execCmdWpaConnect did not receive CTRL-EVENT-CONNECTED, trying to refresh status...";
-        strResult = JSON_PARAM_ERR;
-    }
-    strCmd = COMMAND_STATUS;
-    if(!wpaCtrlCmd(strCmd, ifname))
-        return JSON_RESULT_ERR;
-
-    strncpy(line, "id=", MAXLINE);
-    strncat(line, netid.c_str(), MAXLINE);
-    ptr2 = searchLineInBuf(line);
-    if(ptr2==nullptr)
-        strResult = JSON_PARAM_ERR;
-    else
-    {
-        idFound = true;
-        ptr2[strlen(ptr2)]='\n';
-    }
-    strncpy(line, "wpa_state=COMPLETED", MAXLINE);
-    ptr2 = searchLineInBuf(line);
-    if(ptr2==nullptr)
-        strResult = JSON_PARAM_ERR;
-    else
-        if(idFound)
-            strResult = JSON_PARAM_SUCC;
-
-    return getJsonFromBufLines(strResult);
-*/
 }
 
 json NmWorkerWpa::execCmdWpaDisconnect(NmCommandData* pcmd)

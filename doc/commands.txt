@@ -23,6 +23,10 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr", "PSK": "rrrrrrrr" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "testwpa", "PSK": "testwpaa", "PROFILE": "WPA-PSK" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "testwpa2", "PSK": "testwpa2", "PROFILE": "WPA2-PSK" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "testopen", "PROFILE": "OPEN" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "testwep", "PSK": "testwepp", "PROFILE": "WEP" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SETPSK", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 28, "PSK" : "rrrrrrrr" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SETPARAM", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 37, "PARAM_NAME" : "key_mgmt", "PARAM_VALUE" : "NONE", "PARAM_QUOTES" : false } }
 { "SCOPE" : "WPA", "CMD" : "WPA_REMOVE", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr" } }
