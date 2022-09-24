@@ -1090,7 +1090,7 @@ bool NmWorkerWpa::setNetworkParam(std::string ifname, int id, std::string param_
     else
         strCmd = COMMAND_SET + " " + std::to_string(id) + " " + param_name + " " + param;
     if(!wpaCtrlCmd(strCmd, ifname))
-        return JSON_RESULT_ERR;
+        return false;
     if(!(strncmp(buf, "OK", 2)==0) )
     {
         LOG_S(ERROR) << "setNetworkParam cannot set " << param_name << " to " << param << " for network " << id << " : " << buf;

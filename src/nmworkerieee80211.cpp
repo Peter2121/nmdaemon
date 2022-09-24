@@ -111,8 +111,10 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
     }
     else
     {
-        LOG_S(ERROR) << "ioctl error in execCmdScan";
-        return JSON_RESULT_ERR;
+        LOG_S(ERROR) << "ioctl error in execCmdScan - scan request refused";
+        LOG_S(WARNING) << "SCAN_RESULTS will be returned";
+        sock.close();
+        return execCmdScanResults(pcmd);
     }
     sock.close();
     return execCmdScanResults(pcmd);

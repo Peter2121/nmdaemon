@@ -55,6 +55,7 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
         nread = sockin.read(buf, sizeof(buf));
         if(nread <= 0)
             break;
+        //LOG_S(MAX) << "Received data: " << (char*)buf;
         strBuf = std::string(buf);
         NmCommandData* request = new NmCommandData(strBuf);
         res = false;
@@ -80,6 +81,7 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
             std::string strResult = jsResult.dump();
             strlcpy(buf,strResult.c_str(),strResult.length()+1);
             sock_access_write.lock();
+            LOG_S(INFO) << "Writing to socket: " << (char*)buf;
             nwrite = sockin.write_n(buf, sizeof(buf));
             sock_access_write.unlock();
             if(nwrite != sizeof(buf))
@@ -127,44 +129,32 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
             NmCommandData* request = requests.front();
             requests.pop();
             req_access.unlock();
-            memset(&buf, 0, NM_MAXBUF*sizeof(char));
             for(auto worker : workers)
             {
                 if(worker->getScope() == request->getCommand().scope)
                 {
                     work_access.lock();
+                    LOG_S(INFO) << "Worker choosen: " << magic_enum::enum_name(worker->getScope());
                     jsonRes = worker->execCmd(request);
                     work_access.unlock();
                     break;
                 }
             }
-//            string strReqData = request->getJsonData().dump();
-//            strResult = jsonRes.dump();
-            strResult = jsonRes.dump(2);
+            strResult = jsonRes.dump();
+//            strResult = jsonRes.dump(2);
+            LOG_S(INFO) << "Got result from worker: " << strResult;
             if(strResult.length() >= NM_MAXBUF)
             {
                 LOG_S(ERROR) << "No place for result, rebuild with increased NM_MAXBUF value";
                 jsonRes = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INTERNAL_ERROR } };
                 strResult = jsonRes.dump();
             }
-            strlcpy(buf,strResult.c_str(),NM_MAXBUF);
-/*
-            for(int i=0; i<300; i++)
-            {
-                if(!sock_access_write.try_lock())
-                {
-                    LOG_S(WARNING) << "Cannot lock socket, retrying...";
-                    this_thread::sleep_for(chrono::milliseconds(50));
-                }
-                else
-                {
-                    LOG_S(WARNING) << "Socket locked successfully";
-                    break;
-                }
-            }
-*/
+            memset(&buf, 0, NM_MAXBUF*sizeof(char));
+            strlcpy(buf, strResult.c_str(), NM_MAXBUF);
             sock_access_write.lock();
-            sockout.write_n(buf, sizeof(buf));
+            //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            LOG_S(INFO) << "Writing to socket: " << (char*)buf;
+            sockout.write_n(buf, NM_MAXBUF*sizeof(char));
             sock_access_write.unlock();
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
