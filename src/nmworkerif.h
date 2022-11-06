@@ -22,6 +22,10 @@ protected:
         { NmScope::INTERFACE, NmCmd::IP6_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::IP4_DHCP_ENABLE },
         { NmScope::INTERFACE, NmCmd::IP6_DHCP_ENABLE },
+        { NmScope::INTERFACE, NmCmd::IP4_DHCP_DISABLE },
+        { NmScope::INTERFACE, NmCmd::IP6_DHCP_DISABLE },
+        { NmScope::INTERFACE, NmCmd::IP4_GET_DHCP_STATUS },
+        { NmScope::INTERFACE, NmCmd::IP6_GET_DHCP_STATUS },
         { NmScope::INTERFACE, NmCmd::IP_ADDR_ADD },
         { NmScope::INTERFACE, NmCmd::IP_ADDR_REMOVE },
         { NmScope::INTERFACE, NmCmd::MTU_GET },
@@ -56,6 +60,8 @@ public:
     json execCmdMtuGet(NmCommandData*);
     json execCmdMtuSet(NmCommandData*);
     json execCmdDHCPEnable(NmCommandData*);
+    json execCmdDHCPDisable(NmCommandData*);
+    json execCmdDHCPGetStatus(NmCommandData*);
 //    json execCmdIfEnable(nmcommand_data*);
 //    json execCmdIfDisable(nmcommand_data*);
 };

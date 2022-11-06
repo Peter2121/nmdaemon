@@ -31,8 +31,14 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return execCmdMtuSet(pcmd);
         case NmCmd::IP4_DHCP_ENABLE :
             return execCmdDHCPEnable(pcmd);
+        case NmCmd::IP4_DHCP_DISABLE :
+            return execCmdDHCPDisable(pcmd);
+        case NmCmd::IP4_GET_DHCP_STATUS :
+            return execCmdDHCPGetStatus(pcmd);
         case NmCmd::IP6_ADDR_GET :
         case NmCmd::IP6_DHCP_ENABLE :
+        case NmCmd::IP6_DHCP_DISABLE :
+        case NmCmd::IP6_GET_DHCP_STATUS :
         case NmCmd::MAC_ADDR_GET :
         case NmCmd::MAC_ADDR_SET :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
@@ -576,4 +582,56 @@ bool NmWorkerIf::enableDHCP()
         return true;
     else
         return false;
+}
+
+json NmWorkerIf::execCmdDHCPDisable(NmCommandData* pcmd)
+{
+    json cmd = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdDHCPDisable - cannot get interface parameters";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!isDHCPEnabled())
+        return JSON_RESULT_SUCCESS;
+
+    termDHCPClient();
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    if(!isDHCPEnabled())
+        return JSON_RESULT_SUCCESS;
+
+    killDHCPClient();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    if(!isDHCPEnabled())
+        return JSON_RESULT_SUCCESS;
+
+    return JSON_RESULT_ERR;
+}
+
+json NmWorkerIf::execCmdDHCPGetStatus(NmCommandData* pcmd)
+{
+    json cmd = {};
+    json res = {};
+    json res_data = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdDHCPGetStatus - cannot get interface parameters";
+        return JSON_RESULT_ERR;
+    }
+
+    if(isDHCPEnabled())
+        res_data[JSON_DATA_DHCP_STATUS] = JSON_DATA_ENABLED;
+    else
+        res_data[JSON_DATA_DHCP_STATUS] = JSON_DATA_DISABLED;
+
+    res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res[JSON_PARAM_DATA] = res_data;
+    return res;
 }

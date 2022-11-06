@@ -90,7 +90,36 @@ set(SOURCES
     src/inifile/inifile.cpp
     )
 
+set(HEADERS
+    src/addressbase.h
+    src/addressgroup.h
+    src/addressip4.h
+    src/addressip6.h
+    src/addresslink.h
+    src/config.h
+    src/interface.h
+    src/mediadesc.h
+    src/mediastatus.h
+    src/nmcommand.h
+    src/nmcommanddata.h
+    src/nmconfig.h
+    src/nmdaemon.h
+    src/nmexception.h
+    src/nmjsonconst.h
+    src/nmworkerbase.h
+    src/nmworkerdummy.h
+    src/nmworkerieee80211.h
+    src/nmworkerif.h
+    src/nmworkerroute.h
+    src/nmworkers.h
+    src/nmworkersys.h
+    src/nmworkerwpa.h
+    src/rcconf.h
+    src/tool.h
+    src/wpasocket.h
+    )
+
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
-add_executable(nmdaemon ${SOURCES_ALL})
+add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
 target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} sockpp)
