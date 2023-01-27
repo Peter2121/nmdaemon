@@ -17,6 +17,7 @@ protected:
     bool hasIPv4;
     bool hasIPv6;
     bool isIfUp;
+    bool isIfRunning;
     bool isDhcpEnabled;
     MediaStatus ifStatus;
     std::string mediaDesc;

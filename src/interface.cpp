@@ -1,7 +1,7 @@
 #include "interface.h"
 
 Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false),
-                                         isIfUp(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN)
+                                         isIfUp(false), isIfRunning(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN)
 {
 }
 
@@ -22,6 +22,8 @@ void Interface::addAddress(struct ifaddrs* ifa)
         spVectAddrs.push_back(spa);
         if(spa->isUp())
             isIfUp = true;
+        if(spa->isRunning())
+            isIfRunning = true;
         if(spa->getFamily() == AF_INET)
             hasIPv4 = true;
         if(spa->getFamily() == AF_INET6)
@@ -44,6 +46,8 @@ void Interface::addAddress(std::shared_ptr<AddressGroup> spa)
         spVectAddrs.push_back(spa);
         if(spa->isUp())
             isIfUp = true;
+        if(spa->isRunning())
+            isIfRunning = true;
         if(spa->getFamily() == AF_INET)
             hasIPv4 = true;
         if(spa->getFamily() == AF_INET6)
@@ -110,6 +114,9 @@ const nlohmann::json Interface::getIfJson() const
 
     if(isDhcpEnabled)
         retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
+
+    retIfJson[JSON_PARAM_UP] = isIfUp;
+    retIfJson[JSON_PARAM_RUNNING] = isIfRunning;
 
     for(auto addr : spVectAddrs)
     {
