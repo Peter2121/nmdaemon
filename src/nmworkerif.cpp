@@ -137,11 +137,10 @@ struct ifaliasreq {
 
 */
 
-// The return value must be deallocated in calling function
 std::shared_ptr<AddressBase> NmWorkerIf::getMainIfAddr(short family) // family: AF_INET / AF_INET6
 {
     struct ifreq ifr;
-    std::shared_ptr<AddressBase> spaddr=nullptr;
+    std::unique_ptr<AddressBase> spaddr=nullptr;
 
     if( (family!=AF_INET) && (family!=AF_INET6) )
     {
