@@ -13,6 +13,7 @@ enum class NmCmd
     IF_ADD, IF_REMOVE, IF_LIST,
     IF_ENABLE, IF_DISABLE,
     RCCONF_READ, RCCONF_WRITE,
+    JAIL_LIST,
 //  if_worker
     IP4_ADDR_GET, IP6_ADDR_GET, // Returns only primary IP
     IP_ADDR_SET,

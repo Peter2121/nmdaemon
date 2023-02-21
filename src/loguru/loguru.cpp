@@ -469,8 +469,10 @@ namespace loguru
 
 		for (int arg_it = 1; arg_it < argc; ++arg_it) {
 			auto cmd = argv[arg_it];
-			auto arg_len = strlen(verbosity_flag);
-			if (strncmp(cmd, verbosity_flag, arg_len) == 0 && !std::isalpha(cmd[arg_len], std::locale(""))) {
+            auto arg_len = strlen(verbosity_flag);
+            if ( strncmp(cmd, verbosity_flag, arg_len) == 0 &&
+                    ( strlen(cmd)==arg_len || !std::isalpha(cmd[arg_len], std::locale("")) )
+                ) {
 				out_argc -= 1;
 				auto value_str = cmd + arg_len;
 				if (value_str[0] == '\0') {

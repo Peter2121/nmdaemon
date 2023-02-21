@@ -31,6 +31,8 @@ json NmWorkerSys::execCmd(NmCommandData* pcmd)
             return execCmdRcConfRead(pcmd);
         case NmCmd::RCCONF_WRITE :
             return execCmdRcConfWrite(pcmd);
+        case NmCmd::JAIL_LIST :
+            return execCmdJailList(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -53,7 +55,7 @@ bool NmWorkerSys::isValidCmd(NmCommandData* pcmd)
 json NmWorkerSys::execCmdIfList(NmCommandData*)
 {
     struct ifaddrs * ifaddrs_ptr;
-    nlohmann::json retIfListJson;
+//    nlohmann::json retIfListJson;
     nlohmann::json res_ifaces = {};
     std::vector<nlohmann::json> vectIfsJson;
     int status;
@@ -82,7 +84,7 @@ json NmWorkerSys::execCmdIfList(NmCommandData*)
 
     nlohmann::json addrJson;
 
-    retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
+//    retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
     res_ifaces[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res_ifaces[JSON_PARAM_DATA] = vectIfsJson;
 
@@ -272,4 +274,40 @@ json NmWorkerSys::execCmdRcConfWrite(NmCommandData *pcmd)
         return JSON_RESULT_ERR;
     else
         return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerSys::execCmdJailList(NmCommandData*)
+{
+    int jflags=0;
+    std::vector<JailParam> vect_jails;
+    std::vector<nlohmann::json> vect_jails_json;
+    nlohmann::json res_jails = {};
+    nlohmann::json res_data = {};
+
+    JailParam::InitRequestParams();
+    while(true)
+    {
+        std::unique_ptr<JailParam> pjail = std::make_unique<JailParam>();
+        JailParam::Lastjid = pjail->GetJailParams(jflags);
+        if(JailParam::Lastjid<0)
+            break;
+        vect_jails.push_back(*pjail.get());
+    }
+    if (errno != 0 && errno != ENOENT)
+    {
+        LOG_S(ERROR) << "Error in execCmdJailList, got from GetJailParams: " << jail_errmsg;
+        if(vect_jails.empty())
+        {
+            return JSON_RESULT_ERR;
+        }
+    }
+    for(auto jail : vect_jails)
+    {
+        vect_jails_json.push_back(jail.GetJailJson());
+    }
+
+    res_data[JSON_PARAM_JAILS] = vect_jails_json;
+    res_jails[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res_jails[JSON_PARAM_DATA] = res_data;
+    return res_jails;
 }

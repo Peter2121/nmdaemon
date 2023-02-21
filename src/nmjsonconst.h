@@ -82,6 +82,11 @@ const std::string JSON_DATA_WPA_PROFILE_WEP = "WEP";
 const std::string JSON_DATA_WPA_PROFILE_WPA_PSK = "WPA-PSK";
 const std::string JSON_DATA_WPA_PROFILE_WPA2_PSK = "WPA2-PSK";
 const std::string JSON_DATA_DHCP_STATUS = "DHCP STATUS";
+const std::string JSON_PARAM_ID = "ID";
+const std::string JSON_PARAM_NAME = "NAME";
+const std::string JSON_PARAM_HOSTNAME = "HOSTNAME";
+const std::string JSON_PARAM_PATH = "PATH";
+const std::string JSON_PARAM_JAILS = "JAILS";
 
 const nlohmann::json JSON_RESULT_SUCCESS = { { JSON_PARAM_RESULT, JSON_PARAM_SUCC } };
 const nlohmann::json JSON_RESULT_ERR = { { JSON_PARAM_RESULT, JSON_PARAM_ERR } };

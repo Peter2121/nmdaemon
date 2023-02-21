@@ -12,6 +12,7 @@
 #include "interface.h"
 #include "tool.h"
 #include "rcconf.h"
+#include "jailparam.h"
 
 extern std::shared_ptr<NmConfig> sp_conf;
 
@@ -26,7 +27,8 @@ protected:
         { NmScope::SYSTEM, NmCmd::IF_DISABLE },
         { NmScope::SYSTEM, NmCmd::IF_LIST },
         { NmScope::SYSTEM, NmCmd::RCCONF_READ },
-        { NmScope::SYSTEM, NmCmd::RCCONF_WRITE }
+        { NmScope::SYSTEM, NmCmd::RCCONF_WRITE },
+        { NmScope::SYSTEM, NmCmd::JAIL_LIST }
     };
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
@@ -47,6 +49,7 @@ public:
     json execCmdIfDisable(NmCommandData*);
     json execCmdRcConfRead(NmCommandData*);
     json execCmdRcConfWrite(NmCommandData*);
+    json execCmdJailList(NmCommandData*);
 };
 
 #endif // SYS_WORKER_H

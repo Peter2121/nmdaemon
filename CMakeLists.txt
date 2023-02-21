@@ -56,6 +56,7 @@ find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
 find_library(80211_LIBRARY 80211)
+find_library(JAIL_LIBRARY jail)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -86,6 +87,7 @@ set(SOURCES
     src/tool.cpp
     src/rcconf.cpp
     src/wpasocket.cpp
+    src/jailparam.cpp
     src/loguru/loguru.cpp
     src/inifile/inifile.cpp
     )
@@ -117,9 +119,10 @@ set(HEADERS
     src/rcconf.h
     src/tool.h
     src/wpasocket.h
+    src/jailparam.h
     )
 
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} sockpp)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} sockpp)

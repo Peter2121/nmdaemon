@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
     std::string log_level = DEFAULT_LOG_LEVEL;
 
     int loginit_argc = 3;
-    const char *loginit_argv[] = { PROG_NAME, (char *)"-v", (char *)"INFO" };
+    const char *loginit_argv[] = { PROG_NAME, (const char *)"-v", (const char *)"INFO" };
     uid_t socket_uid = 0;
     gid_t socket_gid = 0;
     struct passwd *ppasswd = nullptr;
