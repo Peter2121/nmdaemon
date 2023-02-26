@@ -113,6 +113,8 @@ void JailParam::InitRequestParams() {
 #ifdef INET6
     ip6_ok = (feature_present("inet6") > 0);
 #endif
+    Lastjid = 0;
+    Params.clear();
     for(auto p : ParamNames) {
         AddParam(p.c_str(), NULL, (size_t)0, NULL, JailParam::JP_USER);
     }
