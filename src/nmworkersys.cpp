@@ -79,6 +79,7 @@ json NmWorkerSys::execCmdIfList(NmCommandData*)
         iface->second.setDhcpStatus(Tool::isDHCPEnabled(iface->first));
         iface->second.setStatus(Tool::getMediaStatus(iface->first));
         iface->second.setMediaDesc(Tool::getMediaDesc(iface->first));
+        iface->second.findPrimaryAddress();
         vectIfsJson.push_back(iface->second.getIfJson());
     }
 

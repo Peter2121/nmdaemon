@@ -60,6 +60,7 @@ public:
     static std::string getDescWord(int ifmw, int print_toptype);
     static bool isMediaStatusSupported(std::string);
     static std::vector<JailParam> getJails();
+    static std::string getLastDHCPLeaseAddress(std::string);
 };
 
 #endif // TOOL_H

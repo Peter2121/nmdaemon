@@ -1,6 +1,6 @@
 #include "addressgroup.h"
 
-AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrRunning(false), isAddrPrimary(false)
+AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrRunning(false), isAddrPrimary(false), isAddrJail(false)
 {
     if(ifa==nullptr)
         throw nmExcept;
@@ -44,10 +44,12 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrRunning(false)
             }
             else
                 throw nmExcept;
-
+//      We need more accurate processing here
+            /*
             def_addr = Tool::getIfPrimaryAddr4(if_name);
             if( !def_addr.empty() && (def_addr==spIpAddress->getStrAddr()) )
                 isAddrPrimary = true;
+            */
             switch(ipType)
             {
                 case AddressGroupType::BCAST:
@@ -114,13 +116,15 @@ AddressGroup::AddressGroup(struct ifaddrs* ifa) : flags(0), isAddrRunning(false)
 AddressGroup::AddressGroup( std::shared_ptr<AddressBase> addr,
             std::shared_ptr<AddressBase> mask,
             std::shared_ptr<AddressBase> data,
-            AddressGroupType type, bool up, int fl, bool primary, bool running) :
-                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl), isAddrUp(up), isAddrRunning(running), isAddrPrimary(primary)
+            AddressGroupType type, bool up, int fl, bool primary, bool running, bool jail) :
+                ipType(type), spIpAddress(addr), spIpMask(mask), spIpData(data), flags(fl),
+                isAddrUp(up), isAddrRunning(running), isAddrPrimary(primary), isAddrJail(jail)
 {
 }
 
 AddressGroup::AddressGroup() :
-    ipType(AddressGroupType::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0), isAddrUp(false), isAddrRunning(false), isAddrPrimary(false)
+    ipType(AddressGroupType::UNKNOWN), spIpAddress(nullptr), spIpMask(nullptr), spIpData(nullptr), flags(0),
+    isAddrUp(false), isAddrRunning(false), isAddrPrimary(false), isAddrJail(false)
 {
 }
 
@@ -238,6 +242,8 @@ const nlohmann::json AddressGroup::getAddrJson() const
     retAddrJson[JSON_PARAM_ADDR_TYPE] = strMainTitle;
     if(isAddrPrimary)
         retAddrJson[JSON_PARAM_ADDR_PRIMARY] = isAddrPrimary;
+    if(isAddrJail)
+        retAddrJson[JSON_PARAM_JAIL] = isAddrJail;
 
 //    retAddrJson[JSON_PARAM_ADDR_RUNNING] = isAddrRunning;
 
@@ -521,4 +527,14 @@ bool AddressGroup::isPrimary() const
 bool AddressGroup::isRunning() const
 {
     return isAddrRunning;
+}
+
+void AddressGroup::setPrimary(bool is_primary)
+{
+    isAddrPrimary = is_primary;
+}
+
+void AddressGroup::setJail(bool is_jail)
+{
+    isAddrJail = is_jail;
 }

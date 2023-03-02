@@ -39,6 +39,8 @@ public:
     int GetJailParams(int jflags);
     nlohmann::json GetJailJson();
     static void InitRequestParams();
+    std::vector<std::string> GetJailIpv4Addresses();
+    std::vector<std::string> GetJailIpv6Addresses();
 
     static int Lastjid;
 
@@ -61,6 +63,7 @@ protected:
 
     void PutIpAddrToList(int af_family, struct jailparam *param);
     static int AddParam(const char *name, void *value, size_t valuelen, struct jailparam *source, unsigned flags);
+
 
 };
 

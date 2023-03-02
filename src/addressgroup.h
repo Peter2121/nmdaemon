@@ -31,12 +31,15 @@ protected:
     bool isAddrUp;
     bool isAddrRunning;
     bool isAddrPrimary;
+    bool isAddrJail;
     NmException nmExcept;
     bool isValidIp4() const;
     bool isValidIp6() const;
 public:
     AddressGroup(struct ifaddrs*);
-    AddressGroup(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr, AddressGroupType type=AddressGroupType::BCAST, bool up=false, int fl=0, bool primary=false, bool running=false);
+    AddressGroup(std::shared_ptr<AddressBase> addr, std::shared_ptr<AddressBase> mask, std::shared_ptr<AddressBase> data=nullptr,
+                 AddressGroupType type=AddressGroupType::BCAST, bool up=false, int fl=0,
+                 bool primary=false, bool running=false, bool jail=false);
     AddressGroup();
     ~AddressGroup();
     const std::shared_ptr<AddressBase> getAddr() const;
@@ -55,6 +58,8 @@ public:
     void setMask(std::shared_ptr<AddressBase>);
     void setData(std::shared_ptr<AddressBase>);
     void setType(AddressGroupType);
+    void setPrimary(bool);
+    void setJail(bool);
     bool isValidIp() const;
     int getFlags() const;
     void setFlags(int);

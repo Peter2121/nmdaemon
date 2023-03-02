@@ -12,7 +12,7 @@
 #include "interface.h"
 #include "tool.h"
 #include "rcconf.h"
-#include "jailparam.h"
+//#include "jailparam.h"
 
 extern std::shared_ptr<NmConfig> sp_conf;
 

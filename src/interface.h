@@ -4,10 +4,12 @@
 #include <string>
 #include <exception>
 #include <memory>
+#include <algorithm>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "addressgroup.h"
 #include "mediastatus.h"
+#include "jailparam.h"
 
 class Interface
 {
@@ -37,6 +39,7 @@ public:
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);
+    void findPrimaryAddress();
 };
 
 #endif // INTERFACE_H

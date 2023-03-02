@@ -149,3 +149,13 @@ int JailParam::AddParam(const char *name, void *value, size_t valuelen, jailpara
     Params.push_back(par);
     return Params.size();
 }
+
+std::vector<std::string> JailParam::GetJailIpv4Addresses()
+{
+    return Ipv4Addresses;
+}
+
+std::vector<std::string> JailParam::GetJailIpv6Addresses()
+{
+    return Ipv6Addresses;
+}

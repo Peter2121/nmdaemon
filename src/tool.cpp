@@ -616,3 +616,12 @@ std::vector<JailParam> Tool::getJails()
     }
     return vect_jails;
 }
+
+std::string Tool::getLastDHCPLeaseAddress(std::string if_name)
+{
+/*  TODO:
+ *  - parse /etc/dhclient.conf (if exists) to search for leases file
+ *  - parse leases file (/var/db/dhclient.leases.<if_name> by default) to search for the last lease
+*/
+    return "127.0.0.1";
+}

@@ -158,3 +158,110 @@ void Interface::setMediaDesc(const std::string &newMediaDesc)
 {
     mediaDesc = newMediaDesc;
 }
+
+void Interface::findPrimaryAddress()
+{
+    std::vector<std::string> addr4_jails;
+    std::vector<std::string> addr6_jails;
+    std::vector<std::shared_ptr<AddressGroup>> addr4_if;
+    std::vector<std::shared_ptr<AddressGroup>> addr6_if;
+    std::string addr4_primary = "";
+    std::string addr6_primary = "";
+
+    if(spVectAddrs.empty())
+        return;
+    if(spVectAddrs.size() == 1)
+    {
+        spVectAddrs[0]->setPrimary(true);
+        return;
+    }
+    bool is_dhcp_enabled = Tool::isDHCPEnabled(strName);
+    std::string dhcp_addr = "";
+    if(is_dhcp_enabled)
+        dhcp_addr = Tool::getLastDHCPLeaseAddress(strName);
+    std::vector<JailParam> vect_jails = Tool::getJails();
+    std::string def_addr = Tool::getIfPrimaryAddr4(strName);
+    for (auto &jail : vect_jails)
+    {
+        std::vector<std::string> vect_addr4 = jail.GetJailIpv4Addresses();
+        for (auto addr4 : vect_addr4)
+        {
+            addr4_jails.push_back(addr4);
+        }
+        std::vector<std::string> vect_addr6 = jail.GetJailIpv4Addresses();
+        for (auto addr6 : vect_addr6)
+        {
+            addr6_jails.push_back(addr6);
+        }
+    }
+//  Create temp lists of if addresses
+    for(auto addrg : spVectAddrs)
+    {
+        if(addrg->getFamily() == AF_INET)
+            addr4_if.push_back(addrg);
+        if(addrg->getFamily() == AF_INET6)
+            addr6_if.push_back(addrg);
+    }
+//  Remove all jail addresses from temp lists
+    auto end4 = std::remove_if( addr4_if.begin(), addr4_if.end(),
+                                [&addr4_jails](std::shared_ptr<AddressGroup> const &ag)
+                                {
+                                    std::string addr = ag->getAddr()->getStrAddr();
+                                    return ( std::find(addr4_jails.begin(), addr4_jails.end(), addr) != addr4_jails.end() );
+                                }
+                             );
+    addr4_if.erase(end4, addr4_if.end());
+    auto end6 = std::remove_if( addr6_if.begin(), addr6_if.end(),
+                                [&addr6_jails](std::shared_ptr<AddressGroup> const &ag)
+                                {
+                                    std::string addr = ag->getAddr()->getStrAddr();
+                                    return ( std::find(addr6_jails.begin(), addr6_jails.end(), addr) != addr6_jails.end() );
+                                }
+                             );
+    addr6_if.erase(end6, addr6_if.end());
+    if(!addr6_if.empty())
+    {
+//  TODO: Check for DHCP6 etc.
+        addr6_primary = addr6_if[0]->getAddr()->getStrAddr();
+    }
+    if(!addr4_if.empty())
+    {
+        if(is_dhcp_enabled && !dhcp_addr.empty())
+        {
+            auto agprim = std::find_if( addr4_if.begin(), addr4_if.end(),
+                                        [&dhcp_addr](std::shared_ptr<AddressGroup> const &ag)
+                                        {
+                                            return (ag->getAddr()->getStrAddr() == dhcp_addr);
+                                        }
+                                      );
+            if(agprim != addr4_if.end())
+            {
+                addr4_primary = dhcp_addr;
+            }
+        }
+        else if(!def_addr.empty())
+        {
+            auto agprim = std::find_if( addr4_if.begin(), addr4_if.end(),
+                                        [&def_addr](std::shared_ptr<AddressGroup> const &ag)
+                                        {
+                                            return (ag->getAddr()->getStrAddr() == def_addr);
+                                        }
+                                      );
+            if(agprim != addr4_if.end())
+            {
+                addr4_primary = def_addr;
+            }
+        }
+        if(addr4_primary.empty())
+            addr4_primary = addr4_if[0]->getAddr()->getStrAddr();
+    }
+    for(auto addrg : spVectAddrs)
+    {
+        if( (addrg->getFamily() == AF_INET) &&
+            (addrg->getAddr()->getStrAddr() == addr4_primary) )
+                addrg->setPrimary(true);
+        if( (addrg->getFamily() == AF_INET6) &&
+            (addrg->getAddr()->getStrAddr() == addr6_primary) )
+                addrg->setPrimary(true);
+    }
+}
