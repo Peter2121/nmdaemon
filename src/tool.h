@@ -19,6 +19,7 @@
 #include "nmcommand.h"
 #include "nmjsonconst.h"
 #include "mediastatus.h"
+#include "jailparam.h"
 //#include "mediadesc.h"
 
 using json = nlohmann::json;
@@ -58,6 +59,7 @@ public:
     static std::unique_ptr<struct ifmediareq> getMediaState(std::string);
     static std::string getDescWord(int ifmw, int print_toptype);
     static bool isMediaStatusSupported(std::string);
+    static std::vector<JailParam> getJails();
 };
 
 #endif // TOOL_H

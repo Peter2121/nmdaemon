@@ -278,6 +278,8 @@ json NmWorkerSys::execCmdRcConfWrite(NmCommandData *pcmd)
 
 json NmWorkerSys::execCmdJailList(NmCommandData*)
 {
+    /* Moved to Tool::getJails() */
+    /*
     int jflags=0;
     std::vector<JailParam> vect_jails;
     std::vector<nlohmann::json> vect_jails_json;
@@ -301,11 +303,15 @@ json NmWorkerSys::execCmdJailList(NmCommandData*)
             return JSON_RESULT_ERR;
         }
     }
+    */
+    nlohmann::json res_jails = {};
+    nlohmann::json res_data = {};
+    std::vector<nlohmann::json> vect_jails_json;
+    std::vector<JailParam> vect_jails = Tool::getJails();
     for(auto jail : vect_jails)
     {
         vect_jails_json.push_back(jail.GetJailJson());
     }
-
     res_data[JSON_PARAM_JAILS] = vect_jails_json;
     res_jails[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res_jails[JSON_PARAM_DATA] = res_data;

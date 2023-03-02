@@ -595,3 +595,24 @@ std::string Tool::getDescWord(int ifmw, int print_toptype)
     }
     return str_desc_word;
 }
+
+std::vector<JailParam> Tool::getJails()
+{
+    int jflags=0;
+    std::vector<JailParam> vect_jails;
+
+    JailParam::InitRequestParams();
+    while(true)
+    {
+        std::unique_ptr<JailParam> pjail = std::make_unique<JailParam>();
+        JailParam::Lastjid = pjail->GetJailParams(jflags);
+        if(JailParam::Lastjid<0)
+            break;
+        vect_jails.push_back(*pjail.get());
+    }
+    if (errno != 0 && errno != ENOENT)
+    {
+        LOG_S(ERROR) << "Error in getJails, got from GetJailParams: " << jail_errmsg;
+    }
+    return vect_jails;
+}
