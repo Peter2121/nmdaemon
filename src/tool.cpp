@@ -617,11 +617,87 @@ std::vector<JailParam> Tool::getJails()
     return vect_jails;
 }
 
-std::string Tool::getLastDHCPLeaseAddress(std::string if_name)
+std::string Tool::getLastDHCPLeaseAddress(const std::string if_name)
 {
-/*  TODO:
- *  - parse /etc/dhclient.conf (if exists) to search for leases file
- *  - parse leases file (/var/db/dhclient.leases.<if_name> by default) to search for the last lease
-*/
-    return "127.0.0.1";
+    const std::string lease_file_name = DHCP_CLIENT_LEASES_FILE + if_name;
+    const std::string param_start = "lease {";
+    const std::string param_addr = "fixed-address";
+    const char delim_close = '}';
+    std::string strbuf = "";
+    std::vector<std::string> leases;
+    std::vector<std::string> lease_params;
+    std::vector<std::string> param;
+    std::string last_lease = "";
+    std::string ret_addr = "127.0.0.1";
+
+    std::ifstream file_stream(lease_file_name);
+    while (std::getline(file_stream, strbuf, delim_close))
+    {
+        if( std::string lease=trimString(strbuf, '\n'); !lease.empty() )
+            leases.push_back(lease);
+    }
+    file_stream.close();
+    if(!leases.empty())
+    {
+        last_lease = leases[leases.size()-1];
+        if(!last_lease.empty())
+        {
+            lease_params = splitString(last_lease);
+            if(lease_params.size()>1)
+            {
+                if(lease_params[0] == param_start)
+                {
+                    for(unsigned int i=1; i<lease_params.size(); i++)
+                    {
+                        param = splitString(leftTrimString(lease_params[i]), ' ');
+                        if(param.size()>1)
+                        {
+                            if(param[0] == param_addr)
+                            {
+                                ret_addr = rightTrimString(param[1], ';');     // fixed-address 192.168.211.66;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return ret_addr;
+}
+
+std::vector<std::string> Tool::splitString(const std::string str, const char delim)
+{
+    std::vector<std::string> ret_vect;
+    std::string strbuf;
+    std::stringstream ss(str);
+    while (std::getline(ss, strbuf, delim))
+    {
+        ret_vect.push_back(strbuf);
+    }
+    return ret_vect;
+}
+
+std::string Tool::leftTrimString(const std::string str, const char delim)
+{
+    std::string_view str_view = str;
+    str_view.remove_prefix(std::min(str.find_first_not_of(delim), str.size()));
+    return std::string(str_view);
+}
+
+std::string Tool::rightTrimString(const std::string str, const char delim)
+{
+    std::string_view str_view = str;
+    str_view.remove_suffix(std::min(str.size() - str.find_last_not_of(delim) - 1, str.size()));
+    return std::string(str_view);
+}
+
+std::string Tool::trimString(const std::string str, const char delim)
+{
+    std::string_view str_view = str;
+    str_view.remove_prefix(std::min(str.find_first_not_of(delim), str.size()));
+    if(str_view.empty())
+        return std::string(str_view);
+    str_view.remove_suffix(std::min(str.size() - str.find_last_not_of(delim) - 1, str.size()));
+    return std::string(str_view);
 }

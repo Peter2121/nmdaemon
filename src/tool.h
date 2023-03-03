@@ -2,6 +2,7 @@
 #define TOOL_H
 
 #include <vector>
+#include <fstream>
 #include <sys/sockio.h>
 #include <kvm.h>
 #include <limits.h>
@@ -36,6 +37,7 @@ class Tool
 {
 protected:
     static inline const std::string DHCP_CLIENT_PROCESS = "dhclient";
+    static inline const std::string DHCP_CLIENT_LEASES_FILE = "/var/db/dhclient.leases.";
     static inline const std::string MEDIA_BL_PREFIXES[] =
     {
         "tun",
@@ -60,7 +62,11 @@ public:
     static std::string getDescWord(int ifmw, int print_toptype);
     static bool isMediaStatusSupported(std::string);
     static std::vector<JailParam> getJails();
-    static std::string getLastDHCPLeaseAddress(std::string);
+    static std::string getLastDHCPLeaseAddress(const std::string);
+    static std::vector<std::string> splitString(const std::string str, const char delim='\n');
+    static std::string leftTrimString(const std::string str, const char delim=' ');
+    static std::string rightTrimString(const std::string str, const char delim=' ');
+    static std::string trimString(const std::string str, const char delim=' ');
 };
 
 #endif // TOOL_H
