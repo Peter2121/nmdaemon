@@ -159,7 +159,7 @@ void Interface::setMediaDesc(const std::string &newMediaDesc)
     mediaDesc = newMediaDesc;
 }
 
-void Interface::findPrimaryAddress()
+void Interface::findPrimaryAndJailAddress()
 {
     std::vector<std::string> addr4_jails;
     std::vector<std::string> addr6_jails;
@@ -257,11 +257,21 @@ void Interface::findPrimaryAddress()
     }
     for(auto addrg : spVectAddrs)
     {
-        if( (addrg->getFamily() == AF_INET) &&
-            (addrg->getAddr()->getStrAddr() == addr4_primary) )
+        if(addrg->getFamily() == AF_INET)
+        {
+            std::string addr4 = addrg->getAddr()->getStrAddr();
+            if(addr4 == addr4_primary)
                 addrg->setPrimary(true);
-        if( (addrg->getFamily() == AF_INET6) &&
-            (addrg->getAddr()->getStrAddr() == addr6_primary) )
+            if( std::find(addr4_jails.begin(), addr4_jails.end(), addr4) != addr4_jails.end() )
+                addrg->setJail(true);
+        }
+        if(addrg->getFamily() == AF_INET6)
+        {
+            std::string addr6 = addrg->getAddr()->getStrAddr();
+            if(addr6 == addr6_primary)
                 addrg->setPrimary(true);
+            if( std::find(addr6_jails.begin(), addr6_jails.end(), addr6) != addr6_jails.end() )
+                addrg->setJail(true);
+        }
     }
 }

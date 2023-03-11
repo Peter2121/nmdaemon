@@ -681,6 +681,8 @@ std::vector<std::string> Tool::splitString(const std::string str, const char del
 std::string Tool::leftTrimString(const std::string str, const char delim)
 {
     std::string_view str_view = str;
+    if(str_view.empty())
+        return std::string(str_view);
     str_view.remove_prefix(std::min(str.find_first_not_of(delim), str.size()));
     return std::string(str_view);
 }
@@ -688,6 +690,8 @@ std::string Tool::leftTrimString(const std::string str, const char delim)
 std::string Tool::rightTrimString(const std::string str, const char delim)
 {
     std::string_view str_view = str;
+    if(str_view.empty())
+        return std::string(str_view);
     str_view.remove_suffix(std::min(str.size() - str.find_last_not_of(delim) - 1, str.size()));
     return std::string(str_view);
 }
@@ -695,6 +699,8 @@ std::string Tool::rightTrimString(const std::string str, const char delim)
 std::string Tool::trimString(const std::string str, const char delim)
 {
     std::string_view str_view = str;
+    if(str_view.empty())
+        return std::string(str_view);
     str_view.remove_prefix(std::min(str.find_first_not_of(delim), str.size()));
     if(str_view.empty())
         return std::string(str_view);

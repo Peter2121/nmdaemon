@@ -55,7 +55,7 @@ bool NmWorkerSys::isValidCmd(NmCommandData* pcmd)
 json NmWorkerSys::execCmdIfList(NmCommandData*)
 {
     struct ifaddrs * ifaddrs_ptr;
-//    nlohmann::json retIfListJson;
+    nlohmann::json retIfListJson;
     nlohmann::json res_ifaces = {};
     std::vector<nlohmann::json> vectIfsJson;
     int status;
@@ -79,15 +79,15 @@ json NmWorkerSys::execCmdIfList(NmCommandData*)
         iface->second.setDhcpStatus(Tool::isDHCPEnabled(iface->first));
         iface->second.setStatus(Tool::getMediaStatus(iface->first));
         iface->second.setMediaDesc(Tool::getMediaDesc(iface->first));
-        iface->second.findPrimaryAddress();
+        iface->second.findPrimaryAndJailAddress();
         vectIfsJson.push_back(iface->second.getIfJson());
     }
 
     nlohmann::json addrJson;
 
-//    retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
+    retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
     res_ifaces[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-    res_ifaces[JSON_PARAM_DATA] = vectIfsJson;
+    res_ifaces[JSON_PARAM_DATA] = retIfListJson;
 
     return res_ifaces;
 }

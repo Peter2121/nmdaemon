@@ -39,7 +39,7 @@ public:
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);
-    void findPrimaryAddress();
+    void findPrimaryAndJailAddress();
 };
 
 #endif // INTERFACE_H
