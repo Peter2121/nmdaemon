@@ -40,7 +40,9 @@ protected:
         { NmScope::WPA, NmCmd::WPA_ADD },
         { NmScope::WPA, NmCmd::WPA_REMOVE },
         { NmScope::WPA, NmCmd::WPA_RESET },
-        { NmScope::WPA, NmCmd::WPA_SAVE }
+        { NmScope::WPA, NmCmd::WPA_SAVE },
+        { NmScope::WPA, NmCmd::WPA_ENABLE },
+        { NmScope::WPA, NmCmd::WPA_DISABLE }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -58,6 +60,8 @@ protected:
     static inline const std::string COMMAND_FLUSH = "FLUSH";
     static inline const std::string COMMAND_RECONFIGURE = "RECONFIGURE";
     static inline const std::string COMMAND_SAVE = "SAVE_CONFIG";
+    static inline const std::string COMMAND_ENABLE = "ENABLE_NETWORK";
+    static inline const std::string COMMAND_DISABLE = "DISABLE_NETWORK";
     static inline const std::string RESULT_CONNECTED = "CTRL-EVENT-CONNECTED";
     static inline const std::string RESULT_NOT_FOUND = "CTRL-EVENT-NETWORK-NOT-FOUND";
     static inline const std::string RESULT_TEMP_DISABLED = "CTRL-EVENT-SSID-TEMP-DISABLED";
@@ -97,7 +101,6 @@ protected:
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
-    json saveWpaConfig(std::string);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);
@@ -119,6 +122,8 @@ public:
     json execCmdWpaRemove(NmCommandData*);
     json execCmdWpaReset(NmCommandData*);
     json execCmdWpaSave(NmCommandData*);
+    json execCmdWpaEnable(NmCommandData*);
+    json execCmdWpaDisable(NmCommandData*);
 };
 
 
