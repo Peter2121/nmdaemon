@@ -52,6 +52,7 @@ protected:
     static inline const std::string COMMAND_STATUS = "STATUS";
     static inline const std::string COMMAND_ADD = "ADD_NETWORK";
     static inline const std::string COMMAND_SET = "SET_NETWORK";
+    static inline const std::string COMMAND_GET = "GET_NETWORK";
     static inline const std::string COMMAND_SELECT = "SELECT_NETWORK";
     static inline const std::string COMMAND_REMOVE = "REMOVE_NETWORK";
     static inline const std::string COMMAND_ATTACH = "ATTACH";
@@ -74,6 +75,9 @@ protected:
     static inline const std::string RESULT_REJECT_SCAN = "<3>Reject scan trigger since one is already pending";
     static inline const std::string RESULT_FAILED_SCAN = "<4>Failed to initiate AP scan";
     static inline const std::string RESULT_FAIL_BUSY = "FAIL-BUSY";
+    static inline const std::string RESULT_FAIL = "FAIL";
+
+    static inline const std::string SuppParamNames[] = { "priority", "key_mgmt" };
 
     static constexpr int BUF_LEN = 4096;
     static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
@@ -98,9 +102,11 @@ protected:
     bool getBoolParamFromCommand(NmCommandData*, std::string);
     int getIntParamFromCommand(NmCommandData*, std::string);
     bool setNetworkParam(std::string, int, std::string, std::string, bool);
+    std::string getNetworkParam(std::string, int, std::string);
     char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
+    void getSuppParams(std::string, json&);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);

@@ -199,6 +199,7 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
 {
     std::string strCmd;
     json cmd = {};
+    json ret_list = {};
     std::string ifname = "";
 
     ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
@@ -209,7 +210,57 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     if(!wpaCtrlCmd(strCmd, ifname))
         return JSON_RESULT_ERR;
 
-    return getJsonFromBufTable(JSON_PARAM_NETWORKS);
+    ret_list = getJsonFromBufTable(JSON_PARAM_NETWORKS);
+    getSuppParams(ifname, ret_list);
+
+    return ret_list;
+}
+
+void NmWorkerWpa::getSuppParams(std::string ifname, json& ret_list)
+{
+    int total_networks = ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS].size();
+    std::string str_id = "";
+    int id_network = -1;
+    std::string param_value = "";
+    for(int i=0; i<total_networks; i++)
+    {
+        str_id = ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i]["network id"];
+        id_network = -1;
+        try
+        {
+            id_network = std::stoi(str_id);
+        }
+        catch (std::exception& e)
+        {
+            LOG_S(ERROR) << "getSuppParams cannot convert network id " << str_id << " to integer: " << e.what();
+            continue;
+        }
+        if(id_network<0)
+            continue;
+        for (auto param_name : SuppParamNames)
+        {
+            param_value = getNetworkParam(ifname, id_network, param_name);
+            if(!param_value.empty())
+                ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i][param_name] = param_value;
+        }
+    }
+}
+
+std::string NmWorkerWpa::getNetworkParam(std::string ifname, int id, std::string param_name)
+{
+    std::string strCmd = COMMAND_GET + " " + std::to_string(id) + " " + param_name;
+    std::string result = "";
+    if(!wpaCtrlCmd(strCmd, ifname))
+        return result;
+
+    if(strncmp(buf, RESULT_FAIL.c_str(), RESULT_FAIL.length())==0 )
+    {
+        LOG_S(ERROR) << "getNetworkParam cannot get " << param_name << " for network " << id << " : " << buf;
+        return result;
+    }
+
+    result = std::string(buf);
+    return result;
 }
 
 json NmWorkerWpa::execCmdWpaScan(NmCommandData* pcmd)
@@ -253,7 +304,7 @@ send_scan:
         return JSON_RESULT_ERR;
     }
 
-    if( strncmp(buf, "FAIL-BUSY", 9)==0 )
+    if( strncmp(buf, RESULT_FAIL_BUSY.c_str(), RESULT_FAIL_BUSY.length())==0 )
     {
         need_reset = true;
         goto send_reset;
@@ -504,7 +555,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
         return JSON_RESULT_ERR;
     }
 
-    if( strncmp(buf, "FAIL-BUSY", 9)==0 )
+    if( strncmp(buf, RESULT_FAIL_BUSY.c_str(), RESULT_FAIL_BUSY.length())==0 )
     {
         return JSON_RESULT_ERR;
     }
@@ -662,7 +713,7 @@ bool NmWorkerWpa::wpaCtrlCmd(WpaSocket* psock, std::string strCmd, std::string s
     if(i==WAIT_CYCLES+1)
         return false;
 
-    if( (res>8) && (strncmp(buf, "FAIL-BUSY", 9)==0) )
+    if( (res>8) && (strncmp(buf, RESULT_FAIL_BUSY.c_str(), RESULT_FAIL_BUSY.length() )==0) )
     {
         return false;
     }
@@ -744,7 +795,7 @@ bool NmWorkerWpa::wpaCtrlCmd(std::string strCmd, std::string strWait, std::strin
     if(i==WAIT_CYCLES+1)
         return false;
 
-    if( (res>8) && (strncmp(buf, "FAIL-BUSY", 9)==0) )
+    if( (res>8) && (strncmp(buf, RESULT_FAIL_BUSY.c_str(), RESULT_FAIL_BUSY.length())==0) )
     {
         sock.close();
         unlink(cliSockAddr.c_str());
