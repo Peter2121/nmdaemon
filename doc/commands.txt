@@ -42,6 +42,7 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_SAVE", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_ENABLE", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 13 } }
 { "SCOPE" : "WPA", "CMD" : "WPA_DISABLE", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 13 } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_SET_BSSID", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 13, "BSSID" : "00:00:00:00:00:00" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_SCAN_RESULTS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }

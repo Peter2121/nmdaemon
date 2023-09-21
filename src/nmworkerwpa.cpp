@@ -64,6 +64,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaEnable(pcmd);
         case NmCmd::WPA_DISABLE :
             return execCmdWpaDisable(pcmd);
+        case NmCmd::WPA_SET_BSSID :
+            return execCmdWpaSetBssid(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -1563,6 +1565,37 @@ json NmWorkerWpa::execCmdWpaDisable(NmCommandData* pcmd)
     if(!wpaCtrlCmd(strCmd, ifname))
     {
         LOG_S(WARNING) << "execCmdWpaDisable did not receive OK for " << strCmd << " command";
+        return JSON_RESULT_ERR;
+    }
+
+    return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerWpa::execCmdWpaSetBssid(NmCommandData* pcmd)
+{
+    std::string netid = "";
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    std::string bssid = getStringParamFromCommand(pcmd, JSON_PARAM_BSSID);
+    if(bssid.empty())
+        return JSON_RESULT_ERR;
+
+    int id = -1;
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id>=0)
+        netid = std::to_string(id);
+
+    if(netid.empty())
+        return JSON_RESULT_ERR;
+
+
+    std::string strCmd = COMMAND_SET_BSSID + " " + netid + " " + bssid;
+
+    if(!wpaCtrlCmd(strCmd, ifname))
+    {
+        LOG_S(WARNING) << "execCmdWpaSetBssid did not receive OK for " << strCmd << " command";
         return JSON_RESULT_ERR;
     }
 
