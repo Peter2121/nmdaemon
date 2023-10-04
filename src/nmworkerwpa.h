@@ -79,7 +79,7 @@ protected:
     static inline const std::string RESULT_FAIL_BUSY = "FAIL-BUSY";
     static inline const std::string RESULT_FAIL = "FAIL";
 
-    static inline const std::string SuppParamNames[] = { "priority", "key_mgmt" };
+    static inline const std::string SuppParamNames[] = { "priority", "key_mgmt", "proto" };
 
     static constexpr int BUF_LEN = 4096;
     static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
