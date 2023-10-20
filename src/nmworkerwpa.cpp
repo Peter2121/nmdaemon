@@ -48,6 +48,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaSetNetParam(pcmd);
         case NmCmd::WPA_CONNECT :
             return execCmdWpaConnect(pcmd);
+        case NmCmd::WPA_SELECT :
+            return execCmdWpaSelect(pcmd);
         case NmCmd::WPA_DISCONNECT :
             return execCmdWpaDisconnect(pcmd);
         case NmCmd::WPA_REASSOC :
@@ -518,7 +520,105 @@ bool NmWorkerWpa::wpaCtrlCmd(WpaSocket* psock, const std::string strCmd)
         return false;
 }
 
-json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
+json NmWorkerWpa::wpaConnectCmd(std::string ifname, int id)
+{
+    std::unique_ptr<WpaSocket> psock = nullptr;
+    const std::string srv_sock = srvSockAddrDir + ifname;
+    const std::string netid = std::to_string(id);
+    int id_connected = -1;
+    std::string str_result = JSON_PARAM_SUCC;
+    std::string str_found = "";
+    bool idFound = false;
+
+    if(!enableNetwork(ifname, id))
+        return JSON_RESULT_ERR;
+
+    if(!wpaCtrlCmd(COMMAND_STATUS, ifname))
+    {
+        LOG_S(ERROR) << "wpaConnectCmd got error sending " << COMMAND_STATUS;
+        return JSON_RESULT_ERR;
+    }
+
+    str_found = searchLineInBuf(RESULT_COMPLETED, true);
+    if(!str_found.empty())
+    {
+        str_found = searchLineInBuf("id=", true);
+        if(str_found.empty())
+        {
+            LOG_S(ERROR) << "wpaConnectCmd cannot get currently connected network id from wpa_supplicant status: " << buf;
+            return JSON_RESULT_ERR;
+        }
+        else
+        {
+            std::string strid = str_found.substr(3, str_found.length()-3);
+            try
+            {
+                id_connected = std::stoi(strid);
+            }
+            catch (std::exception& e)
+            {
+                LOG_S(ERROR) << "wpaConnectCmd cannot get currently connected network id from wpa_supplicant: " << strid;
+                return JSON_RESULT_ERR;
+            }
+        }
+        if(id_connected<0)
+        {
+            LOG_S(ERROR) << "wpaConnectCmd cannot get currently connected network id from wpa_supplicant";
+            return JSON_RESULT_ERR;
+        }
+        if(!setNetworkParam(ifname, id_connected, PARAM_PRIORITY, std::to_string(HIGH_PRIORITY), false))
+        {
+            LOG_S(ERROR) << "wpaConnectCmd cannot set lower priority for network " << id_connected;
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    if(!setNetworkParam(ifname, id, PARAM_PRIORITY, std::to_string(MAX_PRIORITY), false))
+    {
+        LOG_S(ERROR) << "wpaConnectCmd cannot set maximum priority for network " << id;
+        return JSON_RESULT_ERR;
+    }
+
+    if(!wpaCtrlCmd(COMMAND_DISCONNECT, ifname))
+    {
+        LOG_S(ERROR) << "wpaConnectCmd cannot disconnect current newrork";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!(strncmp(buf, "OK", 2)==0) )
+    {
+        LOG_S(ERROR) << "wpaConnectCmd received bad status trying to disconnect current newrork: " << buf;
+        return JSON_RESULT_ERR;
+    }
+
+    if(!wpaCtrlCmd(COMMAND_REASSOCIATE, "Associated with", ifname))
+    {
+        LOG_S(WARNING) << "wpaConnectCmd did not receive CTRL-EVENT-CONNECTED, trying to connect";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!wpaCtrlCmd(COMMAND_STATUS, ifname))
+    {
+        LOG_S(ERROR) << "wpaConnectCmd got error sending " << COMMAND_STATUS;
+        return JSON_RESULT_ERR;
+    }
+    str_found = searchLineInBuf("id="+netid, true);
+    if(str_found.empty())
+        str_result = JSON_PARAM_ERR;
+    else
+    {
+        idFound = true;
+    }
+    str_found = searchLineInBuf(RESULT_COMPLETED, true);
+    if( !str_found.empty() && idFound )
+        str_result = JSON_PARAM_SUCC;
+    else
+        str_result = JSON_PARAM_ERR;
+
+    return getJsonFromBufLines(str_result);
+}
+
+json NmWorkerWpa::wpaSelectCmd(std::string ifname, int id)
 {
     std::unique_ptr<WpaSocket> psock = nullptr;
     const std::string srv_sock = srvSockAddrDir + ifname;
@@ -544,16 +644,16 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
         return JSON_RESULT_ERR;
     }
 
-    LOG_S(INFO) << "wpaConnectCmd sending command: " << COMMAND_ATTACH;
+    LOG_S(INFO) << "wpaSelectCmd sending command: " << COMMAND_ATTACH;
     if (psock->sockSend(COMMAND_ATTACH) != ssize_t(COMMAND_ATTACH.length()))
     {
-        LOG_S(ERROR) << "wpaConnectCmd cannot write to socket: " << psock->sockLastError();
+        LOG_S(ERROR) << "wpaSelectCmd cannot write to socket: " << psock->sockLastError();
         return JSON_RESULT_ERR;
     }
 
     if(!wpaCtrlCmd(psock.get(), strCmd))
     {
-        LOG_S(ERROR) << "wpaConnectCmd got error sending " << strCmd;
+        LOG_S(ERROR) << "wpaSelectCmd got error sending " << strCmd;
         return JSON_RESULT_ERR;
     }
 
@@ -565,7 +665,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
     if( strncmp(buf, "OK", 2)!=0 )
     {
         // Strange situation, if it happens - we need to understand why (normally we get FAIL-BUSY or OK)
-        LOG_S(ERROR) << "wpaConnectCmd got unexpected data: " << buf;
+        LOG_S(ERROR) << "wpaSelectCmd got unexpected data: " << buf;
         return JSON_RESULT_ERR;
     }
 
@@ -583,7 +683,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
         std::this_thread::sleep_for(WAIT_CONNECT_TIME);
         if(res>0)
         {
-            LOG_S(INFO) << "wpaConnectCmd received data: " << buf;
+            LOG_S(INFO) << "wpaSelectCmd received data: " << buf;
             if ( (res>(int)RESULT_CONNECTED.length()) && (buf[0]=='<') && (strstr(buf, RESULT_CONNECTED.c_str())!=nullptr) )
             {
                 conn_status = RESULT_CONNECTED;
@@ -627,7 +727,7 @@ json NmWorkerWpa::wpaConnectCmd(int id, std::string ifname)
     {
         if(!wpaCtrlCmd(psock.get(), COMMAND_STATUS))
         {
-            LOG_S(ERROR) << "wpaConnectCmd got error sending " << COMMAND_STATUS;
+            LOG_S(ERROR) << "wpaSelectCmd got error sending " << COMMAND_STATUS;
             return JSON_RESULT_ERR;
         }
         strncpy(line, "id=", MAXLINE);
@@ -1108,6 +1208,24 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
     return jret;
 }
 
+std::string NmWorkerWpa::searchLineInBuf(const std::string mask, bool at_start)
+{
+    std::stringstream bufss(buf);
+    std::string line = "";
+    while(std::getline(bufss, line, '\n'))
+    {
+        std::string::size_type pos = line.find(mask);
+        if(pos != std::string::npos)
+        {
+            if(at_start && (pos!=0))
+                continue;
+            else
+                return line;
+        }
+    }
+    return "";
+}
+
 char* NmWorkerWpa::searchLineInBuf(const char* mask)
 {
     char endline = '\n';
@@ -1191,7 +1309,7 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
     if(!netid.empty())
     {
         ptr2 = (char*)netid.c_str();
-        ptr1 = searchLineInBuf(netid.c_str());
+        ptr1 = searchLineInBuf(netid.c_str());  // ***** TODO: It does not work correctly if any SSID or BSSID contains netid!!!!
     }
     else if(!bssid.empty())
     {
@@ -1253,7 +1371,6 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     std::string strSearch = "";
     std::string strResult = JSON_PARAM_SUCC;
     //bool idFound = false;
-    //bool isConnected = false;
     const int MAXLINE = 32;
     char* ptr1 = nullptr;
     char* ptr2 = nullptr;
@@ -1288,7 +1405,6 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     ptr1 = searchLineInBuf(RESULT_COMPLETED.c_str());
     if(ptr1!=nullptr)
     {
-//        isConnected = true;
         ptr1[strlen(ptr1)]='\n';
         if(!netid.empty())
         {
@@ -1365,7 +1481,7 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
         ptr2[0]=0;
         netid = std::to_string(id);
     }
-    return wpaConnectCmd(id, ifname);
+    return wpaConnectCmd(ifname, id);
 }
 
 json NmWorkerWpa::execCmdWpaDisconnect(NmCommandData* pcmd)
@@ -1522,27 +1638,35 @@ json NmWorkerWpa::execCmdWpaSave(NmCommandData* pcmd)
 
 json NmWorkerWpa::execCmdWpaEnable(NmCommandData* pcmd)
 {
-    std::string netid = "";
     std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
     int id = -1;
     id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
-    if(id>=0)
-        netid = std::to_string(id);
-
-    if(netid.empty())
+    if(id<0)
         return JSON_RESULT_ERR;
+
+    if(enableNetwork(ifname, id))
+        return JSON_RESULT_SUCCESS;
+    else
+        return JSON_RESULT_ERR;
+}
+
+bool NmWorkerWpa::enableNetwork(std::string ifname, int id)
+{
+    std::string netid = std::to_string(id);
+    if(netid.empty())
+        return false;
 
     std::string strCmd = COMMAND_ENABLE + " " + netid;
     if(!wpaCtrlCmd(strCmd, ifname))
     {
         LOG_S(WARNING) << "execCmdWpaEnable did not receive OK for " << strCmd << " command";
-        return JSON_RESULT_ERR;
+        return false;
     }
 
-    return JSON_RESULT_SUCCESS;
+    return true;
 }
 
 json NmWorkerWpa::execCmdWpaDisable(NmCommandData* pcmd)
@@ -1600,4 +1724,126 @@ json NmWorkerWpa::execCmdWpaSetBssid(NmCommandData* pcmd)
     }
 
     return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerWpa::execCmdWpaSelect(NmCommandData* pcmd)
+{
+    std::string ssid = "";
+    std::string bssid = "";
+    std::string strSearch = "";
+    std::string strResult = JSON_PARAM_SUCC;
+    //bool idFound = false;
+    //bool isConnected = false;
+    const int MAXLINE = 32;
+    char* ptr1 = nullptr;
+    char* ptr2 = nullptr;
+    std::string netid;
+    int id = -1;
+
+    char line[MAXLINE];
+    memset(line, 0, MAXLINE*sizeof(char));
+
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    id = getIntParamFromCommand(pcmd, JSON_PARAM_NETID);
+    if(id>=0)
+        netid = std::to_string(id);
+
+    if(netid.empty())
+    {
+        ssid = getStringParamFromCommand(pcmd, JSON_PARAM_SSID);
+        bssid = getStringParamFromCommand(pcmd, JSON_PARAM_BSSID);
+        if(ssid.empty() && bssid.empty())
+        {
+            LOG_S(ERROR) << "NETID or SSID or BSSID is required to connect to network";
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    std::string strCmd = COMMAND_STATUS;
+    if(!wpaCtrlCmd(strCmd, ifname))
+        return JSON_RESULT_ERR;
+    ptr1 = searchLineInBuf(RESULT_COMPLETED.c_str());
+    if(ptr1!=nullptr)
+    {
+        //        isConnected = true;
+        ptr1[strlen(ptr1)]='\n';
+        if(!netid.empty())
+        {
+            strSearch = "id="+netid+"\n";
+            ptr1=searchLineInBuf(strSearch.c_str());
+            if(ptr1!=nullptr)
+            {
+                LOG_S(WARNING) << "Already connected to network " << netid;
+                ptr1[strlen(ptr1)]='\n';
+                return getJsonFromBufLines(JSON_PARAM_SUCC);
+            }
+        }
+        else if(!bssid.empty())
+        {
+            strSearch = "bssid="+bssid;
+            ptr1=searchLineInBuf(strSearch.c_str());
+            if(ptr1!=nullptr)
+            {
+                LOG_S(WARNING) << "Already connected to network " << bssid;
+                ptr1[strlen(ptr1)]='\n';
+                return getJsonFromBufLines(JSON_PARAM_SUCC);
+            }
+
+        }
+        else if(!ssid.empty())
+        {
+            strSearch = "ssid="+ssid;
+            ptr1=searchLineInBuf(strSearch.c_str());
+            if( (ptr1!=nullptr) && (std::string(ptr1)==strSearch) )
+            {
+                LOG_S(WARNING) << "Already connected to network " << ssid;
+                ptr1[strlen(ptr1)]='\n';
+                return getJsonFromBufLines(JSON_PARAM_SUCC);
+            }
+        }
+    }
+
+    if(netid.empty())
+    {
+        strCmd = COMMAND_LIST;
+        if(!wpaCtrlCmd(strCmd, ifname))
+            return JSON_RESULT_ERR;
+
+        if(!bssid.empty())
+        {
+            ptr2 = (char*)bssid.c_str();
+            ptr1 = searchLineInBuf(bssid.c_str());
+        }
+        else if(!ssid.empty())
+        {
+            ptr2 = (char*)ssid.c_str();
+            ptr1 = searchLineInBuf(ssid.c_str());
+        }
+
+        if(ptr1==nullptr)
+        {
+            LOG_S(ERROR) << "execCmdWpaSelect cannot find network " << ptr2 << " in running configuration";
+            return JSON_RESULT_NOTFOUND;
+        }
+
+        ptr2 = strstr(ptr1, "\t");
+        try {
+            id = std::stoi(ptr1);
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "execCmdWpaSelect cannot convert NETID to integer: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+
+        if( (ptr2==nullptr) || (id<0) )
+        {
+            LOG_S(ERROR) << "execCmdWpaSelect received incorrect data from wpa daemon - cannot find network ID in: " << ptr1;
+            return JSON_RESULT_ERR;
+        }
+        ptr2[0]=0;
+        netid = std::to_string(id);
+    }
+    return wpaSelectCmd(ifname, id);
 }

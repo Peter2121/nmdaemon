@@ -43,7 +43,8 @@ protected:
         { NmScope::WPA, NmCmd::WPA_SAVE },
         { NmScope::WPA, NmCmd::WPA_ENABLE },
         { NmScope::WPA, NmCmd::WPA_DISABLE },
-        { NmScope::WPA, NmCmd::WPA_SET_BSSID }
+        { NmScope::WPA, NmCmd::WPA_SET_BSSID },
+        { NmScope::WPA, NmCmd::WPA_SELECT }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -78,6 +79,7 @@ protected:
     static inline const std::string RESULT_FAILED_SCAN = "<4>Failed to initiate AP scan";
     static inline const std::string RESULT_FAIL_BUSY = "FAIL-BUSY";
     static inline const std::string RESULT_FAIL = "FAIL";
+    static inline const std::string PARAM_PRIORITY = "priority";
 
     static inline const std::string SuppParamNames[] = { "priority", "key_mgmt", "proto" };
 
@@ -86,6 +88,8 @@ protected:
     static constexpr std::chrono::milliseconds WAIT_RECONFIGURE_TIME = std::chrono::milliseconds(3000);
     static constexpr std::chrono::milliseconds WAIT_CONNECT_TIME = std::chrono::milliseconds(1000);
     static constexpr int WAIT_CYCLES = 10;
+    static constexpr int MAX_PRIORITY = 500;
+    static constexpr int HIGH_PRIORITY = 200;
 
     char* buf = nullptr;
     const std::string csaPrefix = "/tmp/nmd_wpaw.XXXXX";
@@ -96,7 +100,8 @@ protected:
     bool wpaCtrlCmd(WpaSocket*, const std::string, const std::string);
     bool wpaCtrlCmd(const std::string, const std::string);
     bool wpaCtrlCmd(const std::string, const std::string, const std::string);
-    json wpaConnectCmd(int, std::string);
+    json wpaSelectCmd(std::string, int);
+    json wpaConnectCmd(std::string, int);
     bool isValidWpaIf(std::string);
     json getJsonFromBufTable(std::string);
     json getJsonFromBufLines(std::string);
@@ -109,6 +114,8 @@ protected:
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
     void getSuppParams(std::string, json&);
+    bool enableNetwork(std::string, int);
+    std::string searchLineInBuf(const std::string, bool);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);
@@ -133,6 +140,7 @@ public:
     json execCmdWpaEnable(NmCommandData*);
     json execCmdWpaDisable(NmCommandData*);
     json execCmdWpaSetBssid(NmCommandData*);
+    json execCmdWpaSelect(NmCommandData*);
 };
 
 
