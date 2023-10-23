@@ -23,6 +23,8 @@
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEL", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0", "IPV4 GATEWAY" : "192.168.211.2" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST_IF" }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": true } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": false } }
 { "SCOPE" : "WPA", "CMD" : "WPA_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_ADD", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr", "PSK": "rrrrrrrr" } }
