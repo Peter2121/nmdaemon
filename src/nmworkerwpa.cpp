@@ -205,6 +205,7 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     json cmd = {};
     json ret_list = {};
     std::string ifname = "";
+    bool details = false;
 
     ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
@@ -215,7 +216,9 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
 
     ret_list = getJsonFromBufTable(JSON_PARAM_NETWORKS);
-    getSuppParams(ifname, ret_list);
+    details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
+    if(details)
+        getSuppParams(ifname, ret_list);
 
     return ret_list;
 }
@@ -529,6 +532,7 @@ json NmWorkerWpa::wpaConnectCmd(std::string ifname, int id)
     std::string str_result = JSON_PARAM_SUCC;
     std::string str_found = "";
     bool idFound = false;
+    bool status_found = false;
 
     if(!enableNetwork(ifname, id))
         return JSON_RESULT_ERR;
@@ -611,10 +615,59 @@ json NmWorkerWpa::wpaConnectCmd(std::string ifname, int id)
     }
     str_found = searchLineInBuf(RESULT_COMPLETED, true);
     if( !str_found.empty() && idFound )
+    {
         str_result = JSON_PARAM_SUCC;
+        return getJsonFromBufLines(str_result);
+    }
     else
+    {
         str_result = JSON_PARAM_ERR;
+//************ Workaround for badly working drivers - reset interface status (ifconfig wlan0 down ; ifconfig wlan0 up)
+        int curflags = Tool::getIfFlags(ifname);
+        int oldflags = 0;
+        int cmdflag=IFF_UP;
+        if(curflags==0)
+        {
+            return JSON_RESULT_ERR;
+        }
+        oldflags = curflags;
+        curflags &= ~cmdflag;
+        if(!Tool::setIfFlags(ifname, curflags))
+        {
+            return JSON_RESULT_ERR;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_TIME));
+        if(!Tool::setIfFlags(ifname, oldflags))
+        {
+            return JSON_RESULT_ERR;
+        }
+        status_found = false;
+        for(int i=0; i<WAIT_CYCLES; i++)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_TIME));
+            if(!wpaCtrlCmd(COMMAND_STATUS, ifname))
+            {
+                LOG_S(ERROR) << "wpaConnectCmd got error sending " << COMMAND_STATUS;
+                return JSON_RESULT_ERR;
+            }
+            str_found = searchLineInBuf(RESULT_COMPLETED, true);
+            if( !str_found.empty() )
+            {
+                status_found = true;
+                break;
+            }
+        }
+        if(!status_found)
+            return getJsonFromBufLines(JSON_PARAM_ERR);
 
+        str_found = searchLineInBuf("id="+netid, true);
+        if(str_found.empty())
+            str_result = JSON_PARAM_ERR;
+        else
+        {
+            str_result = JSON_PARAM_SUCC;
+        }
+    }
     return getJsonFromBufLines(str_result);
 }
 

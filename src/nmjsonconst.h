@@ -59,6 +59,7 @@ const std::string JSON_PARAM_NET_PARAM_NAME = "PARAM_NAME";
 const std::string JSON_PARAM_NET_PARAM_VALUE = "PARAM_VALUE";
 const std::string JSON_PARAM_NET_PARAM_QUOTES = "PARAM_QUOTES";
 const std::string JSON_PARAM_PROFILE = "PROFILE";
+const std::string JSON_PARAM_DETAILS = "DETAILS";
 const std::string JSON_DATA_ENABLED = "ENABLED";
 const std::string JSON_DATA_DISABLED = "DISABLED";
 const std::string JSON_PARAM_FLAGS = "FLAGS";
