@@ -91,6 +91,9 @@ protected:
     static constexpr int MAX_PRIORITY = 500;
     static constexpr int HIGH_PRIORITY = 200;
 
+    static constexpr char DELIM_HEAD = '/';
+    static constexpr char DELIM_FIELDS = '\t';
+
     char* buf = nullptr;
     const std::string csaPrefix = "/tmp/nmd_wpaw.XXXXX";
     const std::string defSsaDir = "/var/run/wpa_supplicant/";
@@ -110,12 +113,13 @@ protected:
     int getIntParamFromCommand(NmCommandData*, std::string);
     bool setNetworkParam(std::string, int, std::string, std::string, bool);
     std::string getNetworkParam(std::string, int, std::string);
-    char* searchLineInBuf(const char* mask);
+    //char* searchLineInBuf(const char* mask);
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
     void getSuppParams(std::string, json&);
     bool enableNetwork(std::string, int);
     std::string searchLineInBuf(const std::string, bool);
+    int getNetId(std::string, std::string, std::string);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);

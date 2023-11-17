@@ -13,7 +13,7 @@ std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
     std::shared_ptr<AddressBase> sp_ifaddr = nullptr;
     std::shared_ptr<AddressBase> sp_ifmask = nullptr;
     std::shared_ptr<AddressBase> sp_ifdata = nullptr;
-    AddressGroupType ip_type;
+    AddressGroupType ip_type = AddressGroupType::UNKNOWN;
     std::shared_ptr<AddressGroup> sp_addr = nullptr;
 
     if(!cmd.contains(JSON_PARAM_DATA))
