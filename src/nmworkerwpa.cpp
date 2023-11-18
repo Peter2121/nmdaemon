@@ -144,7 +144,7 @@ json NmWorkerWpa::getJsonFromBufLines(std::string result)
 json NmWorkerWpa::getJsonFromBufTable(std::string param_name)
 {
     const char DELIM_HEAD = '/';
-    const char DELIM_LINES = '\t';
+    //const char DELIM_LINES = '\t';
     std::vector<std::string> columns;
     std::vector<std::string> lines;
     std::stringstream ss(buf);
@@ -183,7 +183,7 @@ json NmWorkerWpa::getJsonFromBufTable(std::string param_name)
         ss = std::stringstream(lines[i]);
         j=0;
         jline = {};
-        while (getline (ss, column, DELIM_LINES))
+        while (getline (ss, column, DELIM_FIELDS))
         {
             jline[columns[j]] = column;
             j++;
