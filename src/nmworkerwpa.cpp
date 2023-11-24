@@ -1,14 +1,14 @@
 #include "nmworkerwpa.h"
 
 NmWorkerWpa::NmWorkerWpa() :
-    cliSockAddr(mktemp((char*)csaPrefix.c_str())),
+    cliSockAddr(csaPrefix+std::to_string(Tool::getRandomInt())),
     srvSockAddrDir(defSsaDir)
 {
     buf = new char[BUF_LEN]();
 }
 
 NmWorkerWpa::NmWorkerWpa(std::string ssad) :
-    cliSockAddr(mktemp((char*)csaPrefix.c_str())),
+    cliSockAddr(csaPrefix+std::to_string(Tool::getRandomInt())),
     srvSockAddrDir()
 {
     buf = new char[BUF_LEN]();
@@ -218,9 +218,167 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     ret_list = getJsonFromBufTable(JSON_PARAM_NETWORKS);
     details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
     if(details)
-        getSuppParams(ifname, ret_list);
+    {
+        //getSuppParams(ifname, ret_list);
+        getSuppParamsAsync(ifname, ret_list);
+    }
 
     return ret_list;
+}
+
+void NmWorkerWpa::getSuppParamsAsync(std::string ifname, json& ret_list)
+{
+    int total_networks = ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS].size();
+    std::string str_id = "";
+    int id_network = -1;
+    std::vector<async::task<std::vector<std::tuple<std::string, std::string>>>> tasks;
+    std::vector<async::task<std::vector<std::tuple<std::string, std::string>>>> result;
+
+    for(int i=0; i<total_networks; i++)
+    {
+        str_id = ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i]["network id"];
+        id_network = -1;
+        try
+        {
+            id_network = std::stoi(str_id);
+        }
+        catch (std::exception& e)
+        {
+            LOG_S(ERROR) << "getSuppParamsAsync cannot convert network id " << str_id << " to integer: " << e.what();
+            continue;
+        }
+        if(id_network<0)
+            continue;
+        tasks.push_back( async::spawn([=]() { return GetWpaNetworkParams(ifname, Tool::getRandomInt(), id_network); }) );
+        /*
+        for (auto param_name : SuppParamNames)
+        {
+            param_value = getNetworkParam(ifname, id_network, param_name);
+            if(!param_value.empty())
+                ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i][param_name] = param_value;
+        }
+        */
+    }
+    try {
+        auto all_tasks = when_all(tasks.begin(), tasks.end());
+        result = all_tasks.get();
+    } catch (WpaCommunicationException& wce) {
+        LOG_S(ERROR) << "getSuppParamsAsync cannot communicate with wpa_supplicant: " << wce.what();
+    }
+    for(auto &rt : result)  // Every rt.get() is params for one network
+    {
+        auto res = rt.get();
+        str_id = "";
+        for(auto &p : res)  // Find network id
+        {
+            if(get<0>(p) == "id")
+            {
+                str_id = get<1>(p);
+                break;
+            }
+        }
+        if(!str_id.empty())
+        {
+            try
+            {
+                id_network = std::stoi(str_id);
+            }
+            catch (std::exception& e)
+            {
+                continue;
+            }
+        }
+        for(int i=0; i<total_networks; i++) // Find this network in the json to return with params inside
+        {
+            std::string str_iid = ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i]["network id"];
+            if(str_iid==str_id)
+            {
+                for(auto &p : res)  // Put the params into json
+                {
+                    if(get<0>(p) != "id")
+                    {
+                        ret_list[JSON_PARAM_DATA][JSON_PARAM_NETWORKS][i][get<0>(p)] = get<1>(p);
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
+std::vector<std::tuple<std::string, std::string>> NmWorkerWpa::GetWpaNetworkParams(std::string ifname, int rnd_suffix, int net_id)
+{
+    std::string cliSockAddr = csaPrefix + std::to_string(rnd_suffix);
+    std::string srvSockAddrDir = defSsaDir;
+    char buf[BUF_LEN];
+    sockpp::unix_dgram_socket sock;
+    int res,i;
+    const std::string srv_sock = srvSockAddrDir + ifname;
+    std::string strCmd = "";
+    std::vector<std::tuple<std::string, std::string>> net_params;
+
+    if (!sock.bind(sockpp::unix_address(cliSockAddr)))
+    {
+        std::string error = "GetWpaNetworkParams cannot connect to client socket " + cliSockAddr + " : " + sock.last_error_str();
+        std::cout << error  << std::endl;
+        throw WpaCommunicationException(error);
+    }
+
+    if (!sock.connect(sockpp::unix_address(srv_sock)))
+    {
+        std::string error = "GetWpaNetworkParams cannot connect to server socket " + srv_sock + " : " + sock.last_error_str();
+        std::cout << error  << std::endl;
+        sock.close();
+        unlink(cliSockAddr.c_str());
+        throw WpaCommunicationException(error);
+    }
+
+    for (auto &param_name : SuppParamNames)
+    {
+        strCmd = COMMAND_GET + " " + std::to_string(net_id) + " " + param_name;
+        std::cout << "GetWpaNetworkParams sending command: " << strCmd << std::endl;
+        if (sock.send(strCmd) != ssize_t(strCmd.length()))
+        {
+            std::string error = "GetWpaNetworkParams cannot write to socket: " + sock.last_error_str();
+            LOG_S(ERROR) << error;
+            continue;
+        }
+
+        for(i=0; i<=WAIT_CYCLES; i++)
+        {
+            memset(buf, 0, BUF_LEN*sizeof(char));
+            res = sock.recv(buf, BUF_LEN, MSG_DONTWAIT);
+            std::this_thread::sleep_for(WAIT_TIME);
+            if(res>0)
+            {
+                std::cout << "GetWpaNetworkParams received data: " << buf << std::endl;
+                if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
+                    /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
+                    /* See wpa_ctrl.c:559 */
+                    continue;
+                else
+                    break;
+            }
+        }
+
+        if(i>WAIT_CYCLES)
+        {
+            std::string error = "GetWpaNetworkParams: timeout waiting for data";
+            LOG_S(ERROR) << error;
+            continue;
+        }
+        std::string param_value = std::string(buf);
+        net_params.push_back(std::make_tuple(param_name, param_value));
+    }
+    sock.close();
+    unlink(cliSockAddr.c_str());
+
+    if(net_params.size()>0)
+    {
+        net_params.push_back(std::make_tuple("id", std::to_string(net_id)));
+    }
+
+    return net_params;
 }
 
 void NmWorkerWpa::getSuppParams(std::string ifname, json& ret_list)

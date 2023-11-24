@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.18)
 
 project(nmdaemon)
 
+include_directories(SYSTEM /usr/local/include/)
+
 string(TIMESTAMP TODAY "%Y%m%d%H%M")
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 0)
@@ -57,6 +59,7 @@ find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
 find_library(80211_LIBRARY 80211)
 find_library(JAIL_LIBRARY jail)
+find_library(ASYNC_LIBRARY async++)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -125,4 +128,4 @@ set(HEADERS
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} sockpp)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} ${ASYNC_LIBRARY} sockpp)

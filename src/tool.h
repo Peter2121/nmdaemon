@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <fstream>
+#include <random>
 #include <sys/sockio.h>
 #include <kvm.h>
 #include <limits.h>
@@ -45,6 +46,11 @@ protected:
         "lo"
     };
 public:
+    inline static std::random_device RANDOM_DEVICE;
+    inline static std::mt19937 RANDOM_MT;
+    inline static std::uniform_int_distribution<int> RND_DISTR;
+    static void initRandomGenerator();
+    static int getRandomInt();
     static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);

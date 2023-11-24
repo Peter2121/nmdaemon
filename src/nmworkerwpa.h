@@ -12,6 +12,8 @@
 #include <thread>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
+#define LIBASYNC_STATIC
+#include "async++.h"
 #include "sockpp/socket.h"
 #include "sockpp/unix_dgram_socket.h"
 #include "sockpp/version.h"
@@ -21,6 +23,19 @@
 #include "wpasocket.h"
 
 namespace fs = std::filesystem;
+
+class WpaCommunicationException : public std::exception
+{
+protected:
+    std::string Info;
+
+public:
+    WpaCommunicationException(std::string info) : Info(info) {}
+    const char *what()
+    {
+        return Info.c_str();
+    }
+};
 
 class NmWorkerWpa : public NmWorkerBase
 {
@@ -95,7 +110,7 @@ protected:
     static constexpr char DELIM_FIELDS = '\t';
 
     char* buf = nullptr;
-    const std::string csaPrefix = "/tmp/nmd_wpaw.XXXXX";
+    const std::string csaPrefix = "/tmp/nmd_wpaw.";
     const std::string defSsaDir = "/var/run/wpa_supplicant/";
     std::string cliSockAddr;
     std::string srvSockAddrDir;
@@ -117,6 +132,8 @@ protected:
     bool removeNetwork(std::string, int);
     json resetWpaStatus(std::string);
     void getSuppParams(std::string, json&);
+    void getSuppParamsAsync(std::string, json&);
+    std::vector<std::tuple<std::string, std::string>> GetWpaNetworkParams(std::string, int, int);
     bool enableNetwork(std::string, int);
     std::string searchLineInBuf(const std::string, bool);
     int getNetId(std::string, std::string, std::string);

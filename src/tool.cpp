@@ -707,3 +707,14 @@ std::string Tool::trimString(const std::string str, const char delim)
     str_view.remove_suffix(std::min(str.size() - str.find_last_not_of(delim) - 1, str.size()));
     return std::string(str_view);
 }
+
+void Tool::initRandomGenerator()
+{
+    RANDOM_MT = std::mt19937(RANDOM_DEVICE());
+    RND_DISTR = std::uniform_int_distribution<int>(1000000, 1999999);
+}
+
+int Tool::getRandomInt()
+{
+    return RND_DISTR(RANDOM_MT);
+}
