@@ -251,7 +251,7 @@ json NmWorkerSys::execCmdRcConfWrite(NmCommandData *pcmd)
         rcconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_FILE);
     if(rcconf_name.empty())
         rcconf_name = RCCONF_FILENAME_DEFAULT;
-    LOG_S(INFO) << "execCmdRcConfRead: Trying to write to " << rcconf_name;
+    LOG_S(INFO) << "execCmdRcConfWrite: Trying to write to " << rcconf_name;
     if( sp_conf!=nullptr )
         str_nbackups = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RCCONF_BACKUPS);
     if(str_nbackups.empty())

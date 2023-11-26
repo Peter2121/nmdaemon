@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <map>
 #include <filesystem>
+#include <cstdio>
 #include <arpa/inet.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
@@ -12,6 +13,11 @@
 #include "inifile/inifile.h"
 #include "nmjsonconst.h"
 #include "addressgroup.h"
+
+// We need this to use IF_NAME_MAXLEN in sscanf format string and in destination char array definition
+#define IF_NAME_MAXLEN 24  // TODO: check kernel sources to find the correct value for maximum length of interface name
+#define STR_(X) #X
+#define STR(X) STR_(X)
 
 using json = nlohmann::json;
 
@@ -25,7 +31,8 @@ protected:
     static inline const std::string INET_ADDR = "inet";
     static inline const std::string INET_MASK = "netmask";
     static inline const std::string DHCP_SUFFIX = "DHCP";
-    static inline const std::string ALIAS_SUFFIX = "aliases";
+    static inline const std::string ALIASES_SUFFIX = "aliases";
+    static inline const std::string ALIAS_SUFFIX = "alias";
     static inline const std::string FILE_VERSIONS_DELIMITER = ".";
     static inline const std::string IPV4_MASK_HOST = "255.255.255.255";
     static inline const std::string ROUTE_PREFIX_HOST = "-host";

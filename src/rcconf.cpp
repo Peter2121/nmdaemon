@@ -21,6 +21,7 @@ bool RcConf::iniSave()
 }
 
 // TODO: Decode ipv6 configuration
+// TODO: Consider scnlib https://scnlib.dev/ to simplify the decoding
 json RcConf::getRcIpConfig()
 {
     std::string strDefaultRouter = "";
@@ -29,12 +30,16 @@ json RcConf::getRcIpConfig()
     std::string value = "";
     std::string element;
     std::string name;
+    std::string alias_name;
     std::string_view element_view;
     std::stringstream ss;
     std::shared_ptr<AddressIp4> spipaddr4=nullptr;
     std::shared_ptr<AddressIp4> spipmask4=nullptr;
     std::shared_ptr<AddressIp4> spipgw4=nullptr;
     std::unique_ptr<AddressGroup> upaddr4=nullptr;
+    // Solution took from https://stackoverflow.com/questions/47346133/how-to-use-a-define-inside-a-format-string
+    constexpr char aliasX_element_formatter[] = "%" STR(IF_NAME_MAXLEN) "s%d_alias%d";
+    char if_name[IF_NAME_MAXLEN+1];
     const char DELIM = ' ';
     const std::string quotes = "\"";
     const std::string point = ".";
@@ -50,6 +55,7 @@ json RcConf::getRcIpConfig()
     std::map<std::string, std::string> mapRoutes;
     std::set<std::string> setActiveRoutes;
     bool is_primary = false;
+    bool aliases_processed = false;
 
     for( SecIndex::const_iterator itr = rcIniFile->GetSections().begin(); itr != rcIniFile->GetSections().end(); ++itr )
     {
@@ -109,7 +115,7 @@ json RcConf::getRcIpConfig()
             is_primary = false;
             if(pos1=ifname.find_last_of("_"); pos1!=std::string::npos)
             {
-                if(pos2=ifname.find(ALIAS_SUFFIX); pos2!=std::string::npos)
+                if(pos2=ifname.find(ALIASES_SUFFIX); pos2!=std::string::npos)
                 // ifconfig_ed0_aliases="inet 127.0.0.251 netmask 0xffffffff inet 127.0.0.252 netmask 0xffffffff inet 127.0.0.253 netmask 0xffffffff inet 127.0.0.254 netmask 0xffffffff"
                 {
                     name=ifname.substr(0, pos1);
@@ -134,6 +140,27 @@ json RcConf::getRcIpConfig()
                             jaliases[name].push_back(jdata);
                         }
                         pos0 = pos2;
+                    }
+                    aliases_processed = true;
+                    continue;
+                }
+                else if(pos2=ifname.find(ALIAS_SUFFIX); pos2!=std::string::npos)
+                //          ifname     ifconfig
+                // ifconfig_em0_alias0="inet 192.168.212.102 netmask 255.255.255.0"
+                // ifconfig_em0_alias1="inet 192.168.212.202 netmask 0xffffff00"
+                // ifconfig_em0_alias1="inet 192.168.212.202/24"
+                // TODO: check that the aliases numbers start from 0 (if not - they are ignored by system)
+                {
+                    if(aliases_processed)
+                        // ALIASES_SUFFIX has priority over ALIAS_SUFFIX
+                        continue;
+                    name=ifname.substr(0, pos1);
+                    alias_name=ifname.substr(pos1+1, std::string::npos);
+                    jdata = getIpConfFromString(ifconfig);
+                    if(!jdata.empty())
+                    {
+                        jaliases[name].push_back(jdata);
+                        //LOG_S(INFO) << "getRcIpConfig got IP " << alias_name << " alias data for interface " << name << ":" << std::endl << jdata.dump();
                     }
                     continue;
                 }
@@ -590,7 +617,7 @@ bool RcConf::setRcIpConfig(json rcdata)
         }
 //  Second cycle - put aliases
 //  TODO: integrate the second cycle into the first one
-        str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX;
+        str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIASES_SUFFIX;
         str_conf_value = "";
         for(const auto &jad : jar_addresses)
         {
