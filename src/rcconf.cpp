@@ -37,9 +37,6 @@ json RcConf::getRcIpConfig()
     std::shared_ptr<AddressIp4> spipmask4=nullptr;
     std::shared_ptr<AddressIp4> spipgw4=nullptr;
     std::unique_ptr<AddressGroup> upaddr4=nullptr;
-    // Solution took from https://stackoverflow.com/questions/47346133/how-to-use-a-define-inside-a-format-string
-    constexpr char aliasX_element_formatter[] = "%" STR(IF_NAME_MAXLEN) "s%d_alias%d";
-    char if_name[IF_NAME_MAXLEN+1];
     const char DELIM = ' ';
     const std::string quotes = "\"";
     const std::string point = ".";
