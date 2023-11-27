@@ -14,11 +14,6 @@
 #include "nmjsonconst.h"
 #include "addressgroup.h"
 
-// We need this to use IF_NAME_MAXLEN in sscanf format string and in destination char array definition
-#define IF_NAME_MAXLEN 24  // TODO: check kernel sources to find the correct value for maximum length of interface name
-#define STR_(X) #X
-#define STR(X) STR_(X)
-
 using json = nlohmann::json;
 
 class RcConf
