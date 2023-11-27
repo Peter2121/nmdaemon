@@ -32,6 +32,7 @@ protected:
     static inline const std::string IPV4_MASK_HOST = "255.255.255.255";
     static inline const std::string ROUTE_PREFIX_HOST = "-host";
     static inline const std::string ROUTE_PREFIX_NET = "-net";
+    static constexpr int MAX_ALIASES = 999;
     std::string rcFileName;
     CIniFile* rcIniFile;
     std::string getStrInetMaskFromPrefix(int);

@@ -507,6 +507,9 @@ bool RcConf::setRcIpConfig(json rcdata)
     size_t pos1;
     std::string element;
 
+    if(!iniLoad())
+        return JSON_RESULT_ERR;
+
     try
     {
         jar_interfaces = rcdata[JSON_PARAM_INTERFACES];
@@ -645,13 +648,21 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name;
                 continue;
             }
-            if(!str_conf_value.empty())
-            {
-                str_conf_value = "\"" + str_conf_value + "\"";
-                str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
-                if(str_conf_value != str_old_conf_value)
-                    rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
-            }
+        }
+        if(!str_conf_value.empty())
+        {
+            str_conf_value = "\"" + str_conf_value + "\"";
+            str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+            if(str_conf_value != str_old_conf_value)
+                rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+        }
+        for(int i=0; i<MAX_ALIASES; i++)
+        // Remove old records like ifconfig_em0_alias0="..." from config file
+        {
+            str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX + std::to_string(i);
+            rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
+            //auto section = rcIniFile->GetSection(DEFAULT_SECTION);
+            //section->RemoveKey(str_conf_key);
         }
     }
 
@@ -728,6 +739,8 @@ bool RcConf::setRcIpConfig(json rcdata)
             continue;
         }
     }
+
+    // TODO: remove old routes!!!
 
     if(!str_active_routes.empty())
     {
