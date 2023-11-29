@@ -674,15 +674,15 @@ json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
                     sp_mask = nullptr;
                 }
 
-                if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST))
+                if(!(rtm->rtm_flags & RTF_LLINFO) && (rtm->rtm_flags & RTF_HOST) && (sa!=nullptr))
                 {
-                    if (sa->sa_family == AF_INET)
+                    if (sa->sa_family == AF_INET)   // Crashes here sa=0x0 ????
                         sp_mask = std::make_shared<AddressIp4>("255.255.255.255");
                     else if (sa->sa_family == AF_INET6)
                         sp_mask = std::make_shared<AddressIp6>("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
                 }
 
-                if(sp_dest==nullptr)
+                if((sp_dest==nullptr) && (sa!=nullptr))
                 {
                     if (sa->sa_family == AF_INET)
                         sp_mask = std::make_shared<AddressIp4>("0.0.0.0");

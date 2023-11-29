@@ -68,7 +68,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_definitions(LOGURU_WITH_STREAMS=1)
 
 include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/include")
-include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/generated")
+include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/generated/include")
 
 add_library(sockpp STATIC IMPORTED)
 set_property(TARGET sockpp APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
