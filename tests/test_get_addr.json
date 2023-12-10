@@ -1,0 +1,1 @@
+{ "SCOPE" : "INTERFACE", "CMD" : "IP4_ADDR_GET", "DATA" : { "INTERFACE NAME" : "wlan0" } }

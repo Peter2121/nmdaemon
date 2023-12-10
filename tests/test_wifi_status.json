@@ -1,0 +1,1 @@
+{ "SCOPE" : "WIFI", "CMD" : "WIFI_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }

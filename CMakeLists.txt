@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
 project(nmdaemon)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(WORKERS_NUM 6)
+cmake_policy(VERSION 3.20)
 
 include_directories(SYSTEM /usr/local/include/)
 
@@ -9,9 +15,8 @@ set(VERSION_MAJOR 0)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH ${TODAY})
 set(SOFTWARE_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
-set(WORKERS_NUM 6)
 
-configure_file("src/config.h.in" ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h @ONLY)
+configure_file("src/config.h.in" ${CMAKE_CURRENT_SOURCE_DIR}/src/generated/config.h @ONLY)
 
 set(WORKERS_CLASSES
     NmWorkerDummy
@@ -40,41 +45,32 @@ set(WORKERS_SOURCES
     src/nmworkerieee80211.cpp
     )
 
-set(WORKERS_INCLUDE_FILE src/nmworkers.h)
+set(WORKERS_INCLUDE_FILE src/generated/nmworkers.h)
 file(REMOVE ${WORKERS_INCLUDE_FILE})
 
 foreach(WORKER_HEADER ${WORKERS_HEADERS})
-    file(APPEND ${WORKERS_INCLUDE_FILE} "#include \"${WORKER_HEADER}\"\n")
+    file(APPEND ${WORKERS_INCLUDE_FILE} "#include \"../${WORKER_HEADER}\"\n")
 endforeach()
 
-set(WORKERS_CLASSES_FILE src/nmworkers.cpp)
+set(WORKERS_CLASSES_FILE src/generated/nmworkers.cpp)
 file(REMOVE ${WORKERS_CLASSES_FILE})
 
 foreach(WORKER_CLASS ${WORKERS_CLASSES})
     file(APPEND ${WORKERS_CLASSES_FILE} "workers.push_back(new ${WORKER_CLASS}());\n")
 endforeach()
 
+# System libs (shared)
 find_library(PTHREAD_LIBRARY pthread)
 find_library(D_LIBRARY dl)
 find_library(KVM_LIBRARY kvm)
 find_library(80211_LIBRARY 80211)
 find_library(JAIL_LIBRARY jail)
-find_library(ASYNC_LIBRARY async++)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+# Libs from ports (static)
+find_library(ASYNC_LIBRARY libasync++.a)
+find_library(SOCKPP_LIBRARY libsockpp.a)
 
 add_compile_definitions(LOGURU_WITH_STREAMS=1)
-
-include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/include")
-include_directories("${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/generated/include")
-
-add_library(sockpp STATIC IMPORTED)
-set_property(TARGET sockpp APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
-set_property(TARGET sockpp APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_property(TARGET sockpp PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_LIST_DIR}/../sockpp/build-debug/libsockpp.a")
-set_property(TARGET sockpp PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_LIST_DIR}/../sockpp/build/libsockpp.a")
 
 set(SOURCES
     src/main.cpp
@@ -101,7 +97,6 @@ set(HEADERS
     src/addressip4.h
     src/addressip6.h
     src/addresslink.h
-    src/config.h
     src/interface.h
     src/mediadesc.h
     src/mediastatus.h
@@ -116,16 +111,17 @@ set(HEADERS
     src/nmworkerieee80211.h
     src/nmworkerif.h
     src/nmworkerroute.h
-    src/nmworkers.h
     src/nmworkersys.h
     src/nmworkerwpa.h
     src/rcconf.h
     src/tool.h
     src/wpasocket.h
     src/jailparam.h
+    src/generated/nmworkers.h
+    src/generated/config.h
     )
 
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} ${ASYNC_LIBRARY} sockpp)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} ${ASYNC_LIBRARY} ${SOCKPP_LIBRARY})

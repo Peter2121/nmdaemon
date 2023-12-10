@@ -1,0 +1,1 @@
+{ "SCOPE" : "WPA", "CMD" : "WPA_SCAN_RESULTS", "DATA" : { "INTERFACE NAME" : "wlan0" } }

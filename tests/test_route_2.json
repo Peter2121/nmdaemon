@@ -1,0 +1,2 @@
+{ "SCOPE" : "ROUTE", "CMD" : "RT_GET", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0" } }
+
