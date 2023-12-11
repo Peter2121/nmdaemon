@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# PROVIDE: nmdaemon
+# REQUIRE: DAEMON
+
+#
+# Add the following line to /etc/rc.conf to enable nmdaemon:
+# nmdaemon_enable (bool): Set to "NO" by default.
+#           Set to "YES" to enable nmdaemon.
+#
+# nmdaemon_config (str): Set to /usr/local/etc/nmdaemon.conf by default
+#           nmdaemon configuration
+#
+
+. /etc/rc.subr
+
+name=nmdaemon
+rcvar=nmdaemon_enable
+
+pidfile_child="/var/run/${name}.pid"
+pidfile="/var/run/${name}_daemon.pid"
+
+logfile="/var/log/${name}.log"
+nmdaemon_exec="/usr/local/bin/${name}"
+
+command="/usr/sbin/daemon"
+procname="daemon"
+
+start_precmd="${name}_prestart"
+
+load_rc_config $name
+: ${nmdaemon_enable:=no}
+
+eval "${rcvar}=\${${rcvar}:-'NO'}"
+eval "nmdaemon_config=\${${name}_config:-'/usr/local/etc/nmdaemon.conf'}"
+
+required_files="${nmdaemon_config} ${nmdaemon_exec}"
+
+nmdaemon_prestart() {
+
+    rc_flags="-r -P ${pidfile} -p ${pidfile_child} -t ${name} -o ${logfile} \
+                ${nmdaemon_exec} ${nmdaemon_config} ${rc_flags}"
+
+}
+
+nmdaemon_describe() {
+    echo "nmdaemon service"
+}
+
+run_rc_command "$1"
