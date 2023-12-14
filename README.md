@@ -35,7 +35,8 @@ If the configuration file is not provided - some default configuration values ar
 The `nmdaemon` can be (manually) installed as `/usr/local/bin/nmdaemon` and started as FreeBSD service with rc.d script provided as [rc.d/nmdaemon](https://github.com/Peter2121/nmdaemon/blob/master/rc.d/nmdaemon)
 
 Some functional tests of `nmdaemon` using `nc` tool are provided in [tests](https://github.com/Peter2121/nmdaemon/tree/master/tests)
+
 Attention, these tests can change network configuration of the host where they are launched (use with care).
 
-The API il (almost) stable, the FreeBSD port will be created shortly after the release of 0.1 version.
+The API is (almost) stable, the FreeBSD port will be created shortly after the release of 0.1 version.
 
