@@ -3,6 +3,7 @@
 
 #include <net/if.h>
 #include <cstdint>
+#include <thread>
 #include <stddef.h>
 #include <lib80211/lib80211_regdomain.h>
 #include <lib80211/lib80211_regdomain.h>

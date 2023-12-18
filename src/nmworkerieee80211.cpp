@@ -51,6 +51,9 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
 {
     struct ieee80211_scan_req sr;
     struct ieee80211req ireq;
+    int i=0;
+    const int IMAX=200;
+    static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
 //    int sroute;
     std::string ifname;
     json cmd_json = {};
@@ -107,7 +110,13 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
                 return JSON_RESULT_ERR;
             }
             ifan = (struct if_announcemsghdr *) rtm;
-        } while (rtm->rtm_type != RTM_IEEE80211 || ifan->ifan_what != RTM_IEEE80211_SCAN);
+            std::this_thread::sleep_for(WAIT_TIME);
+            i++;
+        } while (rtm->rtm_type != RTM_IEEE80211 || ifan->ifan_what != RTM_IEEE80211_SCAN || i>IMAX);
+        if(i>IMAX)
+        {
+            LOG_S(ERROR) << "Timeout waiting for response from PF_ROUTE socket";
+        }
     }
     else
     {

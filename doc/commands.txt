@@ -18,6 +18,7 @@
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF6_GET" }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF_DEL" }
 { "SCOPE" : "ROUTE", "CMD" : "RT_LIST" }
+{ "SCOPE" : "ROUTE", "CMD" : "RT_LIST6" }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF_SET", "DATA" : { "IPV4 GATEWAY" : "192.168.212.2" } }
 { "SCOPE" : "ROUTE", "CMD" : "RT_SET", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0", "IPV4 GATEWAY" : "192.168.211.2" } }
 { "SCOPE" : "ROUTE", "CMD" : "RT_GET", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0" } }
