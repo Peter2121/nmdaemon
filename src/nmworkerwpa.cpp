@@ -87,6 +87,11 @@ bool NmWorkerWpa::isValidCmd(NmCommandData* pcmd)
     return false;
 }
 
+std::string NmWorkerWpa::GetRandomSockCliAddr()
+{
+    return csaPrefix+std::to_string(Tool::getRandomInt());
+}
+
 bool NmWorkerWpa::isValidWpaIf(std::string ifn)
 {
     const std::string pong = "PONG";
@@ -317,7 +322,7 @@ std::vector<std::tuple<std::string, std::string>> NmWorkerWpa::GetWpaNetworkPara
     std::string strCmd = "";
     std::vector<std::tuple<std::string, std::string>> net_params;
 
-    if (!sock.bind(sockpp::unix_address(cliSockAddr)))
+    if (!sock.bind(sockpp::unix_address(GetRandomSockCliAddr())))
     {
         std::string error = "GetWpaNetworkParams cannot connect to client socket " + cliSockAddr + " : " + sock.last_error_str();
         std::cout << error  << std::endl;

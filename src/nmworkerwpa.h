@@ -162,6 +162,7 @@ public:
     json execCmdWpaDisable(NmCommandData*);
     json execCmdWpaSetBssid(NmCommandData*);
     json execCmdWpaSelect(NmCommandData*);
+    std::string GetRandomSockCliAddr();
 };
 
 
