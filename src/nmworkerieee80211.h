@@ -78,6 +78,7 @@ protected:
         { NmScope::WIFI, NmCmd::WIFI_STATUS }
     };
     static constexpr short MAXCHAN = 1536;
+    static constexpr short READ_TIMEOUT = 5;
     struct ieee80211req_chaninfo *ChanInfo;
     std::unique_ptr<struct ieee80211_channel> Chan;
     std::unique_ptr<struct ifmediareq> IfMr;

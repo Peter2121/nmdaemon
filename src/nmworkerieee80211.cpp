@@ -61,6 +61,9 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
 //    char buf[2048];
     struct if_announcemsghdr *ifan;
     struct rt_msghdr *rtm;
+    struct timeval tv;
+    tv.tv_sec = READ_TIMEOUT;
+    tv.tv_usec = 0;
 
     try {
         cmd_json = pcmd->getJsonData();
@@ -72,6 +75,9 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
 
     std::unique_ptr<char[]> buf = std::make_unique<char[]>(BUFSIZE);
     sockpp::socket sock = sockpp::socket::create(PF_ROUTE, SOCK_RAW);
+    // TODO: use sockpp method of setting the options
+    setsockopt(sock.handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+    setsockopt(sock.handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
 //    sroute = socket(PF_ROUTE, SOCK_RAW, 0);
 //    if (sroute < 0) {
 //        perror("socket(PF_ROUTE,SOCK_RAW)");
