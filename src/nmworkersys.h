@@ -12,6 +12,7 @@
 #include "interface.h"
 #include "tool.h"
 #include "rcconf.h"
+#include "resolvconf.h"
 //#include "jailparam.h"
 
 extern std::shared_ptr<NmConfig> sp_conf;
@@ -28,14 +29,21 @@ protected:
         { NmScope::SYSTEM, NmCmd::IF_LIST },
         { NmScope::SYSTEM, NmCmd::RCCONF_READ },
         { NmScope::SYSTEM, NmCmd::RCCONF_WRITE },
-        { NmScope::SYSTEM, NmCmd::JAIL_LIST }
+        { NmScope::SYSTEM, NmCmd::JAIL_LIST },
+        { NmScope::SYSTEM, NmCmd::RESOLVCONF_READ },
+        { NmScope::SYSTEM, NmCmd::RESOLVCONF_WRITE }
     };
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
     static inline const std::string RCCONF_FILENAME_DEFAULT = "/etc/rc.conf";
+    static inline const std::string CONF_KEY_RESOLVCONF_FILE = "resolvconf_file";
+    static inline const std::string RESOLVCONF_FILENAME_DEFAULT = "/etc/resolv.conf";
     static inline const std::string CONF_KEY_RCCONF_BACKUPS = "rcconf_backups";
     static inline const std::string RCCONF_BACKUPS_DEFAULT="5";
+    static inline const std::string CONF_KEY_RESOLVCONF_BACKUPS = "resolvconf_backups";
+    static inline const std::string RESOLVCONF_BACKUPS_DEFAULT="5";
     std::unique_ptr<RcConf> prcConf;
+    std::unique_ptr<ResolvConf> presConf;
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
 public:
@@ -50,6 +58,8 @@ public:
     json execCmdRcConfRead(NmCommandData*);
     json execCmdRcConfWrite(NmCommandData*);
     json execCmdJailList(NmCommandData*);
+    json execCmdResolvConfRead(NmCommandData*);
+    json execCmdResolvConfWrite(NmCommandData*);
 };
 
 #endif // SYS_WORKER_H

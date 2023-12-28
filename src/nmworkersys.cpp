@@ -33,6 +33,10 @@ json NmWorkerSys::execCmd(NmCommandData* pcmd)
             return execCmdRcConfWrite(pcmd);
         case NmCmd::JAIL_LIST :
             return execCmdJailList(pcmd);
+        case NmCmd::RESOLVCONF_READ :
+            return execCmdResolvConfRead(pcmd);
+        case NmCmd::RESOLVCONF_WRITE :
+            return execCmdResolvConfWrite(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -317,4 +321,62 @@ json NmWorkerSys::execCmdJailList(NmCommandData*)
     res_jails[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res_jails[JSON_PARAM_DATA] = res_data;
     return res_jails;
+}
+
+json NmWorkerSys::execCmdResolvConfRead(NmCommandData*)
+{
+    std::string resolvconf_name;
+    if( sp_conf!=nullptr )
+        resolvconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RESOLVCONF_FILE);
+    if(resolvconf_name.empty())
+        resolvconf_name = RESOLVCONF_FILENAME_DEFAULT;
+    LOG_S(INFO) << "execCmdResolvConfRead: Trying to read from " << resolvconf_name;
+    presConf = std::make_unique<ResolvConf>(resolvconf_name, 0);
+    return presConf->getConfig();
+
+}
+
+json NmWorkerSys::execCmdResolvConfWrite(NmCommandData *pcmd)
+{
+    json cmd_json = {};
+    json jdata = {};
+    std::string resolvconf_name;
+    short num_bkp = std::stol(RESOLVCONF_BACKUPS_DEFAULT);
+    if( sp_conf!=nullptr )
+    {
+        resolvconf_name = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RESOLVCONF_FILE);
+        auto strnum = sp_conf->getConfigValue(CONF_SECT_SYSTEM, CONF_KEY_RESOLVCONF_BACKUPS);
+        if(!strnum.empty())
+        {
+            try
+            {
+                num_bkp = std::stol(strnum);
+            }
+            catch (std::exception& e)
+            {
+                LOG_S(WARNING) << "Invalid value for " << CONF_KEY_RESOLVCONF_BACKUPS << " in config file " <<
+                    sp_conf->getConfigFileName() << ": " << strnum;
+            }
+        }
+    }
+    if(resolvconf_name.empty())
+        resolvconf_name = RESOLVCONF_FILENAME_DEFAULT;
+    LOG_S(INFO) << "execCmdResolvConfWrite: Trying to write to " << resolvconf_name;
+    presConf = std::make_unique<ResolvConf>(resolvconf_name, num_bkp);
+    try
+    {
+        cmd_json = pcmd->getJsonData();
+        jdata = cmd_json[JSON_PARAM_DATA];
+    }
+    catch (std::exception& e)
+    {
+        LOG_S(ERROR) << "Exception in execCmdResolvConfWrite - cannot get data from json";
+        return JSON_RESULT_ERR;
+    }
+    if(!presConf->rotateConfFile())
+        return JSON_RESULT_ERR;
+    if(!presConf->setConfig(jdata))
+        return JSON_RESULT_ERR;
+    else
+        return JSON_RESULT_SUCCESS;
 }

@@ -13,6 +13,7 @@
 #include "inifile/inifile.h"
 #include "nmjsonconst.h"
 #include "addressgroup.h"
+#include "tool.h"
 
 using json = nlohmann::json;
 

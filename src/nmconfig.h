@@ -18,6 +18,8 @@ stderr_log_level=INFO
 [SYSTEM]
 rcconf_file=/etc/rc.conf
 rcconf_backups=5
+resolvconf_file=/etc/resolv.conf
+resolvconf_backups=5
 
 *******************************/
 

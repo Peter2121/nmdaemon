@@ -89,6 +89,9 @@ const std::string JSON_PARAM_HOSTNAME = "HOSTNAME";
 const std::string JSON_PARAM_PATH = "PATH";
 const std::string JSON_PARAM_JAILS = "JAILS";
 const std::string JSON_PARAM_JAIL = "JAIL";
+const std::string JSON_PARAM_NAMESERVERS = "NAMESERVERS";
+const std::string JSON_PARAM_SEARCH_DOMAINS = "SEARCH DOMAINS";
+const std::string JSON_PARAM_HOST_DOMAIN = "DOMAIN";
 
 const nlohmann::json JSON_RESULT_SUCCESS = { { JSON_PARAM_RESULT, JSON_PARAM_SUCC } };
 const nlohmann::json JSON_RESULT_ERR = { { JSON_PARAM_RESULT, JSON_PARAM_ERR } };

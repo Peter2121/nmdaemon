@@ -718,3 +718,55 @@ int Tool::getRandomInt()
 {
     return RND_DISTR(RANDOM_MT);
 }
+
+bool Tool::rotateConfigFile(const std::string file_name, const int num_backups, const std::string delim)
+{
+    std::string rc_file_name1;
+    std::string rc_file_name2;
+    bool error = false;
+    if(num_backups<=0)
+        return true;
+    rc_file_name1 = file_name + delim + std::to_string(num_backups);
+    try
+    {
+        if(std::filesystem::exists(rc_file_name1))
+        {
+            LOG_S(INFO) << "rotateConfigFile: Removing " << rc_file_name1 << " during " << file_name << " file rotation";
+            std::filesystem::remove(rc_file_name1);
+        }
+    }
+    catch(std::exception& e)
+    {
+        LOG_S(WARNING) << "Exception in rotateConfigFile: " << e.what();
+    }
+    for(short i=num_backups; i>1; i--)
+    {
+        rc_file_name1 = file_name + delim + std::to_string(i-1);
+        rc_file_name2 = file_name + delim + std::to_string(i);
+        try
+        {
+            if(std::filesystem::exists(rc_file_name1))
+            {
+                LOG_S(INFO) << "rotateConfigFile: Moving " << rc_file_name1 << " to " << rc_file_name2 << " during " << file_name << " file rotation";
+                std::filesystem::copy(rc_file_name1, rc_file_name2);
+                std::filesystem::remove(rc_file_name1);
+            }
+        }
+        catch(std::exception& e)
+        {
+            LOG_S(WARNING) << "Exception in rotateConfigFile: " << e.what();
+            error = true;
+        }
+    }
+    try
+    {
+        LOG_S(INFO) << "rotateConfigFile: Copy " << file_name << " to " << rc_file_name2 << " during " << file_name << " file rotation";
+        std::filesystem::copy(file_name, rc_file_name1);
+    }
+    catch (std::exception& e)
+    {
+        LOG_S(WARNING) << "Exception in rotateConfigFile: " << e.what();
+        error = true;
+    }
+    return !error;
+}

@@ -433,6 +433,7 @@ std::string RcConf::getStrInetMaskFromPrefix(int prefix)
 
 bool RcConf::rotateRcConfFile()
 {
+    /*
     std::string rc_file_name1;
     std::string rc_file_name2;
     bool error = false;
@@ -482,6 +483,8 @@ bool RcConf::rotateRcConfFile()
         error = true;
     }
     return !error;
+    */
+    return Tool::rotateConfigFile(rcFileName, nBackups, FILE_VERSIONS_DELIMITER);
 }
 
 bool RcConf::setRcIpConfig(json rcdata)

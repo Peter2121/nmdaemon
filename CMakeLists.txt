@@ -87,6 +87,7 @@ set(SOURCES
     src/rcconf.cpp
     src/wpasocket.cpp
     src/jailparam.cpp
+    src/resolvconf.cpp
     src/loguru/loguru.cpp
     src/inifile/inifile.cpp
     )
@@ -117,6 +118,7 @@ set(HEADERS
     src/tool.h
     src/wpasocket.h
     src/jailparam.h
+    src/resolvconf.h
     src/generated/nmworkers.h
     src/generated/config.h
     )

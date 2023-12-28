@@ -73,6 +73,7 @@ public:
     static std::string leftTrimString(const std::string str, const char delim=' ');
     static std::string rightTrimString(const std::string str, const char delim=' ');
     static std::string trimString(const std::string str, const char delim=' ');
+    static bool rotateConfigFile(const std::string filename, const int num_versions, const std::string delim=".");
 };
 
 #endif // TOOL_H
