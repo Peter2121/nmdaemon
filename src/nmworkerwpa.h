@@ -12,7 +12,7 @@
 #include <thread>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
-#define LIBASYNC_STATIC
+//#define LIBASYNC_STATIC
 #include "async++.h"
 #include "sockpp/socket.h"
 #include "sockpp/unix_dgram_socket.h"

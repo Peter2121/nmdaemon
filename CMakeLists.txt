@@ -67,8 +67,10 @@ find_library(80211_LIBRARY 80211)
 find_library(JAIL_LIBRARY jail)
 
 # Libs from ports (static)
-find_library(ASYNC_LIBRARY libasync++.a)
-find_library(SOCKPP_LIBRARY libsockpp.a)
+#find_library(ASYNC_LIBRARY libasync++.a)
+#find_library(SOCKPP_LIBRARY libsockpp.a)
+find_package(Async++ REQUIRED)
+find_package(sockpp REQUIRED)
 
 add_compile_definitions(LOGURU_WITH_STREAMS=1)
 
@@ -126,4 +128,4 @@ set(HEADERS
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} ${ASYNC_LIBRARY} ${SOCKPP_LIBRARY})
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} async++-static Sockpp::sockpp-static)
