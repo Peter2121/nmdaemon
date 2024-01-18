@@ -72,6 +72,22 @@ For example:
 
 ---
 
+    { "SCOPE": "SYSTEM", "CMD": "RESOLVCONF_READ" }
+
+Read name resolution information from resolv.conf
+
+---
+
+    { "SCOPE": "SYSTEM", "CMD": "RESOLVCONF_WRITE", "DATA": { "DOMAIN": <domain_name>, "NAMESERVERS": [ <name_server_1>, <name_server_2>, ... ], "SEARCH DOMAINS": [ <search_domain_1>, <search_domain_2>, ... ] } }
+
+Write name resolution information into resolv.conf
+
+For example:
+
+    {"SCOPE": "SYSTEM", "CMD": "RESOLVCONF_WRITE", "DATA": { "DOMAIN": "domain11.local", "NAMESERVERS": [ "1.1.1.1", "2.2.2.2" ], "SEARCH DOMAINS": [ "domain11.local", "domain22.local" ] } }
+
+---
+
     { "SCOPE": "SYSTEM", "CMD": "IF_ENABLE", "DATA": { "INTERFACE NAME": "<if_name>" } }
 
     { "SCOPE": "SYSTEM", "CMD": "IF_DISABLE", "DATA": { "INTERFACE NAME": "<if_name>" } }
