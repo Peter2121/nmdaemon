@@ -25,7 +25,7 @@ To build `nmdaemon`, two external libraries are needed:
 - asyncplusplus (https://github.com/Amanieu/asyncplusplus)
 
 Static versions of these libraries must be installed.
-Both libraries are present in FreeBSD ports tree (net/libsockpp and devel/asyncplusplus), static versions are built by default.
+Both libraries are present in FreeBSD ports tree (`net/libsockpp` and `devel/asyncplusplus`), static versions are built by default.
 
 `nmdaemon` can be installed as `/usr/local/bin/nmdaemon` and started as FreeBSD service with rc.d script provided.
 
@@ -43,7 +43,7 @@ The `nmdaemon` needs a configuration file, an example is provided and installed 
 The full name of the configuration file to use can be passed as a command-line argument:
 `sudo /usr/local/bin/nmdaemon /home/user1/nmdaemon.conf`
 
-If the configuration file is not provided in command line and not present in `/usr/local/etc` - some default configuration values will be used.
+If the configuration file is not provided in command line and `nmdaemon.conf` is not present in `/usr/local/etc` - some default configuration values will be used.
 
 Some functional tests of `nmdaemon` using `nc` tool are provided in [tests](https://github.com/Peter2121/nmdaemon/tree/master/tests)
 Attention, these tests can change network configuration of the host where they are launched (use with care).
