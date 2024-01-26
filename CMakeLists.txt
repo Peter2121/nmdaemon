@@ -5,16 +5,23 @@ project(nmdaemon)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(WORKERS_NUM 6)
 cmake_policy(VERSION 3.20)
+
+set(WORKERS_NUM 6)
 
 include_directories(SYSTEM /usr/local/include/)
 
-string(TIMESTAMP TODAY "%Y%m%d%H%M")
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 0)
-set(VERSION_PATCH ${TODAY})
-set(SOFTWARE_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+
+if(DEFINED ENV{VERSION})
+    set(SOFTWARE_VERSION $ENV{VERSION})
+    set(VERSION_PATCH 0)
+else()
+    string(TIMESTAMP TODAY "%Y%m%d%H%M")
+    set(VERSION_PATCH ${TODAY})
+    set(SOFTWARE_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+endif()
 
 configure_file("src/config.h.in" ${CMAKE_CURRENT_SOURCE_DIR}/src/generated/config.h @ONLY)
 
