@@ -45,7 +45,7 @@ The full name of the configuration file to use can be passed as a command-line a
 
 If the configuration file is not provided in command line and `nmdaemon.conf` is not present in `/usr/local/etc` - some default configuration values will be used.
 
-Some functional tests of `nmdaemon` using `nc` tool are provided in [tests](https://github.com/Peter2121/nmdaemon/tree/master/tests)
+Some functional tests of `nmdaemon` using `nc` tool are provided in [tests](https://github.com/Peter2121/nmdaemon/tree/master/tests).
 Attention, these tests can change network configuration of the host where they are launched (use with care).
 
 The API is (almost) stable, the FreeBSD port will be created shortly after the release of 0.1 version.
