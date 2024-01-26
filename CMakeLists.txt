@@ -12,7 +12,7 @@ set(WORKERS_NUM 6)
 include_directories(SYSTEM /usr/local/include/)
 
 set(VERSION_MAJOR 0)
-set(VERSION_MINOR 0)
+set(VERSION_MINOR 1)
 
 if(DEFINED ENV{VERSION})
     set(SOFTWARE_VERSION $ENV{VERSION})
