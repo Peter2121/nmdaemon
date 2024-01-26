@@ -325,14 +325,14 @@ std::vector<std::tuple<std::string, std::string>> NmWorkerWpa::GetWpaNetworkPara
     if (!sock.bind(sockpp::unix_address(GetRandomSockCliAddr())))
     {
         std::string error = "GetWpaNetworkParams cannot connect to client socket " + cliSockAddr + " : " + sock.last_error_str();
-        std::cout << error  << std::endl;
+        LOG_S(ERROR) << error;
         throw WpaCommunicationException(error);
     }
 
     if (!sock.connect(sockpp::unix_address(srv_sock)))
     {
         std::string error = "GetWpaNetworkParams cannot connect to server socket " + srv_sock + " : " + sock.last_error_str();
-        std::cout << error  << std::endl;
+        LOG_S(ERROR) << error;
         sock.close();
         unlink(cliSockAddr.c_str());
         throw WpaCommunicationException(error);
@@ -341,7 +341,7 @@ std::vector<std::tuple<std::string, std::string>> NmWorkerWpa::GetWpaNetworkPara
     for (auto &param_name : SuppParamNames)
     {
         strCmd = COMMAND_GET + " " + std::to_string(net_id) + " " + param_name;
-        std::cout << "GetWpaNetworkParams sending command: " << strCmd << std::endl;
+        //LOG_S(INFO) << "GetWpaNetworkParams sending command: " << strCmd;
         if (sock.send(strCmd) != ssize_t(strCmd.length()))
         {
             std::string error = "GetWpaNetworkParams cannot write to socket: " + sock.last_error_str();
@@ -356,7 +356,7 @@ std::vector<std::tuple<std::string, std::string>> NmWorkerWpa::GetWpaNetworkPara
             std::this_thread::sleep_for(WAIT_TIME);
             if(res>0)
             {
-                std::cout << "GetWpaNetworkParams received data: " << buf << std::endl;
+                //LOG_S(INFO) << "GetWpaNetworkParams received data: " << buf;
                 if ( (res > 0 && buf[0] == '<') || (res > 6 && strncmp(buf, "IFNAME=", 7) == 0) )
                     /* This is an unsolicited message from wpa_supplicant, not the reply to the request */
                     /* See wpa_ctrl.c:559 */

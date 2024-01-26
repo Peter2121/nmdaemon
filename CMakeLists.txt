@@ -129,3 +129,9 @@ set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
 target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} async++-static Sockpp::sockpp-static)
+
+include(GNUInstallDirs)
+install(TARGETS nmdaemon DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(PROGRAMS "rc.d/nmdaemon" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/rc.d)
+install(FILES "doc/nmdaemon.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
+install(FILES "doc/commands.md" "doc/commands.txt" DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/nmdaemon)
