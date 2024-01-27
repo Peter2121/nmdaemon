@@ -140,5 +140,5 @@ target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${
 include(GNUInstallDirs)
 install(TARGETS nmdaemon DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(PROGRAMS "rc.d/nmdaemon" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/rc.d)
-install(FILES "doc/nmdaemon.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
+install(FILES "doc/nmdaemon.conf.sample" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
 install(FILES "doc/commands.md" "doc/commands.txt" DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/nmdaemon)
