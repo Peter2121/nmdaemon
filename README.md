@@ -39,7 +39,7 @@ To build and install `nmdaemon`:
     make
     sudo make install
 
-The `nmdaemon` needs a configuration file, an example is provided and installed in `/usr/local/etc`. This configuration file is used by default.
+The `nmdaemon` needs a configuration file, an example is provided and installed as `/usr/local/etc/nmdaemon.conf.sample`. To use this configuration file just copy it to `/usr/local/etc/nmdaemon.conf`.
 The full name of the configuration file to use can be passed as a command-line argument:
 `sudo /usr/local/bin/nmdaemon /home/user1/nmdaemon.conf`
 
