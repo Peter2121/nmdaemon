@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 12.0.1, 2024-01-26T20:01:57. -->
+<!-- Written by QtCreator 12.0.1, 2024-02-16T19:18:38. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -466,11 +466,13 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">nmdaemon</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">CMakeProjectManager.CMakeRunConfiguration.nmdaemon</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">nmdaemon</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="bool" key="RunConfiguration.RunAsRoot">true</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseTerminal">false</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">/home/peter/Programming/nmdaemon/build-nmdaemon-Desktop-Debug</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>

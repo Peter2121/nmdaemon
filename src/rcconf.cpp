@@ -509,6 +509,7 @@ bool RcConf::setRcIpConfig(json rcdata)
     std::string str_active_routes;
     size_t pos1;
     std::string element;
+    bool is_dhcp = false;
 
     if(!iniLoad())
         return JSON_RESULT_ERR;
@@ -585,6 +586,11 @@ bool RcConf::setRcIpConfig(json rcdata)
                     if(ip_addr.find(DHCP_SUFFIX) == std::string::npos)
                     {
                         ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
+                        is_dhcp = false;
+                    }
+                    else
+                    {
+                        is_dhcp = true;
                     }
                     str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
                     if(ip_mask.empty())
@@ -607,11 +613,18 @@ bool RcConf::setRcIpConfig(json rcdata)
                 if(is_addr_primary)
                 {
                     str_conf_key = DEFAULT_ROUTE_KEY;
-                    ip_gw = jad.at(JSON_PARAM_IPV4_GW);
-                    str_conf_value = "\"" + ip_gw + "\"";
-                    str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
-                    if(str_conf_value != str_old_conf_value)
-                        rcIniFile->SetKeyValue(DEFAULT_SECTION_A, str_conf_key, str_conf_value);
+                    if(!is_dhcp)
+                    {
+                        ip_gw = jad.at(JSON_PARAM_IPV4_GW);
+                        str_conf_value = "\"" + ip_gw + "\"";
+                        str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+                        if(str_conf_value != str_old_conf_value)
+                            rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+                    }
+                    else
+                    {
+                        rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
+                    }
                 }
             }
             catch(std::exception&)
@@ -622,50 +635,55 @@ bool RcConf::setRcIpConfig(json rcdata)
 //  TODO: integrate the second cycle into the first one
         str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIASES_SUFFIX;
         str_conf_value = "";
-        for(const auto &jad : jar_addresses)
+        if(!is_dhcp)
         {
-            is_addr_primary = false;
-            try
+            for(const auto &jad : jar_addresses)
             {
-                is_addr_primary = jad.at(JSON_PARAM_ADDR_PRIMARY);
-            }
-            catch(std::exception&)
-            {
-            }
-            try
-            {
-                if(!is_addr_primary)
+                is_addr_primary = false;
+                try
                 {
-//  TODO: deal with IPv6 addresses
-//  TODO: implement basic data check
-                    ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
-                    ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
-                    if(!str_conf_value.empty())
-                        str_conf_value += " ";
-                    str_conf_value += INET_ADDR + " " + ip_addr + " "
-                                    + INET_MASK + " " + ip_mask;
+                    is_addr_primary = jad.at(JSON_PARAM_ADDR_PRIMARY);
+                }
+                catch(std::exception&)
+                {
+                }
+                try
+                {
+                    if(!is_addr_primary)
+                    {
+    //  TODO: deal with IPv6 addresses
+    //  TODO: implement basic data check
+                        ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
+                        ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
+                        if(!str_conf_value.empty())
+                            str_conf_value += " ";
+                        str_conf_value += INET_ADDR + " " + ip_addr + " "
+                                        + INET_MASK + " " + ip_mask;
+                    }
+                }
+                catch(std::exception&)
+                {
+                    LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name;
+                    continue;
                 }
             }
-            catch(std::exception&)
+            if(!str_conf_value.empty())
             {
-                LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name;
-                continue;
+                str_conf_value = "\"" + str_conf_value + "\"";
+                str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+                if(str_conf_value != str_old_conf_value)
+                    rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
             }
         }
-        if(!str_conf_value.empty())
+        else
         {
-            str_conf_value = "\"" + str_conf_value + "\"";
-            str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
-            if(str_conf_value != str_old_conf_value)
-                rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+            rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
         }
         for(int i=0; i<MAX_ALIASES; i++)
         // Remove old records like ifconfig_em0_alias0="..." from config file
         {
             str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX + std::to_string(i);
             rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
-            //auto section = rcIniFile->GetSection(DEFAULT_SECTION);
-            //section->RemoveKey(str_conf_key);
         }
     }
 
