@@ -99,10 +99,10 @@ protected:
     static inline const std::string SuppParamNames[] = { "priority", "key_mgmt", "proto" };
 
     static constexpr int BUF_LEN = 4096;
-    static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(200);
+    static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(300);
     static constexpr std::chrono::milliseconds WAIT_RECONFIGURE_TIME = std::chrono::milliseconds(3000);
-    static constexpr std::chrono::milliseconds WAIT_CONNECT_TIME = std::chrono::milliseconds(1000);
-    static constexpr int WAIT_CYCLES = 10;
+    static constexpr std::chrono::milliseconds WAIT_CONNECT_TIME = std::chrono::milliseconds(2000);
+    static constexpr int WAIT_CYCLES = 50;
     static constexpr int MAX_PRIORITY = 500;
     static constexpr int HIGH_PRIORITY = 200;
 

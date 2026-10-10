@@ -1420,11 +1420,16 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
 
 std::string NmWorkerWpa::searchLineInBuf(const std::string mask, bool at_start)
 {
+    std::string_view chars = " \t\r\n";
     std::stringstream bufss(buf);
+    std::string_view mask_view(mask);
     std::string line = "";
+    mask_view.remove_prefix(std::min(mask_view.find_first_not_of(chars), mask_view.size()));
+    mask_view.remove_suffix(mask_view.size() - std::min(mask_view.find_last_not_of(chars) + 1, mask_view.size()));
+    std::string mask_stripped{mask_view};
     while(std::getline(bufss, line, '\n'))
     {
-        std::string::size_type pos = line.find(mask);
+        std::string::size_type pos = line.find(mask_stripped);
         if(pos != std::string::npos)
         {
             if(at_start && (pos!=0))
