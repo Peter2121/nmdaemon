@@ -393,21 +393,25 @@ json NmWorkerRoute::execCmdDefRouteGet(NmCommandData*)
     json res_route = {};
     short family;
     std::string strGw = "";
+    std::string ifName = "";
     auto spaddr = std::make_shared<AddressIp4>();
     auto spmask = std::make_shared<AddressIp4>();
 //    auto spgate = std::make_shared<address_ip4>();
 //    auto sp_rt_addr = std::make_shared<addr>(spaddr, spmask, spgate, ipaddr_type::ROUTE);
     auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, AddressGroupType::ROUTE);
-    if( !getStaticRoute(sp_rt_addr) )
+    auto def_route_if = getStaticRoute(sp_rt_addr);
+    if( !def_route_if )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteGet - cannot get default route";
         return JSON_RESULT_ERR;
     }
-
+    ifName = def_route_if->getName();
     family = sp_rt_addr->getData()->getFamily();
     strGw = sp_rt_addr->getData()->getStrAddr();
     res_route[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
-    res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV4_GW, strGw } };
+    //res_route[JSON_PARAM_DATA] = { { JSON_PARAM_IPV4_GW, strGw } };
+    res_route[JSON_PARAM_DATA][JSON_PARAM_IPV4_GW] =  strGw;
+    res_route[JSON_PARAM_DATA][JSON_PARAM_IF_NAME] = ifName;
     return res_route;
 }
 

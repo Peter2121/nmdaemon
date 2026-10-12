@@ -1,4 +1,5 @@
 #include "nmworkersys.h"
+#include "nmworkerroute.h"
 
 NmWorkerSys::NmWorkerSys()
 {
@@ -204,6 +205,7 @@ json NmWorkerSys::execCmdIfEnable(NmCommandData* pcmd) {
 json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
     struct ifreq ifr;
     std::string ifname = "";
+    std::string default_route_ifname = "";
     const int cmdflag=IFF_UP;
     memset(&ifr, 0, sizeof(struct ifreq));
     json cmd_json = {};
@@ -223,6 +225,23 @@ json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
     if(!Tool::setIfFlags(ifname, curflags))
     {
         return JSON_RESULT_ERR;
+    }
+    //json NmWorkerRoute::execCmdDefRouteGet(NmCommandData*)
+    auto route_worker = std::make_unique<NmWorkerRoute>();
+    auto default_route = route_worker->execCmdDefRouteGet(nullptr);
+    if(default_route != JSON_RESULT_ERR) {
+        try {
+            default_route_ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        } catch (std::exception& e) {
+            LOG_S(WARNING) << "Cannot get interface name for default route";
+        }
+        if(default_route_ifname == ifname) {
+            auto result = route_worker->execCmdDefRouteDel(nullptr);
+            if(result == JSON_RESULT_ERR) {
+                LOG_S(ERROR) << "Cannot delete default route for interface " << default_route_ifname;
+                return JSON_RESULT_ERR;
+            }
+        }
     }
     return JSON_RESULT_SUCCESS;
 }

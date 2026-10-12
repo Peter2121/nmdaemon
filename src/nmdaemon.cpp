@@ -30,15 +30,6 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
     running_sock_receiver = true;
 
     std::thread dispatch_thread(&NmDaemon::dispatcher, this, sockin.clone());
-
-    std::unique_lock<std::mutex> ulmut_req(req_access);
-    req_access.unlock();
-
-    std::unique_lock<std::mutex> ulmut_sock(sock_access_write);
-    sock_access_write.unlock();
-
-    std::unique_lock<std::mutex> ulmut_work(work_access);
-    work_access.unlock();
 /*
     while (true)
     {
@@ -69,9 +60,8 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
             if(res)
             {
                 LOG_S(INFO) << "Received valid request: " << strBuf;
-                req_access.lock();
+                std::lock_guard<std::mutex> lk(req_access);
                 requests.emplace(request);
-                req_access.unlock();
             }
         }
         if(!res)
@@ -80,10 +70,11 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
             json jsResult = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_REQUEST } };
             std::string strResult = jsResult.dump();
             strlcpy(buf,strResult.c_str(),strResult.length()+1);
-            sock_access_write.lock();
-            LOG_S(INFO) << "Writing to socket: " << (char*)buf;
-            nwrite = sockin.write_n(buf, sizeof(buf));
-            sock_access_write.unlock();
+            {
+                std::lock_guard<std::mutex> lk(sock_access_write);
+                LOG_S(INFO) << "Writing to socket: " << (char*)buf;
+                nwrite = sockin.write_n(buf, sizeof(buf));
+            }
             if(nwrite != sizeof(buf))
                 LOG_S(WARNING) << "Error writing to socket: wrote " << nwrite << " bytes, expected " << sizeof(buf) << "bytes";
         }
@@ -112,31 +103,23 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
     }
     running_dispatcher = true;
 
-    std::unique_lock<std::mutex> ulmut_req(req_access);
-    req_access.unlock();
-
-    std::unique_lock<std::mutex> ulmut_sock(sock_access_write);
-    sock_access_write.unlock();
-
-    std::unique_lock<std::mutex> ulmut_work(work_access);
-    work_access.unlock();
-
     while(true)
     {
         if(!requests.empty())
         {
-            req_access.lock();
-            NmCommandData* request = requests.front();
-            requests.pop();
-            req_access.unlock();
+            NmCommandData* request;
+            {
+                std::lock_guard<std::mutex> lk(req_access);
+                request = requests.front();
+                requests.pop();
+            }
             for(auto worker : workers)
             {
                 if(worker->getScope() == request->getCommand().scope)
                 {
-                    work_access.lock();
+                    std::lock_guard<std::mutex> lk(work_access);
                     LOG_S(INFO) << "Worker choosen: " << magic_enum::enum_name(worker->getScope());
                     jsonRes = worker->execCmd(request);
-                    work_access.unlock();
                     break;
                 }
             }
@@ -151,11 +134,12 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
             }
             memset(&buf, 0, NM_MAXBUF*sizeof(char));
             strlcpy(buf, strResult.c_str(), NM_MAXBUF);
-            sock_access_write.lock();
-            //std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            LOG_S(INFO) << "Writing to socket: " << (char*)buf;
-            sockout.write_n(buf, NM_MAXBUF*sizeof(char));
-            sock_access_write.unlock();
+            {
+                std::lock_guard<std::mutex> lk(sock_access_write);
+                //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                LOG_S(INFO) << "Writing to socket: " << (char*)buf;
+                sockout.write_n(buf, NM_MAXBUF*sizeof(char));
+            }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if(stop_dispatcher)

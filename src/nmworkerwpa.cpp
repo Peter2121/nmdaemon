@@ -775,6 +775,7 @@ json NmWorkerWpa::wpaConnectCmd(std::string ifname, int id)
         str_result = JSON_PARAM_ERR;
     else
     {
+        // TODO: check if netid is EXACTLY the same in str_found (searchLineInBuf searches for substring)
         idFound = true;
     }
     str_found = searchLineInBuf(RESULT_COMPLETED, true);
