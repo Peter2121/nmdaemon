@@ -44,40 +44,48 @@ std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
         return sp_addr;
     }
 
-    switch(ip_family)
+    try
     {
-        case AF_INET:
-            if(cmd_json_data.contains(JSON_PARAM_IPV4_ADDR))
-                str_ifaddr = cmd_json_data[JSON_PARAM_IPV4_ADDR];
-            if(cmd_json_data.contains(JSON_PARAM_IPV4_MASK))
-                str_ifmask = cmd_json_data[JSON_PARAM_IPV4_MASK];
-            if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
-            {
-                str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
-                ip_type = AddressGroupType::BCAST;
-            }
-            else if(cmd_json_data.contains(JSON_PARAM_IPV4_GW))
-            {
-                str_ifgw = cmd_json_data[JSON_PARAM_IPV4_GW];
-                ip_type = AddressGroupType::PPP;
-            }
-            break;
-        case AF_INET6:
-            if(cmd_json_data.contains(JSON_PARAM_IPV6_ADDR))
-                str_ifaddr = cmd_json_data[JSON_PARAM_IPV6_ADDR];
-            if(cmd_json_data.contains(JSON_PARAM_IPV6_MASK))
-                str_ifmask = cmd_json_data[JSON_PARAM_IPV6_MASK];
-            if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
-            {
-                str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
-                ip_type = AddressGroupType::BCAST;
-            }
-            else if(cmd_json_data.contains(JSON_PARAM_IPV6_GW))
-            {
-                str_ifgw = cmd_json_data[JSON_PARAM_IPV6_GW];
-                ip_type = AddressGroupType::PPP;
-            }
-            break;
+        switch(ip_family)
+        {
+            case AF_INET:
+                if(cmd_json_data.contains(JSON_PARAM_IPV4_ADDR))
+                    str_ifaddr = cmd_json_data[JSON_PARAM_IPV4_ADDR];
+                if(cmd_json_data.contains(JSON_PARAM_IPV4_MASK))
+                    str_ifmask = cmd_json_data[JSON_PARAM_IPV4_MASK];
+                if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
+                {
+                    str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
+                    ip_type = AddressGroupType::BCAST;
+                }
+                else if(cmd_json_data.contains(JSON_PARAM_IPV4_GW))
+                {
+                    str_ifgw = cmd_json_data[JSON_PARAM_IPV4_GW];
+                    ip_type = AddressGroupType::PPP;
+                }
+                break;
+            case AF_INET6:
+                if(cmd_json_data.contains(JSON_PARAM_IPV6_ADDR))
+                    str_ifaddr = cmd_json_data[JSON_PARAM_IPV6_ADDR];
+                if(cmd_json_data.contains(JSON_PARAM_IPV6_MASK))
+                    str_ifmask = cmd_json_data[JSON_PARAM_IPV6_MASK];
+                if(cmd_json_data.contains(JSON_PARAM_IPV6_BCAST))
+                {
+                    str_ifbcast = cmd_json_data[JSON_PARAM_IPV6_BCAST];
+                    ip_type = AddressGroupType::BCAST;
+                }
+                else if(cmd_json_data.contains(JSON_PARAM_IPV6_GW))
+                {
+                    str_ifgw = cmd_json_data[JSON_PARAM_IPV6_GW];
+                    ip_type = AddressGroupType::PPP;
+                }
+                break;
+        }
+    }
+    catch (std::exception& e)
+    {
+        LOG_S(ERROR) << "getAddrFromJson - invalid address parameters in JSON: " << e.what();
+        return sp_addr;
     }
 
     if( str_ifaddr.empty() && str_ifmask.empty() && str_ifgw.empty() && str_ifbcast.empty() )
@@ -273,12 +281,13 @@ std::vector<std::tuple<int, std::string, std::string>> Tool::getActiveProcesses(
         args = kvm_getargv(kernel, &kinfo[i], 0);
         if( (args != NULL) && (*args != NULL) && (**args != '\0') )
         {
+            size = 0;
             for (ptr = args; *ptr; ptr++)
             {
                 size += strlen(*ptr)+1;
             }
             size += 2;
-            buf = new char[size];
+            buf = new char[size]{};
             pos = 0;
             for (ptr = args; *ptr; ptr++)
             {
@@ -769,4 +778,75 @@ bool Tool::rotateConfigFile(const std::string file_name, const int num_backups, 
         error = true;
     }
     return !error;
+}
+
+bool Tool::isValidIfName(const std::string& name)
+{
+    if(name.empty() || name.size() >= IFNAMSIZ)
+        return false;
+    if(!isalpha((unsigned char)name[0]))
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '.' || c == '_' || c == '-'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidIpAddr(const std::string& addr)
+{
+    struct in_addr a4;
+    struct in6_addr a6;
+    if(addr.empty())
+        return false;
+    return (inet_pton(AF_INET, addr.c_str(), &a4) == 1) || (inet_pton(AF_INET6, addr.c_str(), &a6) == 1);
+}
+
+bool Tool::isValidName(const std::string& name)
+{
+    if(name.empty() || name.size() > 64)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '_'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidRcWord(const std::string& word)
+{
+    if(word.empty() || word.size() > 64)
+        return false;
+    for(unsigned char c : word)
+    {
+        if(!(isalnum(c) || c == ' ' || c == '.' || c == '_' || c == '-'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidDomainName(const std::string& name)
+{
+    if(name.empty() || name.size() > 253)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '.' || c == '-' || c == '_'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidWpaParamName(const std::string& name)
+{
+    if(name.empty() || name.size() > 64)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(islower(c) || isdigit(c) || c == '_'))
+            return false;
+    }
+    return true;
 }
