@@ -185,6 +185,8 @@ json NmWorkerSys::execCmdIfEnable(NmCommandData* pcmd) {
     try {
         cmd_json = pcmd->getJsonData();
         ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifname))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIfEnable - cannot get ifname";
         return JSON_RESULT_ERR;
@@ -212,6 +214,8 @@ json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
     try {
         cmd_json = pcmd->getJsonData();
         ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifname))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIfDisable - cannot get ifname";
         return JSON_RESULT_ERR;

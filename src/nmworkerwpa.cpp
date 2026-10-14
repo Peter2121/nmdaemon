@@ -620,7 +620,7 @@ bool NmWorkerWpa::wpaCtrlCmd(const std::string strCmd, const std::string ifname)
         return false;
     }
 
-    LOG_S(INFO) << "wpaCtrlCmd sending command: " << strCmd;
+    LOG_S(INFO) << "wpaCtrlCmd sending command: " << redactSecrets(strCmd);
     if (sock.send(strCmd) != ssize_t(strCmd.length()))
     {
         LOG_S(ERROR) << "wpaCtrlCmd cannot write to socket: " << sock.last_error_str();
@@ -657,7 +657,7 @@ bool NmWorkerWpa::wpaCtrlCmd(WpaSocket* psock, const std::string strCmd)
 {
     int res,i;
 
-    LOG_S(INFO) << "wpaCtrlCmd sending command: " << strCmd;
+    LOG_S(INFO) << "wpaCtrlCmd sending command: " << redactSecrets(strCmd);
     if (psock->sockSend(strCmd) != ssize_t(strCmd.length()))
     {
         LOG_S(ERROR) << "wpaCtrlCmd cannot write to socket: " << psock->sockLastError();
@@ -1001,7 +1001,7 @@ bool NmWorkerWpa::wpaCtrlCmd(WpaSocket* psock, std::string strCmd, std::string s
         return false;
     }
 
-    LOG_S(INFO) << "wpaCtrlCmd sending command: " << strCmd;
+    LOG_S(INFO) << "wpaCtrlCmd sending command: " << redactSecrets(strCmd);
     if (psock->sockSend(strCmd) != ssize_t(strCmd.length()))
     {
         LOG_S(ERROR) << "wpaCtrlCmd cannot write to socket: " << psock->sockLastError();
@@ -1082,7 +1082,7 @@ bool NmWorkerWpa::wpaCtrlCmd(std::string strCmd, std::string strWait, std::strin
         return false;
     }
 
-    LOG_S(INFO) << "wpaCtrlCmd sending command: " << strCmd;
+    LOG_S(INFO) << "wpaCtrlCmd sending command: " << redactSecrets(strCmd);
     if (sock.send(strCmd) != ssize_t(strCmd.length()))
     {
         LOG_S(ERROR) << "wpaCtrlCmd cannot write to socket: " << sock.last_error_str();
@@ -1170,6 +1170,13 @@ std::string NmWorkerWpa::getStringParamFromCommand(NmCommandData* pcmd, std::str
         param_value = cmd[JSON_PARAM_DATA][param];
     } catch (std::exception& e) {
         LOG_S(WARNING) << "Exception in getStringParamFromCommand - cannot get parameter " << param << " from json";
+    }
+
+    // The interface name becomes the wpa_supplicant control socket path: no traversal, no separators
+    if(param == JSON_PARAM_IF_NAME && !param_value.empty() && !Tool::isValidIfName(param_value))
+    {
+        LOG_S(ERROR) << "Invalid interface name rejected";
+        param_value = "";
     }
 
     return param_value;
@@ -1478,6 +1485,14 @@ char* NmWorkerWpa::searchLineInBuf(const char* mask)
 bool NmWorkerWpa::setNetworkParam(std::string ifname, int id, std::string param_name, std::string param, bool quotes)
 {
     std::string strCmd;
+    // One datagram = one control command, but a crafted name or value could still smuggle extra tokens,
+    // quotes or line breaks into wpa_supplicant and into the configuration it saves
+    if(!Tool::isValidWpaParamName(param_name) || param.find_first_of("\r\n") != std::string::npos ||
+       (quotes && param.find('"') != std::string::npos))
+    {
+        LOG_S(ERROR) << "setNetworkParam rejected invalid parameter " << param_name;
+        return false;
+    }
     if(quotes)
         strCmd = COMMAND_SET + " " + std::to_string(id) + " " + param_name + " \"" + param + "\"";
     else
@@ -1486,7 +1501,7 @@ bool NmWorkerWpa::setNetworkParam(std::string ifname, int id, std::string param_
         return false;
     if(!(strncmp(buf, "OK", 2)==0) )
     {
-        LOG_S(ERROR) << "setNetworkParam cannot set " << param_name << " to " << param << " for network " << id << " : " << buf;
+        LOG_S(ERROR) << "setNetworkParam cannot set " << redactSecrets(param_name + " " + param) << " for network " << id << " : " << buf;
         return false;
     }
     return true;

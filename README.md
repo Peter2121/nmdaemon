@@ -12,6 +12,12 @@ The daemon can manage:
 `nmdaemon` should be started as root, it opens a unix socket where clients can connect.
 The permissions of the unix socket are managed by `nmdaemon` and provided by it's configuration file.
 
+**Security model**: there is no per-command authorization. Any process that can connect to the socket
+can reconfigure every interface and route, rewrite `/etc/rc.conf` and `/etc/resolv.conf` and drive
+`wpa_supplicant`, all with root privileges. Keep `socket_mod` restrictive (the default `660` with
+`socket_group=wheel` is a reasonable choice, never `666`) and treat socket access as equivalent to
+root for network configuration. Each connection is logged with the uid and gid of the peer.
+
 To communicate with `nmdaemon` one should use JSON formatted commands, `nmdaemon` answers with JSON formatted data too.
 The syntax and examples of the commands can be found in [commands.md](https://github.com/Peter2121/nmdaemon/blob/master/doc/commands.md).
 

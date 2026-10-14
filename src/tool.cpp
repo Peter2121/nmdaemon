@@ -44,6 +44,9 @@ std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
         return sp_addr;
     }
 
+    // A non-string value throws a json type_error: must not escape to the dispatcher
+    try
+    {
     switch(ip_family)
     {
         case AF_INET:
@@ -78,6 +81,13 @@ std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
                 ip_type = AddressGroupType::PPP;
             }
             break;
+    }
+
+    }
+    catch (std::exception& e)
+    {
+        LOG_S(ERROR) << "getAddrFromJson - invalid address parameters in JSON: " << e.what();
+        return sp_addr;
     }
 
     if( str_ifaddr.empty() && str_ifmask.empty() && str_ifgw.empty() && str_ifbcast.empty() )
@@ -273,12 +283,13 @@ std::vector<std::tuple<int, std::string, std::string>> Tool::getActiveProcesses(
         args = kvm_getargv(kernel, &kinfo[i], 0);
         if( (args != NULL) && (*args != NULL) && (**args != '\0') )
         {
+            size = 0;
             for (ptr = args; *ptr; ptr++)
             {
                 size += strlen(*ptr)+1;
             }
             size += 2;
-            buf = new char[size];
+            buf = new char[size](); // zero-filled: strlen(buf) below reads it before anything is written
             pos = 0;
             for (ptr = args; *ptr; ptr++)
             {
@@ -769,4 +780,75 @@ bool Tool::rotateConfigFile(const std::string file_name, const int num_backups, 
         error = true;
     }
     return !error;
+}
+
+bool Tool::isValidIfName(const std::string& name)
+{
+    if(name.empty() || name.size() >= IFNAMSIZ)
+        return false;
+    if(!isalpha((unsigned char)name[0]))
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '.' || c == '_' || c == '-'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidIpAddr(const std::string& addr)
+{
+    struct in_addr a4;
+    struct in6_addr a6;
+    if(addr.empty())
+        return false;
+    return (inet_pton(AF_INET, addr.c_str(), &a4) == 1) || (inet_pton(AF_INET6, addr.c_str(), &a6) == 1);
+}
+
+bool Tool::isValidName(const std::string& name)
+{
+    if(name.empty() || name.size() > 64)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '_'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidRcWord(const std::string& word)
+{
+    if(word.empty() || word.size() > 64)
+        return false;
+    for(unsigned char c : word)
+    {
+        if(!(isalnum(c) || c == ' ' || c == '.' || c == '_' || c == '-'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidDomainName(const std::string& name)
+{
+    if(name.empty() || name.size() > 253)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(isalnum(c) || c == '.' || c == '-'))
+            return false;
+    }
+    return true;
+}
+
+bool Tool::isValidWpaParamName(const std::string& name)
+{
+    if(name.empty() || name.size() > 64)
+        return false;
+    for(unsigned char c : name)
+    {
+        if(!(islower(c) || isdigit(c) || c == '_'))
+            return false;
+    }
+    return true;
 }

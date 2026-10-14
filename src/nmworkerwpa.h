@@ -110,7 +110,7 @@ protected:
     static constexpr char DELIM_FIELDS = '\t';
 
     char* buf = nullptr;
-    const std::string csaPrefix = "/tmp/nmd_wpaw.";
+    const std::string csaPrefix = "/var/run/nmd_wpaw."; // root-only directory: a local user cannot squat the client socket name
     const std::string defSsaDir = "/var/run/wpa_supplicant/";
     std::string cliSockAddr;
     std::string srvSockAddrDir;

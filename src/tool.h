@@ -11,7 +11,11 @@
 #include <sys/user.h>
 #include <sys/sysctl.h>
 #include <net/if_media.h>
+#include <net/if.h>
+#include <arpa/inet.h>
 #include <string.h>
+#include <cctype>
+#include <stdexcept>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "json/json.hpp"
@@ -74,6 +78,13 @@ public:
     static std::string rightTrimString(const std::string str, const char delim=' ');
     static std::string trimString(const std::string str, const char delim=' ');
     static bool rotateConfigFile(const std::string filename, const int num_versions, const std::string delim=".");
+    // Input validation: every value below ends up in a path, a shell-sourced file or a control command
+    static bool isValidIfName(const std::string&);      // letters, digits, '.', '_', '-' ; shorter than IFNAMSIZ
+    static bool isValidIpAddr(const std::string&);      // inet_pton IPv4 or IPv6
+    static bool isValidName(const std::string&);        // letters, digits, '_' (route names)
+    static bool isValidRcWord(const std::string&);      // letters, digits, space, '.', '_', '-' (rc.conf keywords)
+    static bool isValidDomainName(const std::string&);  // letters, digits, '.', '-'
+    static bool isValidWpaParamName(const std::string&);// lowercase letters, digits, '_'
 };
 
 #endif // TOOL_H

@@ -4,6 +4,7 @@
 #include <string>
 #include <queue>
 #include <thread>
+#include <mutex>
 
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
@@ -25,9 +26,11 @@ protected:
     bool stop_receiver;
     std::mutex req_access;
     std::mutex sock_access_write;
-    std::mutex work_access;
+    // Workers are shared by every connection and keep state: one command at a time, daemon-wide
+    static std::mutex work_access;
     std::queue<NmCommandData*> requests;
     std::vector<NmWorkerBase*> workers;
+    void logPeerCredentials(const sockpp::unix_socket&);
 
 public:
     NmDaemon(std::vector<NmWorkerBase*>);

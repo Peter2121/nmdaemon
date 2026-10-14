@@ -544,6 +544,12 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig cannot get interface name";
                 continue;
             }
+            // rc.conf is sourced by sh at boot: the name becomes a variable name, nothing else may get in
+            if(!Tool::isValidIfName(str_if_name))
+            {
+                LOG_S(WARNING) << "setRcIpConfig rejected invalid interface name";
+                continue;
+            }
 //          Fix VLAN interface name
             if(pos1=str_if_name.find_last_of("."); pos1!=std::string::npos)
             {
@@ -587,10 +593,16 @@ bool RcConf::setRcIpConfig(json rcdata)
                     {
                         ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
                         is_dhcp = false;
+                        // Values are written inside double quotes of a shell file: $(...), backticks,
+                        // quotes or newlines would run as root at boot
+                        if(!Tool::isValidIpAddr(ip_addr) || !Tool::isValidIpAddr(ip_mask))
+                            throw std::invalid_argument("invalid IPv4 address or mask");
                     }
                     else
                     {
                         is_dhcp = true;
+                        if(!Tool::isValidRcWord(ip_addr))
+                            throw std::invalid_argument("invalid DHCP keyword");
                     }
                     str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
                     if(ip_mask.empty())
@@ -616,6 +628,8 @@ bool RcConf::setRcIpConfig(json rcdata)
                     if(!is_dhcp)
                     {
                         ip_gw = jad.at(JSON_PARAM_IPV4_GW);
+                        if(!Tool::isValidIpAddr(ip_gw))
+                            throw std::invalid_argument("invalid gateway address");
                         str_conf_value = "\"" + ip_gw + "\"";
                         str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
                         if(str_conf_value != str_old_conf_value)
@@ -655,6 +669,8 @@ bool RcConf::setRcIpConfig(json rcdata)
     //  TODO: implement basic data check
                         ip_addr = jad.at(JSON_PARAM_IPV4_ADDR);
                         ip_mask = jad.at(JSON_PARAM_IPV4_MASK);
+                        if(!Tool::isValidIpAddr(ip_addr) || !Tool::isValidIpAddr(ip_mask))
+                            throw std::invalid_argument("invalid alias address or mask");
                         if(!str_conf_value.empty())
                             str_conf_value += " ";
                         str_conf_value += INET_ADDR + " " + ip_addr + " "
@@ -700,6 +716,12 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig cannot get route name";
                 continue;
             }
+            // Becomes the variable name route_<name> and an entry of the static_routes list
+            if(!Tool::isValidName(str_rt_name))
+            {
+                LOG_S(WARNING) << "setRcIpConfig rejected invalid route name";
+                continue;
+            }
             str_rt_status = jrt.at(JSON_PARAM_STATUS);
             if(str_rt_status.empty())
             {
@@ -729,7 +751,7 @@ bool RcConf::setRcIpConfig(json rcdata)
             ip_addr = jar_addresses.at(JSON_PARAM_IPV4_ADDR);
             ip_mask = jar_addresses.at(JSON_PARAM_IPV4_MASK);
             ip_gw = jar_addresses.at(JSON_PARAM_IPV4_GW);
-            if( ip_addr.empty() || ip_mask.empty() || ip_gw.empty() )
+            if( !Tool::isValidIpAddr(ip_addr) || !Tool::isValidIpAddr(ip_mask) || !Tool::isValidIpAddr(ip_gw) )
             {
                 LOG_S(WARNING) << "setRcIpConfig received invalid addresses for route " << str_rt_name;
                 continue;

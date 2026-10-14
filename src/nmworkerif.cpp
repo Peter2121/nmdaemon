@@ -1,5 +1,11 @@
 #include "nmworkerif.h"
 
+#include <spawn.h>
+#include <sys/wait.h>
+#include <stdexcept>
+
+extern char **environ;
+
 NmWorkerIf::NmWorkerIf()
 {
 }
@@ -310,6 +316,8 @@ json NmWorkerIf::execCmdIpAddrSet(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -374,6 +382,8 @@ json NmWorkerIf::execCmdIpAddrAdd(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -403,6 +413,8 @@ json NmWorkerIf::execCmdIpAddrRemove(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -435,6 +447,8 @@ json NmWorkerIf::execCmdMtuGet(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdIpAddrSet - cannot get interface name";
         return JSON_RESULT_ERR;
@@ -473,6 +487,8 @@ json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
     {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
         cmd_data = cmd[JSON_PARAM_DATA];
         mtu = cmd_data[JSON_PARAM_MTU];
     } catch (std::exception& e)
@@ -509,8 +525,15 @@ json NmWorkerIf::execCmdIpAddrGet(NmCommandData *pcmd)
     json res_data = {};
     std::string str_addr;
 
-    cmd = pcmd->getJsonData();
-    ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIpAddrGet - cannot get interface name";
+        return JSON_RESULT_ERR;
+    }
 
     str_addr = Tool::getIfPrimaryAddr4(ifName);
     if(!str_addr.empty())
@@ -548,15 +571,21 @@ json NmWorkerIf::execCmdDHCPEnable(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdDHCPEnable - cannot get interface parameters";
         return JSON_RESULT_ERR;
     }
 
     std::shared_ptr<AddressBase> sp_cur_addr = getMainIfAddr(AF_INET);
-    if(!removeIfAddr(sp_cur_addr))
+    if(sp_cur_addr == nullptr)
     {
-        LOG_S(ERROR) << "Cannot remove current address " << sp_cur_addr->getStrAddr() << " from interface ifName";
+        LOG_S(INFO) << "No current IPv4 address on interface " << ifName;
+    }
+    else if(!removeIfAddr(sp_cur_addr))
+    {
+        LOG_S(ERROR) << "Cannot remove current address " << sp_cur_addr->getStrAddr() << " from interface " << ifName;
         LOG_S(ERROR) << "Enabling DHCP on this interface anyway...";
     }
 
@@ -571,10 +600,21 @@ bool NmWorkerIf::enableDHCP()
     if(isDHCPEnabled())
         return true;
 
-    std::string cmd_dhcp_client = DHCP_CLIENT_EXEC + " " + ifName;
-    LOG_S(INFO) << "Starting DHCP client as: " << cmd_dhcp_client;
-    int retval = system(cmd_dhcp_client.c_str());
-    LOG_S(INFO) << "DHCP client returned: " << retval;
+    // No shell: the interface name is passed as a single argv entry (ifName was validated by the caller)
+    pid_t pid = 0;
+    int status = 0;
+    char* const dhcp_argv[] = { (char*)DHCP_CLIENT_EXEC.c_str(), (char*)ifName.c_str(), nullptr };
+    LOG_S(INFO) << "Starting DHCP client as: " << DHCP_CLIENT_EXEC << " " << ifName;
+    int retval = posix_spawn(&pid, DHCP_CLIENT_EXEC.c_str(), nullptr, nullptr, dhcp_argv, environ);
+    if(retval != 0)
+    {
+        LOG_S(ERROR) << "Cannot start DHCP client: " << strerror(retval);
+        return false;
+    }
+    if(waitpid(pid, &status, 0) < 0)
+        LOG_S(WARNING) << "waitpid failed for DHCP client: " << strerror(errno);
+    else
+        LOG_S(INFO) << "DHCP client returned: " << status;
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if(isDHCPEnabled())
@@ -590,6 +630,8 @@ json NmWorkerIf::execCmdDHCPDisable(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdDHCPDisable - cannot get interface parameters";
         return JSON_RESULT_ERR;
@@ -620,6 +662,8 @@ json NmWorkerIf::execCmdDHCPGetStatus(NmCommandData* pcmd)
     try {
         cmd = pcmd->getJsonData();
         ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
     } catch (std::exception& e) {
         LOG_S(ERROR) << "Exception in execCmdDHCPGetStatus - cannot get interface parameters";
         return JSON_RESULT_ERR;

@@ -137,13 +137,38 @@ bool ResolvConf::setConfig(json data)
         LOG_S(ERROR) << "ResolvConf::setConfig - cannot get resolv.conf parameters from json: " << e.what();
         return false;
     }
-    for(const auto &ns : jar_nameservers)
+    // Every value is written verbatim on its own line of resolv.conf: enforce the format before writing
+    try
     {
-        nameservers.push_back(ns);
+        if(!domain.empty() && !Tool::isValidDomainName(domain))
+        {
+            LOG_S(ERROR) << "ResolvConf::setConfig - invalid domain name rejected";
+            return false;
+        }
+        for(const auto &ns : jar_nameservers)
+        {
+            std::string nameserver = ns;
+            if(!Tool::isValidIpAddr(nameserver))
+            {
+                LOG_S(ERROR) << "ResolvConf::setConfig - invalid nameserver address rejected";
+                return false;
+            }
+            nameservers.push_back(nameserver);
+        }
+        for(const auto &sd : jar_search_domains)
+        {
+            std::string search_domain = sd;
+            if(!Tool::isValidDomainName(search_domain))
+            {
+                LOG_S(ERROR) << "ResolvConf::setConfig - invalid search domain rejected";
+                return false;
+            }
+            search_domains.push_back(search_domain);
+        }
     }
-    for(const auto &sd : jar_search_domains)
-    {
-        search_domains.push_back(sd);
+    catch (std::exception& e) {
+        LOG_S(ERROR) << "ResolvConf::setConfig - invalid resolv.conf parameters in json: " << e.what();
+        return false;
     }
     try
     {

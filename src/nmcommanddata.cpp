@@ -1,37 +1,27 @@
 #include "nmcommanddata.h"
 
+#include <algorithm>
+#include <cctype>
+
 NmCommandData::NmCommandData(std::string str_data)
 {
+    command.scope = NmScope::NONE;
+    command.cmd = NmCmd::NONE;
     json_data = json::parse(str_data, nullptr, false);
-    if(!json_data.is_discarded())
+    if(json_data.is_discarded() || !json_data.is_object())
+        return;
+    // SCOPE and CMD must be strings: reading a number or an object as a string throws and would kill the daemon
+    if (json_data.contains(JSON_PARAM_SCOPE) && json_data[JSON_PARAM_SCOPE].is_string())
     {
-        if (json_data.contains(JSON_PARAM_SCOPE))
-        {
-            std::string strScope = json_data[JSON_PARAM_SCOPE];
-            auto enumscope = magic_enum::enum_cast<NmScope>(strScope);
-            if (enumscope.has_value())
-                command.scope = enumscope.value();
-            else
-                command.scope = NmScope::NONE;
-        }
-        else
-            command.scope = NmScope::NONE;
-        if (json_data.contains(JSON_PARAM_CMD))
-        {
-            std::string strCmd = json_data[JSON_PARAM_CMD];
-            auto enumcmd = magic_enum::enum_cast<NmCmd>(strCmd);
-            if (enumcmd.has_value())
-                command.cmd = enumcmd.value();
-            else
-                command.cmd = NmCmd::NONE;
-        }
-        else
-            command.cmd = NmCmd::NONE;
+        auto enumscope = magic_enum::enum_cast<NmScope>(json_data[JSON_PARAM_SCOPE].get<std::string>());
+        if (enumscope.has_value())
+            command.scope = enumscope.value();
     }
-    else
+    if (json_data.contains(JSON_PARAM_CMD) && json_data[JSON_PARAM_CMD].is_string())
     {
-        command.scope = NmScope::NONE;
-        command.cmd = NmCmd::NONE;
+        auto enumcmd = magic_enum::enum_cast<NmCmd>(json_data[JSON_PARAM_CMD].get<std::string>());
+        if (enumcmd.has_value())
+            command.cmd = enumcmd.value();
     }
 }
 
@@ -55,4 +45,21 @@ json NmCommandData::getJsonData()
 NmCommand NmCommandData::getCommand()
 {
     return command;
+}
+
+std::string redactSecrets(const std::string& text)
+{
+    static const char* markers[] = { "psk", "wep_key", "password", "passphrase" };
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+    size_t cut = std::string::npos;
+    for(const char* m : markers)
+    {
+        size_t pos = lower.find(m);
+        if(pos != std::string::npos && (cut == std::string::npos || pos < cut))
+            cut = pos;
+    }
+    if(cut == std::string::npos)
+        return text;
+    return text.substr(0, cut) + "<secret redacted>";
 }

@@ -20,4 +20,7 @@ public:
     NmCommand getCommand();
 };
 
+// Hides PSK / WEP keys / passwords before a request or a wpa_supplicant command is logged
+std::string redactSecrets(const std::string& text);
+
 #endif // NMCOMMANDDATA_H

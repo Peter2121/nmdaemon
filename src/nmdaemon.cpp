@@ -1,10 +1,19 @@
 #include "nmdaemon.h"
 
-NmDaemon::NmDaemon(std::vector<NmWorkerBase*> wrks) : req_access(), work_access(), requests()
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/ucred.h>
+#include <string.h>
+
+std::mutex NmDaemon::work_access;
+
+NmDaemon::NmDaemon(std::vector<NmWorkerBase*> wrks) : req_access(), requests()
 {
     running_sock_receiver = false;
     running_dispatcher = false;
     stop_dispatcher = false;
+    stop_receiver = false;
     workers = wrks;
 }
 
@@ -14,10 +23,26 @@ void NmDaemon::shutdown()
     stop_dispatcher = true;
 }
 
+// The socket grants full control of the network configuration: keep an audit trail of who used it
+void NmDaemon::logPeerCredentials(const sockpp::unix_socket& sock)
+{
+    struct xucred xuc;
+    socklen_t len = sizeof(xuc);
+    memset(&xuc, 0, sizeof(xuc));
+    if(getsockopt(sock.handle(), SOL_LOCAL, LOCAL_PEERCRED, &xuc, &len) == 0 && xuc.cr_version == XUCRED_VERSION)
+    {
+        LOG_S(INFO) << "Connection from uid " << xuc.cr_uid << " gid " << (xuc.cr_ngroups > 0 ? (long)xuc.cr_groups[0] : -1L);
+    }
+    else
+    {
+        LOG_S(WARNING) << "Cannot get peer credentials: " << strerror(errno);
+    }
+}
+
 void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
 {
-    unsigned long nread=0;
-    unsigned long nwrite=0;
+    ssize_t nread=0;
+    ssize_t nwrite=0;
     char buf[NM_MAXBUF];
     std::string strBuf;
     bool res;
@@ -28,54 +53,57 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
         return;
     }
     running_sock_receiver = true;
+    logPeerCredentials(sockin);
 
     std::thread dispatch_thread(&NmDaemon::dispatcher, this, sockin.clone());
-/*
+
     while (true)
     {
-        nread = sockin.read(buf, sizeof(buf));
+        // Fresh, NUL-terminated buffer on every read: no stale bytes from a previous request, no over-read
+        memset(buf, 0, sizeof(buf));
+        nread = sockin.read(buf, sizeof(buf) - 1);
         if(nread <= 0)
             break;
-        strBuf = "Received invalid request";
-        sockin.write_n(strBuf.c_str(), sizeof(buf));
-    }
-*/
-    memset(buf, 0, sizeof(buf));
-    while (true)
-    {
-        nread = sockin.read(buf, sizeof(buf));
-        if(nread <= 0)
-            break;
-        //LOG_S(MAX) << "Received data: " << (char*)buf;
-        strBuf = std::string(buf);
-        NmCommandData* request = new NmCommandData(strBuf);
+        strBuf = std::string(buf, (size_t)nread);
+        NmCommandData* request = nullptr;
         res = false;
-        if(request->isValid())
+        try
         {
-            for(auto worker : workers)
+            request = new NmCommandData(strBuf);
+            if(request->isValid())
             {
-                res = worker->isValidCmd(request);
-                if(res) break;
-            }
-            if(res)
-            {
-                LOG_S(INFO) << "Received valid request: " << strBuf;
-                std::lock_guard<std::mutex> lk(req_access);
-                requests.emplace(request);
+                for(auto worker : workers)
+                {
+                    res = worker->isValidCmd(request);
+                    if(res) break;
+                }
             }
         }
-        if(!res)
+        catch(std::exception& e)
         {
-            LOG_S(INFO) << "Received invalid request: " << strBuf;
+            LOG_S(WARNING) << "Exception parsing request: " << e.what();
+            res = false;
+        }
+        if(res)
+        {
+            LOG_S(INFO) << "Received valid request: " << redactSecrets(strBuf);
+            std::lock_guard<std::mutex> lk(req_access);
+            requests.emplace(request);
+        }
+        else
+        {
+            delete request;
+            LOG_S(INFO) << "Received invalid request: " << redactSecrets(strBuf);
             json jsResult = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_REQUEST } };
             std::string strResult = jsResult.dump();
-            strlcpy(buf,strResult.c_str(),strResult.length()+1);
+            memset(buf, 0, sizeof(buf));
+            strlcpy(buf, strResult.c_str(), sizeof(buf));
             {
                 std::lock_guard<std::mutex> lk(sock_access_write);
                 LOG_S(INFO) << "Writing to socket: " << (char*)buf;
                 nwrite = sockin.write_n(buf, sizeof(buf));
             }
-            if(nwrite != sizeof(buf))
+            if(nwrite != (ssize_t)sizeof(buf))
                 LOG_S(WARNING) << "Error writing to socket: wrote " << nwrite << " bytes, expected " << sizeof(buf) << "bytes";
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -95,6 +123,7 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
     json jsonRes;
     std::string strResult;
     char buf[NM_MAXBUF];
+    const json jsonInternalErr = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INTERNAL_ERROR } };
 
     if(running_dispatcher == true)
     {
@@ -105,38 +134,50 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
 
     while(true)
     {
-        if(!requests.empty())
+        NmCommandData* request = nullptr;
         {
-            NmCommandData* request;
+            std::lock_guard<std::mutex> lk(req_access);
+            if(!requests.empty())
             {
-                std::lock_guard<std::mutex> lk(req_access);
                 request = requests.front();
                 requests.pop();
             }
-            for(auto worker : workers)
+        }
+        if(request != nullptr)
+        {
+            jsonRes = jsonInternalErr;
+            // A worker exception must fail the request, not the whole daemon
+            try
             {
-                if(worker->getScope() == request->getCommand().scope)
+                for(auto worker : workers)
                 {
-                    std::lock_guard<std::mutex> lk(work_access);
-                    LOG_S(INFO) << "Worker choosen: " << magic_enum::enum_name(worker->getScope());
-                    jsonRes = worker->execCmd(request);
-                    break;
+                    if(worker->getScope() == request->getCommand().scope)
+                    {
+                        std::lock_guard<std::mutex> lk(work_access);
+                        LOG_S(INFO) << "Worker choosen: " << magic_enum::enum_name(worker->getScope());
+                        jsonRes = worker->execCmd(request);
+                        break;
+                    }
                 }
             }
+            catch(std::exception& e)
+            {
+                LOG_S(ERROR) << "Exception in worker: " << e.what();
+                jsonRes = jsonInternalErr;
+            }
+            delete request;
             strResult = jsonRes.dump();
-//            strResult = jsonRes.dump(2);
             LOG_S(INFO) << "Got result from worker: " << strResult;
             if(strResult.length() >= NM_MAXBUF)
             {
                 LOG_S(ERROR) << "No place for result, rebuild with increased NM_MAXBUF value";
-                jsonRes = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INTERNAL_ERROR } };
+                jsonRes = jsonInternalErr;
                 strResult = jsonRes.dump();
             }
             memset(&buf, 0, NM_MAXBUF*sizeof(char));
             strlcpy(buf, strResult.c_str(), NM_MAXBUF);
             {
                 std::lock_guard<std::mutex> lk(sock_access_write);
-                //std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 LOG_S(INFO) << "Writing to socket: " << (char*)buf;
                 sockout.write_n(buf, NM_MAXBUF*sizeof(char));
             }
