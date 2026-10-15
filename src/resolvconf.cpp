@@ -130,24 +130,32 @@ bool ResolvConf::setConfig(json data)
     try
     {
         domain = data[JSON_PARAM_HOST_DOMAIN];
+        if( domain.empty() || (!domain.empty() && !Tool::isValidDomainName(domain)) )
+            throw std::invalid_argument("invalid domain name rejected");
         jar_nameservers = data[JSON_PARAM_NAMESERVERS];
+        for(const auto &ns : jar_nameservers)
+        {
+            std::string nameserver = ns;
+            if(!Tool::isValidIpAddr(nameserver))
+                throw std::invalid_argument("invalid nameserver address rejected");
+            nameservers.push_back(nameserver);
+        }
         jar_search_domains = data[JSON_PARAM_SEARCH_DOMAINS];
+        for(const auto &sd : jar_search_domains)
+        {
+            std::string search_domain = sd;
+            if(!Tool::isValidDomainName(search_domain))
+                throw std::invalid_argument("invalid search domain rejected");
+            search_domains.push_back(search_domain);
+        }
     }
     catch (std::exception& e) {
-        LOG_S(ERROR) << "ResolvConf::setConfig - cannot get resolv.conf parameters from json: " << e.what();
+        LOG_S(ERROR) << "ResolvConf::setConfig - cannot get resolv.conf parameters from json" << data.dump() << " : " << e.what();
         return false;
-    }
-    for(const auto &ns : jar_nameservers)
-    {
-        nameservers.push_back(ns);
-    }
-    for(const auto &sd : jar_search_domains)
-    {
-        search_domains.push_back(sd);
     }
     try
     {
-        LOG_S(INFO) << "Writing to " << confFileName << std::endl;
+        LOG_S(INFO) << "Writing to " << confFileName;
         std::ofstream resolconf_file(confFileName, std::ios::trunc);
         resolconf_file << DOMAIN << " " << domain << std::endl;
         if(!search_domains.empty())
