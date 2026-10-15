@@ -84,13 +84,13 @@ std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
     }
     catch (std::exception& e)
     {
-        LOG_S(ERROR) << "getAddrFromJson - invalid address parameters in JSON: " << e.what();
+        LOG_S(ERROR) << "getAddrFromJson - invalid address parameters in JSON " << cmd_json_data.dump() << " : " << e.what();
         return sp_addr;
     }
 
     if( str_ifaddr.empty() && str_ifmask.empty() && str_ifgw.empty() && str_ifbcast.empty() )
     {
-        LOG_S(ERROR) << "getAddrFromJson - cannot get IP address from JSON";
+        LOG_S(ERROR) << "getAddrFromJson - cannot get IP address from JSON " << cmd_json_data.dump();
         return sp_addr;
     }
 
