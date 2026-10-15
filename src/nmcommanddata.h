@@ -18,6 +18,7 @@ public:
     bool isValid();
     json getJsonData();
     NmCommand getCommand();
+    std::string hideSecrets(const std::string& text);
 };
 
 #endif // NMCOMMANDDATA_H
