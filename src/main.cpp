@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <csignal>
 //#include <stdio.h>
 //#include <string.h>
 #include <unistd.h>
@@ -43,17 +44,7 @@ static inline const std::string DEFAULT_SOCKET_GROUP = "wheel";
 static inline const std::string DEFAULT_SOCKET_MOD = "660";
 static inline const std::string DEFAULT_LOG_LEVEL = "INFO";
 
-bool needShutdown;
-
-void signalCleaner(int signum)
-{
-    LOG_S(WARNING) << "Interrupt signal " << signum << " received, cleaning up...";
-    needShutdown = true;
-   // cleanup and close up stuff here
-   // terminate program
-
-    exit(signum);
-}
+volatile sig_atomic_t needShutdown = 0;
 
 int main(int argc, char* argv[])
 {
@@ -169,14 +160,16 @@ int main(int argc, char* argv[])
         LOG_S(ERROR) << "Cannot get GID of group " << sock_group << " for socket: " << strerror(errno);
         return -1;
     }
-/*
-    signal(SIGINT, signalCleaner);
-    signal(SIGABRT, signalCleaner);
-    signal(SIGFPE, signalCleaner);
-    signal(SIGILL, signalCleaner);
-    signal(SIGSEGV, signalCleaner);
-    signal(SIGTERM, signalCleaner);
-*/
+
+    // Clearing SA_RESTART here makes accept() fail with EINTR,
+    // which the loop below treats as "fall through and check needShutdown".
+    struct sigaction sa_term;
+    memset(&sa_term, 0, sizeof(sa_term));
+    sa_term.sa_handler = [](int) { needShutdown = 1; };
+    sigemptyset(&sa_term.sa_mask);
+    sa_term.sa_flags = 0; // no SA_RESTART
+    sigaction(SIGINT, &sa_term, nullptr);
+    sigaction(SIGTERM, &sa_term, nullptr);
 
     Tool::initRandomGenerator();
 
@@ -228,13 +221,19 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    needShutdown = false;
     while (true)
     {
         auto sock = sockAcc.accept();
 
         if (!sock) {
-            LOG_S(ERROR) << "Error accepting incoming connection: " << sockAcc.last_error_str();
+            if(needShutdown)
+            {
+                LOG_S(INFO) << "Accept interrupted by shutdown signal";
+            }
+            else
+            {
+                LOG_S(ERROR) << "Error accepting incoming connection: " << sockAcc.last_error_str();
+            }
         }
         else {
             LOG_S(INFO) << "Received a connection";
