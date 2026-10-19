@@ -1,5 +1,7 @@
 #include "nmdaemon.h"
 
+#include <cctype>
+
 std::mutex NmDaemon::work_access;
 
 NmDaemon::NmDaemon(std::vector<NmWorkerBase*> wrks) : req_access(), requests()
@@ -42,46 +44,64 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
         if(nread <= 0)
             break;
         strBuf = std::string(buf);
-        //NmCommandData* request = new NmCommandData(strBuf);
-        NmCommandData* request = nullptr;
-        res = false;
-        try
+
+        // Strip trailing delimiter/whitespace bytes a client may send as
+        // separate framing after the real payload - e.g. "cat file.json |
+        // nc ..." (see tests/nmtest.sh) forwards the json file's own
+        // trailing '\n' to the socket, which can arrive as its own,
+        // near-empty read() right after the real request. Without this,
+        // that second read was parsed as its own command, failed
+        // validation, and got answered with a spurious INVALID REQUEST
+        // response on top of the real one: one request in, two responses
+        // out. This only trims trailing delimiter bytes; it does not
+        // reassemble a request that is genuinely split across multiple
+        // reads for another reason (large payload, slow client).
+        while(!strBuf.empty() && std::isspace(static_cast<unsigned char>(strBuf.back())))
+            strBuf.pop_back();
+
+        if(!strBuf.empty())
         {
-            request = new NmCommandData(strBuf);
-            if(request->isValid())
+            //NmCommandData* request = new NmCommandData(strBuf);
+            NmCommandData* request = nullptr;
+            res = false;
+            try
             {
-                for(auto worker : workers)
+                request = new NmCommandData(strBuf);
+                if(request->isValid())
                 {
-                    res = worker->isValidCmd(request);
-                    if(res) break;
+                    for(auto worker : workers)
+                    {
+                        res = worker->isValidCmd(request);
+                        if(res) break;
+                    }
                 }
             }
-        }
-        catch(std::exception& e)
-        {
-            LOG_S(WARNING) << "Exception parsing request '" << Tool::hideSecrets(strBuf) << "': " << e.what();
-            res = false;
-        }
-
-        if(res)
-        {
-            LOG_S(INFO) << "Received valid request: " << Tool::hideSecrets(strBuf);
-            std::lock_guard<std::mutex> lk(req_access);
-            requests.emplace(request);
-        }
-        else
-        {
-            delete request;
-            LOG_S(INFO) << "Received invalid request: " << Tool::hideSecrets(strBuf);
-            json jsResult = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_REQUEST } };
-            std::string strResult = jsResult.dump();
-            strlcpy(buf, strResult.c_str(), sizeof(buf));
+            catch(std::exception& e)
             {
-                std::lock_guard<std::mutex> lk(sock_access_write);
-                LOG_S(INFO) << "Writing to socket: " << (char*)buf;
-                nwrite = sockin.write_n(buf, sizeof(buf));
-                if(nwrite != (ssize_t)sizeof(buf))
-                    LOG_S(WARNING) << "Error writing to socket: wrote " << nwrite << " bytes, expected " << sizeof(buf) << "bytes";
+                LOG_S(WARNING) << "Exception parsing request '" << Tool::hideSecrets(strBuf) << "': " << e.what();
+                res = false;
+            }
+
+            if(res)
+            {
+                LOG_S(INFO) << "Received valid request: " << Tool::hideSecrets(strBuf);
+                std::lock_guard<std::mutex> lk(req_access);
+                requests.emplace(request);
+            }
+            else
+            {
+                delete request;
+                LOG_S(INFO) << "Received invalid request: " << Tool::hideSecrets(strBuf);
+                json jsResult = { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, { JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_REQUEST } };
+                std::string strResult = jsResult.dump();
+                strlcpy(buf, strResult.c_str(), sizeof(buf));
+                {
+                    std::lock_guard<std::mutex> lk(sock_access_write);
+                    LOG_S(INFO) << "Writing to socket: " << (char*)buf;
+                    nwrite = sockin.write_n(buf, sizeof(buf));
+                    if(nwrite != (ssize_t)sizeof(buf))
+                        LOG_S(WARNING) << "Error writing to socket: wrote " << nwrite << " bytes, expected " << sizeof(buf) << "bytes";
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
