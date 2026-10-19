@@ -12,6 +12,10 @@
 #include <grp.h>
 //#include <stdlib.h>
 #include <thread>
+#include <mutex>
+#include <vector>
+#include <algorithm>
+#include <chrono>
 
 #define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
@@ -44,7 +48,16 @@ static inline const std::string DEFAULT_SOCKET_GROUP = "wheel";
 static inline const std::string DEFAULT_SOCKET_MOD = "660";
 static inline const std::string DEFAULT_LOG_LEVEL = "INFO";
 
+static constexpr std::chrono::milliseconds SHUTDOWN_GRACE_PERIOD{5000};
+static constexpr std::chrono::milliseconds SHUTDOWN_POLL_INTERVAL{100};
+
 volatile sig_atomic_t needShutdown = 0;
+
+// NmDaemon instances currently handling a connection.
+// Used only on shutdown, to ask every live connection to stop and to know
+// when they are all done (or when to give up waiting).
+std::mutex g_activeDaemonsMutex;
+std::vector<NmDaemon*> g_activeDaemons;
 
 int main(int argc, char* argv[])
 {
@@ -52,9 +65,7 @@ int main(int argc, char* argv[])
     const int MAXBUF = 512;
     char buf[MAXBUF];
     bool res;
-    //std::vector<NmDaemon*> daemons;
     std::vector<NmWorkerBase*> workers;
-    //std::vector<std::thread*> threads;
     std::string conf_value;
     std::string config_filename = DEFAULT_CONF_FILENAME;
     std::string sock_path = DEFAULT_SOCKET_PATH;
@@ -238,14 +249,18 @@ int main(int argc, char* argv[])
         else {
             LOG_S(INFO) << "Received a connection";
             NmDaemon* daemon = new NmDaemon(workers);
-            /*
-            daemons.push_back(daemon);
-            std::thread thr(&NmDaemon::sock_receiver, daemon, std::move(sock));
-            threads.push_back(&thr);
-            thr.detach();
-            */
+            {
+                std::lock_guard<std::mutex> lk(g_activeDaemonsMutex);
+                g_activeDaemons.push_back(daemon);
+            }
             std::thread([daemon, s = std::move(sock)]() mutable {
                 daemon->sock_receiver(std::move(s));
+                {
+                    std::lock_guard<std::mutex> lk(g_activeDaemonsMutex);
+                    auto it = std::find(g_activeDaemons.begin(), g_activeDaemons.end(), daemon);
+                    if(it != g_activeDaemons.end())
+                        g_activeDaemons.erase(it);
+                }
                 delete daemon;
             }).detach();
         }
@@ -255,17 +270,38 @@ int main(int argc, char* argv[])
             break;
         }
     }
-    /*
-    for(auto daemon : daemons)
+    // Ask every connection still in flight to stop, then give them a bounded
+    // amount of time to actually do so before we tear down the socket and
+    // exit. Connections are handled by detached threads (see the accept loop
+    // above), so there is nothing to join here - shutdown() only flips the
+    // atomics sock_receiver()/dispatcher() check between reads; this loop
+    // just waits for g_activeDaemons to become empty, polling instead of
+    // blocking indefinitely, since a connection blocked in a read() with no
+    // data pending will not react to shutdown() until it gets data or the
+    // client disconnects.
     {
-        daemon->shutdown();
+        std::lock_guard<std::mutex> lk(g_activeDaemonsMutex);
+        LOG_S(INFO) << "Asking " << g_activeDaemons.size() << " active connection(s) to stop";
+        for(auto* daemon : g_activeDaemons)
+            daemon->shutdown();
     }
-    for(auto pthr : threads)
+    auto shutdown_deadline = std::chrono::steady_clock::now() + SHUTDOWN_GRACE_PERIOD;
+    while(std::chrono::steady_clock::now() < shutdown_deadline)
     {
-        if(pthr->joinable())
-            pthr->join();
+        {
+            std::lock_guard<std::mutex> lk(g_activeDaemonsMutex);
+            if(g_activeDaemons.empty())
+                break;
+        }
+        std::this_thread::sleep_for(SHUTDOWN_POLL_INTERVAL);
     }
-    */
+    {
+        std::lock_guard<std::mutex> lk(g_activeDaemonsMutex);
+        if(!g_activeDaemons.empty())
+            LOG_S(WARNING) << g_activeDaemons.size() << " connection(s) still active after " << SHUTDOWN_GRACE_PERIOD.count() << "ms grace period, exiting anyway";
+        else
+            LOG_S(INFO) << "All connections drained";
+    }
     if(unlink(sock_path.c_str())!=0)
     {
         strerror_r(errno, buf, MAXBUF);
