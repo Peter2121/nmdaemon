@@ -143,7 +143,7 @@ void NmDaemon::dispatcher(sockpp::unix_socket sockout)
             }
             delete request;
             strResult = jsonRes.dump();
-            LOG_S(INFO) << "Got result from worker: " << strResult;
+            LOG_S(INFO) << "Got result from worker: " <<  Tool::hideSecrets(strResult);
             if(strResult.length() >= NM_MAXBUF)
             {
                 LOG_S(ERROR) << "No place for result, rebuild with increased NM_MAXBUF value";

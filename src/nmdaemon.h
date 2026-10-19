@@ -24,7 +24,7 @@
 class NmDaemon
 {
 protected:
-    const unsigned long NM_MAXBUF = 8192;
+    const constexpr unsigned long NM_MAXBUF = 8192;
     static std::mutex work_access;
     std::atomic<bool> running_sock_receiver;
     std::atomic<bool> running_dispatcher;
