@@ -850,3 +850,20 @@ bool Tool::isValidWpaParamName(const std::string& name)
     }
     return true;
 }
+
+std::string Tool::hideSecrets(const std::string& text)
+{
+    static const char* markers[] = { "psk", "wep_key", "password", "passphrase" };
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+    size_t cut = std::string::npos;
+    for(const char* m : markers)
+    {
+        size_t pos = lower.find(m);
+        if(pos != std::string::npos && (cut == std::string::npos || pos < cut))
+            cut = pos;
+    }
+    if(cut == std::string::npos)
+        return text;
+    return text.substr(0, cut) + "<secret hidden>";
+}

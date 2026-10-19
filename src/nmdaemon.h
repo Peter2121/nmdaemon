@@ -4,6 +4,12 @@
 #include <string>
 #include <queue>
 #include <thread>
+#include <mutex>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/ucred.h>
 
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
@@ -19,15 +25,16 @@ class NmDaemon
 {
 protected:
     const unsigned long NM_MAXBUF = 8192;
-    bool running_sock_receiver;
-    bool running_dispatcher;
-    bool stop_dispatcher;
-    bool stop_receiver;
+    static std::mutex work_access;
+    std::atomic<bool> running_sock_receiver;
+    std::atomic<bool> running_dispatcher;
+    std::atomic<bool> stop_dispatcher;
+    std::atomic<bool> stop_receiver;
     std::mutex req_access;
     std::mutex sock_access_write;
-    std::mutex work_access;
     std::queue<NmCommandData*> requests;
     std::vector<NmWorkerBase*> workers;
+    void logPeerCredentials(const sockpp::unix_socket&);
 
 public:
     NmDaemon(std::vector<NmWorkerBase*>);

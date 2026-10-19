@@ -84,6 +84,7 @@ public:
     static bool isValidRcWord(const std::string&);      // letters, digits, space, '.', '_', '-' (rc.conf keywords)
     static bool isValidDomainName(const std::string&);  // letters, digits, '.', '-'
     static bool isValidWpaParamName(const std::string&);// lowercase letters, digits, '_'
+    static std::string hideSecrets(const std::string& text);
 };
 
 #endif // TOOL_H

@@ -5,6 +5,7 @@
 #include "magic_enum/magic_enum.hpp"
 #include "nmcommand.h"
 #include "nmjsonconst.h"
+#include "tool.h"
 
 using json = nlohmann::json;
 
@@ -18,7 +19,6 @@ public:
     bool isValid();
     json getJsonData();
     NmCommand getCommand();
-    std::string hideSecrets(const std::string& text);
 };
 
 #endif // NMCOMMANDDATA_H
