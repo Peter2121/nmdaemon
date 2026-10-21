@@ -118,7 +118,7 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
             ifan = (struct if_announcemsghdr *) rtm;
             std::this_thread::sleep_for(WAIT_TIME);
             i++;
-        } while (rtm->rtm_type != RTM_IEEE80211 || ifan->ifan_what != RTM_IEEE80211_SCAN || i>IMAX);
+        } while (rtm->rtm_type != RTM_IEEE80211 || ifan->ifan_what != RTM_IEEE80211_SCAN || ifname != ifan->ifan_name || i>IMAX);
         if(i>IMAX)
         {
             LOG_S(ERROR) << "Timeout waiting for response from PF_ROUTE socket";
