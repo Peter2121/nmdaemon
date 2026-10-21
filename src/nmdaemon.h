@@ -5,6 +5,7 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <regex>
 
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -1,7 +1,5 @@
 #include "nmdaemon.h"
 
-#include <cctype>
-
 std::mutex NmDaemon::work_access;
 
 NmDaemon::NmDaemon(std::vector<NmWorkerBase*> wrks) : req_access(), requests()
@@ -45,23 +43,13 @@ void NmDaemon::sock_receiver(sockpp::unix_socket sockin)
             break;
         strBuf = std::string(buf);
 
-        // Strip trailing delimiter/whitespace bytes a client may send as
-        // separate framing after the real payload - e.g. "cat file.json |
-        // nc ..." (see tests/nmtest.sh) forwards the json file's own
-        // trailing '\n' to the socket, which can arrive as its own,
-        // near-empty read() right after the real request. Without this,
-        // that second read was parsed as its own command, failed
-        // validation, and got answered with a spurious INVALID REQUEST
-        // response on top of the real one: one request in, two responses
-        // out. This only trims trailing delimiter bytes; it does not
-        // reassemble a request that is genuinely split across multiple
-        // reads for another reason (large payload, slow client).
-        while(!strBuf.empty() && std::isspace(static_cast<unsigned char>(strBuf.back())))
-            strBuf.pop_back();
+        // Strip trailing delimiter/whitespace bytes a client may send
+        // as separate framing after the real payload
+        static const std::regex trailingWs(R"(\s+$)");
+        strBuf = std::regex_replace(strBuf, trailingWs, "");
 
         if(!strBuf.empty())
         {
-            //NmCommandData* request = new NmCommandData(strBuf);
             NmCommandData* request = nullptr;
             res = false;
             try
