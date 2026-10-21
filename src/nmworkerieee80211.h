@@ -77,6 +77,8 @@ protected:
         { NmScope::WIFI, NmCmd::WIFI_SCAN_RESULTS },
         { NmScope::WIFI, NmCmd::WIFI_STATUS }
     };
+    const short SCAN_RESULTS_MAX_RETRIES = 5;
+    static constexpr std::chrono::milliseconds SCAN_RESULTS_RETRY_DELAY{150};
     static constexpr short MAXCHAN = 1536;
     static constexpr short READ_TIMEOUT = 5;
     struct ieee80211req_chaninfo *ChanInfo;

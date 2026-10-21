@@ -90,7 +90,7 @@ json NmWorkerIeee80211::execCmdScan(NmCommandData* pcmd)
 
     memset(&sr, 0, sizeof(sr));
     sr.sr_flags = IEEE80211_IOC_SCAN_ACTIVE
-            | IEEE80211_IOC_SCAN_BGSCAN
+    //        | IEEE80211_IOC_SCAN_BGSCAN
             | IEEE80211_IOC_SCAN_NOPICK
             | IEEE80211_IOC_SCAN_ONCE;
     sr.sr_duration = IEEE80211_IOC_SCAN_FOREVER;
@@ -162,17 +162,31 @@ json NmWorkerIeee80211::execCmdScanResults(NmCommandData* pcmd)
 
     sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
 
-    if (lib80211_get80211len(sock.handle(), ifname.c_str(), IEEE80211_IOC_SCAN_RESULTS, (void*)&buf[0], sizeof(uint8_t[BUFSIZE]), &len) < 0)
+    // The kernel can post the scan-complete event slightly before the driver has
+    // finished committing results into the queryable cache.
+    // We need to retry a few times before giving up.
+    short retry = 0;
+    for(;;)
     {
-        LOG_S(ERROR) << "Error in execCmdScanResults: unable to get network scan results";
-        sock.close();
-        return JSON_RESULT_ERR;
-    }
-    if (len < (int)sizeof(struct ieee80211req_scan_result))
-    {
-        LOG_S(ERROR) << "Error in execCmdScanResults: incorrect data received from lib80211 for interface " << ifname;
-        sock.close();
-        return JSON_RESULT_ERR;
+        if (lib80211_get80211len(sock.handle(), ifname.c_str(), IEEE80211_IOC_SCAN_RESULTS, (void*)&buf[0], sizeof(uint8_t[BUFSIZE]), &len) < 0)
+        {
+            LOG_S(ERROR) << "Error in execCmdScanResults: unable to get network scan results";
+            sock.close();
+            return JSON_RESULT_ERR;
+        }
+        if (len >= (int)sizeof(struct ieee80211req_scan_result))
+            break;
+        if (retry >= SCAN_RESULTS_MAX_RETRIES)
+        {
+            LOG_S(ERROR) << "Error in execCmdScanResults: incorrect data received from lib80211 for interface " << ifname;
+            LOG_S(ERROR) << "Read by lib80211_get80211len: " << len << " bytes, expected: " << (int)sizeof(struct ieee80211req_scan_result) << " bytes";
+            LOG_S(ERROR) << "Too many retries (" << retry << ") to get scan results in execCmdScanResults";
+            sock.close();
+            return JSON_RESULT_ERR;
+        }
+        retry++;
+        LOG_S(WARNING) << "execCmdScanResults: got " << len << " bytes (attempt " << retry << "/" << SCAN_RESULTS_MAX_RETRIES << ") for interface " << ifname << ", retrying";
+        std::this_thread::sleep_for(SCAN_RESULTS_RETRY_DELAY);
     }
 
     if(!getChanInfo(sock.handle(), ifname))
