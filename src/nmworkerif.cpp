@@ -603,6 +603,27 @@ bool NmWorkerIf::enableDHCP()
     //int retval = system(cmd_dhcp_client.c_str());
     //LOG_S(INFO) << "DHCP client returned: " << retval;
 
+    // Wait for media status changed to "connected"
+    short retry = 0;
+    for(;;)
+    {
+        auto if_status = Tool::getMediaState(ifName);
+        if((if_status->ifm_status & IFM_AVALID) && (if_status->ifm_status & IFM_ACTIVE)) {
+            break;
+        }
+        if (!(if_status->ifm_status & IFM_AVALID)) {
+            LOG_S(WARNING) << "Interface " << ifName << " status information is unavailable";
+            break;
+        }
+        if(retry >= MEDIA_STATUS_MAX_RETRIES) {
+            LOG_S(WARNING) << "Too many retries (" << retry << ") to get interface " << ifName << " status in enableDHCP";
+            break;
+        }
+        retry++;
+        LOG_S(INFO) << "Retrying " << retry << "/" << MEDIA_STATUS_MAX_RETRIES << " to get interface " << ifName << " active";
+        std::this_thread::sleep_for(MEDIA_STATUS_RETRY_DELAY);
+    }
+
     pid_t pid = 0;
     int status = 0;
 

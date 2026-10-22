@@ -37,6 +37,8 @@ protected:
     };
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
+    const short MEDIA_STATUS_MAX_RETRIES = 100;
+    static constexpr std::chrono::milliseconds MEDIA_STATUS_RETRY_DELAY{200};
     static inline const std::string DHCP_CLIENT_EXEC = "/sbin/dhclient";
     std::string ifName = "";
     std::shared_ptr<AddressBase> getMainIfAddr(short family);
