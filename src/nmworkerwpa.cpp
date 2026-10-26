@@ -30,6 +30,21 @@ NmScope NmWorkerWpa::getScope()
 
 json NmWorkerWpa::execCmd(NmCommandData* pcmd)
 {
+    // WPA_SCAN_ASYNC manages worker_access itself (via execCmdAsync), handing
+    // it off to a background thread instead of releasing it on return.
+    if(pcmd->getCommand().cmd == NmCmd::WPA_SCAN_ASYNC)
+        return execCmdWpaScanAsync(pcmd);
+
+    // Reject rather than block: a sync command must not stall the dispatcher
+    // (and the global work_access it holds) behind an in-flight async job on
+    // this same worker.
+    WorkerAccessGuard guard(worker_access);
+    if(!guard.owns())
+    {
+        LOG_S(WARNING) << "WPA worker busy with another operation";
+        return JSON_RESULT_BUSY;
+    }
+
     switch (pcmd->getCommand().cmd)
     {
         case NmCmd::WPA_LIST_IF :
@@ -579,6 +594,11 @@ send_reset:
     // No results, so try to rescan...
     retry++;
     goto send_scan;
+}
+
+json NmWorkerWpa::execCmdWpaScanAsync(NmCommandData* pcmd)
+{
+    return execCmdAsync(pcmd, [this](NmCommandData* c) { return execCmdWpaScan(c); });
 }
 
 json NmWorkerWpa::execCmdWpaScanResults(NmCommandData* pcmd)

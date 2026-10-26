@@ -91,6 +91,7 @@ set(SOURCES
     src/nmcommanddata.cpp
     src/nmconfig.cpp
     src/nmdaemon.cpp
+    src/nmworkerbase.cpp
     src/nmexception.cpp
     src/tool.cpp
     src/rcconf.cpp
