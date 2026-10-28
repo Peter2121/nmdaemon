@@ -43,6 +43,7 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_REMOVE", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 30 } }
 { "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 28 } }
 { "SCOPE" : "WPA", "CMD" : "WPA_CONNECT", "DATA" : { "INTERFACE NAME" : "wlan0", "SSID" : "rrr-rrr" } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_CONNECT_ASYNC", "SOCKET" : "/var/tmp/nmdcli11451", "REQUEST" : "phaxawoh3kah", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 28 } }
 { "SCOPE" : "WPA", "CMD" : "WPA_DISCONNECT", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_REASSOC", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_RESET", "DATA" : { "INTERFACE NAME" : "wlan0" } }

@@ -30,10 +30,12 @@ NmScope NmWorkerWpa::getScope()
 
 json NmWorkerWpa::execCmd(NmCommandData* pcmd)
 {
-    // WPA_SCAN_ASYNC manages worker_access itself (via execCmdAsync), handing
-    // it off to a background thread instead of releasing it on return.
+    // Async commands manage worker_access themselves (via execCmdAsync),
+    // handing it off to a background thread instead of releasing it on return.
     if(pcmd->getCommand().cmd == NmCmd::WPA_SCAN_ASYNC)
         return execCmdWpaScanAsync(pcmd);
+    if(pcmd->getCommand().cmd == NmCmd::WPA_CONNECT_ASYNC)
+        return execCmdWpaConnectAsync(pcmd);
 
     // Reject rather than block: a sync command must not stall the dispatcher
     // (and the global work_access it holds) behind an in-flight async job on
@@ -1685,6 +1687,11 @@ json NmWorkerWpa::execCmdWpaConnect(NmCommandData* pcmd)
     {
         return JSON_RESULT_ERR;
     }
+}
+
+json NmWorkerWpa::execCmdWpaConnectAsync(NmCommandData* pcmd)
+{
+    return execCmdAsync(pcmd, [this](NmCommandData* c) { return execCmdWpaConnect(c); });
 }
 
 int NmWorkerWpa::getNetId(std::string ifname, std::string ssid, std::string bssid)

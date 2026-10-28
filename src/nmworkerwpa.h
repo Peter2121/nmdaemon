@@ -51,6 +51,7 @@ protected:
         { NmScope::WPA, NmCmd::WPA_SETPSK },
         { NmScope::WPA, NmCmd::WPA_SETPARAM },
         { NmScope::WPA, NmCmd::WPA_CONNECT },
+        { NmScope::WPA, NmCmd::WPA_CONNECT_ASYNC },
         { NmScope::WPA, NmCmd::WPA_DISCONNECT },
         { NmScope::WPA, NmCmd::WPA_REASSOC },
         { NmScope::WPA, NmCmd::WPA_ADD },
@@ -154,6 +155,7 @@ public:
     json execCmdWpaSetPsk(NmCommandData*);
     json execCmdWpaSetNetParam(NmCommandData*);
     json execCmdWpaConnect(NmCommandData*);
+    json execCmdWpaConnectAsync(NmCommandData*);
     json execCmdWpaDisconnect(NmCommandData*);
     json execCmdWpaReassoc(NmCommandData*);
     json execCmdWpaAdd(NmCommandData*);
