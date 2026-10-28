@@ -289,6 +289,36 @@ For example:
 
 ---
 
+    { "SCOPE": "WPA", "CMD": "WPA_LIST_ASYNC", "SOCKET": "<client_socket_path>", "REQUEST": "<request_id>", "DATA": { "INTERFACE NAME": "<if_name>"[, "DETAILS": true] } }
+
+List wireless networks, configured in wpa\_supplicant, asynchronously, without blocking the connection it was sent on
+
+`<client_socket_path>` - path of a unix socket opened by the client, where it wants to receive the result of the operation. Must be a socket located directly in `/tmp` or `/var/tmp`, and must not be owned by root
+
+`<request_id>` - arbitrary identifier chosen by the client, echoed back in the result so it can match it to this request. Must be 1 to 32 alphanumeric characters (`[A-Za-z0-9]`)
+
+nmdaemon replies on the connection the command was sent on with `{ "RESULT": "SUCCESS" }` as soon as it has accepted the job and connected to `<client_socket_path>` (or `{ "RESULT": "ERROR" }` if `<request_id>` or `<client_socket_path>` is invalid or could not be connected to, or `{ "RESULT": "BUSY" }` if another operation is already running on this worker, in which case no further result follows). The actual listing then runs in the background exactly like WPA\_LIST; when it completes, nmdaemon connects to `<client_socket_path>` and sends `{ "RESULT": "SUCCESS", "REQUEST": "<request_id>" }` or `{ "RESULT": "ERROR", "REQUEST": "<request_id>" }`
+
+*NOTE: this notification does not carry the list of networks itself – fetch it with WPA\_LIST\_RESULTS, passing the same `INTERFACE NAME` and `DETAILS` used here, within 30 seconds of completion*
+
+For example:
+
+    { "SCOPE": "WPA", "CMD": "WPA_LIST_ASYNC", "SOCKET": "/var/tmp/nmdcli11451", "REQUEST": "phaxawoh3kah", "DATA": { "INTERFACE NAME": "wlan0", "DETAILS": true } }
+
+---
+
+    { "SCOPE": "WPA", "CMD": "WPA_LIST_RESULTS", "DATA": { "INTERFACE NAME": "<if_name>"[, "DETAILS": true] } }
+
+Get the result of the last successful WPA\_LIST\_ASYNC call for this `INTERFACE NAME` and `DETAILS` value
+
+Only a WPA\_LIST\_ASYNC that completed with `"RESULT": "SUCCESS"` is kept for retrieval (a failed one is only reported through its own async notification); the result is kept available for 30 seconds after that, and only for the exact `INTERFACE NAME`/`DETAILS` it was requested with. Otherwise – including if no WPA\_LIST\_ASYNC ever completed successfully – this returns `{ "RESULT": "ERROR", "ERROR": "NO DATA" }` and discards whatever was cached
+
+For example:
+
+    { "SCOPE": "WPA", "CMD": "WPA_LIST_RESULTS", "DATA": { "INTERFACE NAME": "wlan0", "DETAILS": true } }
+
+---
+
     { "SCOPE": "WPA", "CMD": "WPA_STATUS", "DATA": { "INTERFACE NAME": "<if_name>" } }
 
 Get current status of the wireless interfaces

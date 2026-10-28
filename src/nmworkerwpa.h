@@ -44,6 +44,8 @@ protected:
     {
         { NmScope::WPA, NmCmd::WPA_LIST_IF },
         { NmScope::WPA, NmCmd::WPA_LIST },
+        { NmScope::WPA, NmCmd::WPA_LIST_ASYNC },
+        { NmScope::WPA, NmCmd::WPA_LIST_RESULTS },
         { NmScope::WPA, NmCmd::WPA_SCAN },
         { NmScope::WPA, NmCmd::WPA_SCAN_ASYNC },
         { NmScope::WPA, NmCmd::WPA_SCAN_RESULTS },
@@ -108,6 +110,10 @@ protected:
     static constexpr int MAX_PRIORITY = 500;
     static constexpr int HIGH_PRIORITY = 200;
 
+    // How long a WPA_LIST_ASYNC result stays available to WPA_LIST_RESULTS.
+    // TODO: move to configuration file.
+    static constexpr std::chrono::seconds LIST_RESULTS_VALIDITY = std::chrono::seconds(30);
+
     static constexpr char DELIM_HEAD = '/';
     static constexpr char DELIM_FIELDS = '\t';
 
@@ -116,6 +122,21 @@ protected:
     const std::string defSsaDir = "/var/run/wpa_supplicant/";
     std::string cliSockAddr;
     std::string srvSockAddrDir;
+
+    // Single-slot cache of the last WPA_LIST_ASYNC result, consumed by
+    // WPA_LIST_RESULTS. Only ever accessed while worker_access is held (by a
+    // sync command's WorkerAccessGuard in execCmd, or by the async job itself
+    // before it releases its guard), so it needs no locking of its own.
+    struct ListResultsCache
+    {
+        bool valid = false;
+        std::string ifname;
+        bool details = false;
+        std::chrono::steady_clock::time_point timestamp;
+        json data;
+    };
+    ListResultsCache listResultsCache;
+    void storeListResults(std::string ifname, bool details, const json& result);
     bool wpaCtrlCmd(WpaSocket*, const std::string);
     bool wpaCtrlCmd(WpaSocket*, const std::string, const std::string);
     bool wpaCtrlCmd(const std::string, const std::string);
@@ -148,6 +169,8 @@ public:
     bool isValidCmd(NmCommandData*);
     json execCmdWpaListIf(NmCommandData*);
     json execCmdWpaList(NmCommandData*);
+    json execCmdWpaListAsync(NmCommandData*);
+    json execCmdWpaListResults(NmCommandData*);
     json execCmdWpaScan(NmCommandData*);
     json execCmdWpaScanAsync(NmCommandData*);
     json execCmdWpaScanResults(NmCommandData*);

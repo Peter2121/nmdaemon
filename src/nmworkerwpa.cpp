@@ -32,6 +32,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
 {
     // Async commands manage worker_access themselves (via execCmdAsync),
     // handing it off to a background thread instead of releasing it on return.
+    if(pcmd->getCommand().cmd == NmCmd::WPA_LIST_ASYNC)
+        return execCmdWpaListAsync(pcmd);
     if(pcmd->getCommand().cmd == NmCmd::WPA_SCAN_ASYNC)
         return execCmdWpaScanAsync(pcmd);
     if(pcmd->getCommand().cmd == NmCmd::WPA_CONNECT_ASYNC)
@@ -53,6 +55,8 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
             return execCmdWpaListIf(pcmd);
         case NmCmd::WPA_LIST :
             return execCmdWpaList(pcmd);
+        case NmCmd::WPA_LIST_RESULTS :
+            return execCmdWpaListResults(pcmd);
         case NmCmd::WPA_SCAN :
             return execCmdWpaScan(pcmd);
         case NmCmd::WPA_SCAN_RESULTS :
@@ -246,6 +250,54 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     }
 
     return ret_list;
+}
+
+json NmWorkerWpa::execCmdWpaListAsync(NmCommandData* pcmd)
+{
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    bool details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
+    return execCmdAsync(pcmd, [this, ifname, details](NmCommandData* c)
+    {
+        json result = execCmdWpaList(c);
+        // Only a successful list is cached; on error the client learns about
+        // it from the async notification itself, and WPA_LIST_RESULTS must
+        // report NO DATA rather than replay the failure.
+        if(result.contains(JSON_PARAM_RESULT) && result[JSON_PARAM_RESULT] == JSON_PARAM_SUCC)
+            storeListResults(ifname, details, result);
+        return result;
+    });
+}
+
+void NmWorkerWpa::storeListResults(std::string ifname, bool details, const json& result)
+{
+    // Overwrites whatever was cached before: a single slot, replaced on every
+    // WPA_LIST_ASYNC completion rather than destroyed by a separate timer.
+    listResultsCache.valid = true;
+    listResultsCache.ifname = ifname;
+    listResultsCache.details = details;
+    listResultsCache.timestamp = std::chrono::steady_clock::now();
+    listResultsCache.data = result;
+}
+
+json NmWorkerWpa::execCmdWpaListResults(NmCommandData* pcmd)
+{
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    if(ifname.empty())
+        return JSON_RESULT_ERR;
+
+    bool details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
+
+    if(!listResultsCache.valid)
+        return JSON_RESULT_NO_DATA;
+
+    bool fresh = (std::chrono::steady_clock::now() - listResultsCache.timestamp) <= LIST_RESULTS_VALIDITY;
+    bool match = (listResultsCache.ifname == ifname) && (listResultsCache.details == details);
+
+    if(fresh && match)
+        return listResultsCache.data;
+
+    listResultsCache = ListResultsCache{};
+    return JSON_RESULT_NO_DATA;
 }
 
 void NmWorkerWpa::getSuppParamsAsync(std::string ifname, json& ret_list)

@@ -29,6 +29,8 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": true } }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": false } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_LIST_ASYNC", "SOCKET" : "/var/tmp/nmdcli11451", "REQUEST" : "phaxawoh3kah", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": true } }
+{ "SCOPE" : "WPA", "CMD" : "WPA_LIST_RESULTS", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": true } }
 { "SCOPE" : "WPA", "CMD" : "WPA_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_SCAN_ASYNC", "SOCKET" : "/var/tmp/nmdcli11451", "REQUEST" : "phaxawoh3kah", "DATA" : { "INTERFACE NAME" : "wlan0" } }
