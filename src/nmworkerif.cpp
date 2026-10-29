@@ -25,7 +25,9 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
         case NmCmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
         case NmCmd::IP4_ADDR_GET :
-            return execCmdIpAddrGet(pcmd);
+            return execCmdIp4AddrGet(pcmd);
+        case NmCmd::IP6_ADDR_GET :
+            return execCmdIp6AddrGet(pcmd);
         case NmCmd::IP_ADDR_ADD :
             return execCmdIpAddrAdd(pcmd);
         case NmCmd::IP_ADDR_REMOVE :
@@ -40,7 +42,6 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return execCmdDHCPDisable(pcmd);
         case NmCmd::IP4_GET_DHCP_STATUS :
             return execCmdDHCPGetStatus(pcmd);
-        case NmCmd::IP6_ADDR_GET :
         case NmCmd::IP6_DHCP_ENABLE :
         case NmCmd::IP6_DHCP_DISABLE :
         case NmCmd::IP6_GET_DHCP_STATUS :
@@ -517,7 +518,7 @@ json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
-json NmWorkerIf::execCmdIpAddrGet(NmCommandData *pcmd)
+json NmWorkerIf::execCmdIp4AddrGet(NmCommandData *pcmd)
 {
     json cmd = {};
     json res = {};
@@ -537,6 +538,36 @@ json NmWorkerIf::execCmdIpAddrGet(NmCommandData *pcmd)
     if(!str_addr.empty())
     {
         res_data[JSON_PARAM_IPV4_ADDR] = str_addr;
+        res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+        res[JSON_PARAM_DATA] = res_data;
+    }
+    else
+    {
+        res = JSON_RESULT_ERR;
+    }
+    return res;
+}
+
+json NmWorkerIf::execCmdIp6AddrGet(NmCommandData *pcmd)
+{
+    json cmd = {};
+    json res = {};
+    json res_data = {};
+    std::string str_addr;
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIpAddrGet - cannot get interface name: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+    str_addr = Tool::getIfPrimaryAddr6(ifName);
+    if(!str_addr.empty())
+    {
+        res_data[JSON_PARAM_IPV6_ADDR] = str_addr;
         res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
         res[JSON_PARAM_DATA] = res_data;
     }

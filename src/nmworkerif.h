@@ -56,7 +56,8 @@ public:
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
     json execCmdIpAddrSet(NmCommandData*);
-    json execCmdIpAddrGet(NmCommandData*);
+    json execCmdIp4AddrGet(NmCommandData*);
+    json execCmdIp6AddrGet(NmCommandData*);
     json execCmdIpAddrAdd(NmCommandData*);
     json execCmdIpAddrRemove(NmCommandData*);
     json execCmdMtuGet(NmCommandData*);

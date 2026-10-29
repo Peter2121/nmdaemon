@@ -9,7 +9,7 @@
 | SYSTEM      | RCCONF_WRITE          | Works           | Works            | Data Ignored     |
 | INTERFACE   | IP\_ADDR_SET          | Works           | Works            | Not Implemented  |
 | INTERFACE   | IP4\_ADDR_GET         | Works           | Works            | *Not Applicable* |
-| INTERFACE   | IP6\_ADDR_GET         | Not Implemented | *Not Applicable* | Not Implemented  |
+| INTERFACE   | IP6\_ADDR_GET         | Implemented     | *Not Applicable* | Untested         |
 | INTERFACE   | IP4\_DHCP_ENABLE      | Works           | Works            | *Not Applicable* |
 | INTERFACE   | IP6\_DHCP_ENABLE      | Not Implemented | *Not Applicable* | Not Implemented  |
 | INTERFACE   | IP4\_DHCP_DISABLE     | Works           | Works            | *Not Applicable* |

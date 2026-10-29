@@ -206,6 +206,35 @@ std::string Tool::getIfPrimaryAddr4(std::string ifname)
     return str_addr4;
 }
 
+std::string Tool::getIfPrimaryAddr6(std::string ifname)
+{
+    struct ifreq ifr;
+    std::string str_addr6;
+    struct sockaddr_in6 *sa_in6;
+    char address[INET6_ADDRSTRLEN];
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_addr.sa_family = AF_INET6;
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+
+    if (ioctl(sock.handle(), SIOCGIFADDR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get primary IPv6 address for interface: " << ifname;
+        sock.close();
+        return str_addr6;
+    }
+    sock.close();
+
+    sa_in6 = (struct sockaddr_in6 *) &ifr.ifr_addr;
+    if(!IN6_IS_ADDR_UNSPECIFIED(&sa_in6->sin6_addr)) {
+        inet_ntop( AF_INET6, &(sa_in6->sin6_addr), address, sizeof(address) );
+        str_addr6 = std::string(address);
+    }
+
+    return str_addr6;
+}
+
 bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )
