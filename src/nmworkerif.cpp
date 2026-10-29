@@ -28,6 +28,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return execCmdIp4AddrGet(pcmd);
         case NmCmd::IP6_ADDR_GET :
             return execCmdIp6AddrGet(pcmd);
+        case NmCmd::MAC_ADDR_GET :
+            return execCmdMacAddrGet(pcmd);
         case NmCmd::IP_ADDR_ADD :
             return execCmdIpAddrAdd(pcmd);
         case NmCmd::IP_ADDR_REMOVE :
@@ -45,7 +47,6 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
         case NmCmd::IP6_DHCP_ENABLE :
         case NmCmd::IP6_DHCP_DISABLE :
         case NmCmd::IP6_GET_DHCP_STATUS :
-        case NmCmd::MAC_ADDR_GET :
         case NmCmd::MAC_ADDR_SET :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
@@ -568,6 +569,36 @@ json NmWorkerIf::execCmdIp6AddrGet(NmCommandData *pcmd)
     if(!str_addr.empty())
     {
         res_data[JSON_PARAM_IPV6_ADDR] = str_addr;
+        res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+        res[JSON_PARAM_DATA] = res_data;
+    }
+    else
+    {
+        res = JSON_RESULT_ERR;
+    }
+    return res;
+}
+
+json NmWorkerIf::execCmdMacAddrGet(NmCommandData *pcmd)
+{
+    json cmd = {};
+    json res = {};
+    json res_data = {};
+    std::string str_addr;
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdMacAddrGet - cannot get interface name: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+    str_addr = Tool::getIfMacAddr(ifName);
+    if(!str_addr.empty())
+    {
+        res_data[JSON_PARAM_LINK_ADDR] = str_addr;
         res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
         res[JSON_PARAM_DATA] = res_data;
     }

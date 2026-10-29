@@ -14,6 +14,8 @@
 { "SCOPE" : "INTERFACE", "CMD" : "IP4_DHCP_DISABLE", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "IP4_GET_DHCP_STATUS", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "IP4_ADDR_GET", "DATA" : { "INTERFACE NAME" : "em0" } }
+{ "SCOPE" : "INTERFACE", "CMD" : "IP6_ADDR_GET", "DATA" : { "INTERFACE NAME" : "em0" } }
+{ "SCOPE" : "INTERFACE", "CMD" : "MAC_ADDR_GET", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "MTU_GET", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "MTU_SET", "DATA" : { "INTERFACE NAME" : "em0", "MTU" : 1400 } }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF_GET" }

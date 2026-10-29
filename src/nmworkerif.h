@@ -58,6 +58,7 @@ public:
     json execCmdIpAddrSet(NmCommandData*);
     json execCmdIp4AddrGet(NmCommandData*);
     json execCmdIp6AddrGet(NmCommandData*);
+    json execCmdMacAddrGet(NmCommandData*);
     json execCmdIpAddrAdd(NmCommandData*);
     json execCmdIpAddrRemove(NmCommandData*);
     json execCmdMtuGet(NmCommandData*);

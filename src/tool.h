@@ -12,6 +12,9 @@
 #include <sys/sysctl.h>
 #include <net/if_media.h>
 #include <net/if.h>
+#include <net/if_dl.h>
+#include <net/ethernet.h>
+#include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <cctype>
@@ -60,6 +63,7 @@ public:
     static bool setIfFlags(std::string, int);
     static std::string getIfPrimaryAddr4(std::string);
     static std::string getIfPrimaryAddr6(std::string);
+    static std::string getIfMacAddr(std::string);
     static bool isValidGw4(uint32_t, uint32_t, uint32_t);
     static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
     static std::vector<std::tuple<int, std::string, std::string>> getActiveProcesses();

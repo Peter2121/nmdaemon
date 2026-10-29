@@ -20,7 +20,7 @@
 | INTERFACE   | IP\_ADDR_REMOVE       | Works           | Works            | Not Implemented  |
 | INTERFACE   | MTU_GET               | Works           | Works            | Works            |
 | INTERFACE   | MTU_SET               | Works           | Works            | Works            |
-| INTERFACE   | MAC\_ADDR_GET         | Not Implemented | *Not Applicable* | *Not Applicable* |
+| INTERFACE   | MAC\_ADDR_GET         | Works           | *Not Applicable* | *Not Applicable* |
 | INTERFACE   | MAC\_ADDR_SET         | Not Implemented | *Not Applicable* | *Not Applicable* |
 | ROUTE       | RT_GET                | Works           | Works            | Works            |
 | ROUTE       | RT\_DEF_GET           | Works           | Works            | *Not Applicable* |

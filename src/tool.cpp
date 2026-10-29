@@ -235,6 +235,40 @@ std::string Tool::getIfPrimaryAddr6(std::string ifname)
     return str_addr6;
 }
 
+std::string Tool::getIfMacAddr(std::string ifname)
+{
+    struct ifaddrs *ifaddrs_ptr;
+    struct ifaddrs *ifa;
+    struct sockaddr_dl *sdl;
+    std::string str_mac;
+
+    if (getifaddrs(&ifaddrs_ptr) == -1)
+    {
+        LOG_S(ERROR) << "Cannot get interface list to retrieve MAC address for interface: " << ifname;
+        return str_mac;
+    }
+
+    for (ifa = ifaddrs_ptr; ifa != nullptr; ifa = ifa->ifa_next)
+    {
+        if( (ifname != ifa->ifa_name) || (ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_LINK) )
+            continue;
+
+        sdl = (struct sockaddr_dl *) ifa->ifa_addr;
+        if(sdl->sdl_alen != ETHER_ADDR_LEN)
+            continue;
+
+        str_mac = ether_ntoa((const struct ether_addr *) LLADDR(sdl));
+        break;
+    }
+
+    freeifaddrs(ifaddrs_ptr);
+
+    if(str_mac.empty())
+        LOG_S(ERROR) << "Cannot get MAC address for interface: " << ifname;
+
+    return str_mac;
+}
+
 bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)
 {
     if( (addr==0) || (mask==0) || (gw==0) )
