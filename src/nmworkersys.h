@@ -60,6 +60,8 @@ public:
     json execCmdJailList(NmCommandData*);
     json execCmdResolvConfRead(NmCommandData*);
     json execCmdResolvConfWrite(NmCommandData*);
+    json execCmdIfAdd(NmCommandData*);
+    json execCmdIfRemove(NmCommandData*);
 };
 
 #endif // SYS_WORKER_H

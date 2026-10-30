@@ -1,3 +1,4 @@
+#include <net/if_bridgevar.h>
 #include "tool.h"
 #include "addressgroup.h"
 #include "mediadesc.h"
@@ -170,6 +171,46 @@ bool Tool::setIfFlags(std::string ifname, int setflags)
     if (ioctl(sock.handle(), SIOCSIFFLAGS, (caddr_t)&ifr) < 0)
     {
         LOG_S(ERROR) << "Cannot set interface " << ifname << " flags";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::bridgeAddMember(const std::string& brname, const std::string& memberName)
+{
+    struct ifbreq req;
+    struct ifdrv ifd;
+
+    memset(&req, 0, sizeof(req));
+    memset(&ifd, 0, sizeof(ifd));
+    strlcpy(req.ifbr_ifsname, memberName.c_str(), sizeof(req.ifbr_ifsname));
+    strlcpy(ifd.ifd_name, brname.c_str(), sizeof(ifd.ifd_name));
+    ifd.ifd_cmd = BRDGADD;
+    ifd.ifd_len = sizeof(req);
+    ifd.ifd_data = &req;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSDRVSPEC, (caddr_t)&ifd) < 0)
+    {
+        LOG_S(ERROR) << "Cannot add " << memberName << " as member of bridge " << brname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::bridgeDestroy(const std::string& ifname)
+{
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCIFDESTROY, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot destroy interface " << ifname << " (" << strerror(errno) << ")";
         sock.close();
         return false;
     }

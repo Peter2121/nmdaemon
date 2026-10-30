@@ -1,7 +1,7 @@
 | SCOPE       | CMD                   | SYSTEM          | IPv4             | IPv6             |
 | ------------| ----------------------| ----------------| -----------------|------------------|
-| SYSTEM      | IF_ADD                | Not Implemented | *Not Applicable* | *Not Applicable* |
-| SYSTEM      | IF_REMOVE             | Not Implemented | *Not Applicable* | *Not Applicable* |
+| SYSTEM      | IF_ADD                | TUN,TAP,BRIDGE  | *Not Applicable* | *Not Applicable* |
+| SYSTEM      | IF_REMOVE             | TUN,TAP,BRIDGE  | *Not Applicable* | *Not Applicable* |
 | SYSTEM      | IF_ENABLE             | Works           | *Not Applicable* | *Not Applicable* |
 | SYSTEM      | IF_DISABLE            | Works           | *Not Applicable* | *Not Applicable* |
 | SYSTEM      | IF_LIST               | Works           | Works            | Works            |

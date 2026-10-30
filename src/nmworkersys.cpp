@@ -22,8 +22,9 @@ json NmWorkerSys::execCmd(NmCommandData* pcmd)
         case NmCmd::IF_LIST :
             return execCmdIfList(pcmd);
         case NmCmd::IF_ADD :
+            return execCmdIfAdd(pcmd);
         case NmCmd::IF_REMOVE :
-            return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+            return execCmdIfRemove(pcmd);
         case NmCmd::IF_ENABLE :
             return execCmdIfEnable(pcmd);
         case NmCmd::IF_DISABLE :
@@ -243,6 +244,159 @@ json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
             }
         }
     }
+    return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
+{
+    static const std::map<std::string, std::string> TYPE_PREFIXES =
+    {
+        { JSON_PARAM_IF_TYPE_TUN, "tun" },
+        { JSON_PARAM_IF_TYPE_TAP, "tap" },
+        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" }
+    };
+    struct ifreq ifr;
+    std::string ifname;
+    std::string iftype;
+    std::vector<std::string> members;
+    json cmd_json = {};
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    try {
+        cmd_json = pcmd->getJsonData();
+        ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        iftype = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_TYPE];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfAdd - cannot get interface name/type from JSON";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!Tool::isValidIfName(ifname))
+    {
+        LOG_S(ERROR) << "execCmdIfAdd: invalid interface name " << ifname;
+        return JSON_RESULT_ERR;
+    }
+
+    auto it_prefix = TYPE_PREFIXES.find(iftype);
+    if(it_prefix == TYPE_PREFIXES.end())
+    {
+        LOG_S(ERROR) << "execCmdIfAdd: unsupported interface type " << iftype;
+        return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+    }
+    if(!ifname.starts_with(it_prefix->second))
+    {
+        LOG_S(ERROR) << "execCmdIfAdd: interface name " << ifname << " does not match type " << iftype;
+        return JSON_RESULT_ERR;
+    }
+
+    if(if_nametoindex(ifname.c_str()) != 0)
+    {
+        LOG_S(ERROR) << "execCmdIfAdd: interface " << ifname << " already exists";
+        return JSON_RESULT_EXISTS;
+    }
+
+    if(iftype == JSON_PARAM_IF_TYPE_BRIDGE && cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_MEMBERS))
+    {
+        try {
+            members = cmd_json[JSON_PARAM_DATA][JSON_PARAM_MEMBERS].get<std::vector<std::string>>();
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_MEMBERS << " list for bridge " << ifname;
+            return JSON_RESULT_ERR;
+        }
+        for(const auto& member : members)
+        {
+            if(!Tool::isValidIfName(member))
+            {
+                LOG_S(ERROR) << "execCmdIfAdd: invalid member interface name " << member;
+                return JSON_RESULT_ERR;
+            }
+            if(if_nametoindex(member.c_str()) == 0)
+            {
+                LOG_S(ERROR) << "execCmdIfAdd: member interface " << member << " does not exist";
+                return JSON_RESULT_NOTFOUND;
+            }
+        }
+    }
+
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCIFCREATE2, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "execCmdIfAdd: cannot create interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return JSON_RESULT_ERR;
+    }
+    sock.close();
+    ifname = std::string(ifr.ifr_name);
+
+    for(const auto& member : members)
+    {
+        if(!Tool::bridgeAddMember(ifname, member))
+        {
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back bridge " << ifname << " after failing to add member " << member;
+            Tool::bridgeDestroy(ifname);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    json res = {};
+    res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    json res_data = { { JSON_PARAM_IF_NAME, ifname } };
+    if(!members.empty())
+        res_data[JSON_PARAM_MEMBERS] = members;
+    res[JSON_PARAM_DATA] = res_data;
+    return res;
+}
+
+json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
+{
+    static const std::map<std::string, std::string> TYPE_PREFIXES =
+    {
+        { JSON_PARAM_IF_TYPE_TUN, "tun" },
+        { JSON_PARAM_IF_TYPE_TAP, "tap" },
+        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" }
+    };
+    std::string ifname;
+    json cmd_json = {};
+
+    try {
+        cmd_json = pcmd->getJsonData();
+        ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfRemove - cannot get interface name from JSON";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!Tool::isValidIfName(ifname))
+    {
+        LOG_S(ERROR) << "execCmdIfRemove: invalid interface name " << ifname;
+        return JSON_RESULT_ERR;
+    }
+
+    bool known_type = false;
+    for(const auto& [type, prefix] : TYPE_PREFIXES)
+    {
+        if(ifname.starts_with(prefix))
+        {
+            known_type = true;
+            break;
+        }
+    }
+    if(!known_type)
+    {
+        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " is not a supported clone type (TUN/TAP/BRIDGE)";
+        return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+    }
+
+    if(if_nametoindex(ifname.c_str()) == 0)
+    {
+        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " does not exist";
+        return JSON_RESULT_NOTFOUND;
+    }
+
+    if(!Tool::bridgeDestroy(ifname))
+        return JSON_RESULT_ERR;
+
     return JSON_RESULT_SUCCESS;
 }
 

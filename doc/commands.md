@@ -48,6 +48,30 @@ List all network interfaces and their IP addresses
 
 ---
 
+    { "SCOPE": "SYSTEM", "CMD": "IF_ADD", "DATA" : { "INTERFACE NAME" : "<interface name>", "INTERFACE TYPE" : "<interface type>" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridgeX", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "<if_1>", "<if_2>", ... ] } }
+
+
+Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE. For BRIDGE type the members can be mentioned.
+
+For example:
+
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tun5", "INTERFACE TYPE" : "TUN" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tap5", "INTERFACE TYPE" : "TAP" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridge5", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "re0", "em0" ] } }
+
+---
+
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "<interface name>" } }
+
+Remove network interface. Currently supported the following interface types: TUN, TAP, BRIDGE.
+
+For example:
+
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "bridge5" } }
+
+---
+
     { "SCOPE": "SYSTEM", "CMD": "JAIL_LIST" }
 
 List all jails and their IP addresses

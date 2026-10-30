@@ -7,6 +7,10 @@
 { "SCOPE" : "SYSTEM", "CMD" : "RESOLVCONF_WRITE", "DATA": { "DOMAIN": "domain11.local", "NAMESERVERS": [ "1.1.1.1", "8.8.4.4" ], "SEARCH DOMAINS": [ "domain11.local", "domain22.local" ] } }
 { "SCOPE" : "SYSTEM", "CMD" : "IF_ENABLE", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "SYSTEM", "CMD" : "IF_DISABLE", "DATA" : { "INTERFACE NAME" : "em0" } }
+{ "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tun5", "INTERFACE TYPE" : "TUN" } }
+{ "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tap5", "INTERFACE TYPE" : "TAP" } }
+{ "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridge5", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "re0", "vboxnet0" ] } }
+{ "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "bridge5" } }
 { "SCOPE" : "INTERFACE", "CMD" : "IP_ADDR_SET", "DATA" : { "INTERFACE NAME" : "em0", "IPV4 ADDRESS" : "192.168.212.5", "IPV4 SUBNET MASK" : "255.255.255.0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "IP_ADDR_ADD", "DATA" : { "INTERFACE NAME" : "em0", "IPV4 ADDRESS" : "192.168.212.45", "IPV4 SUBNET MASK" : "255.255.255.0" } }
 { "SCOPE" : "INTERFACE", "CMD" : "IP_ADDR_REMOVE", "DATA" : { "INTERFACE NAME" : "em0", "IPV4 ADDRESS" : "192.168.212.45", "IPV4 SUBNET MASK" : "255.255.255.0" } }

@@ -61,6 +61,8 @@ public:
     static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
+    static bool bridgeAddMember(const std::string& brname, const std::string& memberName);
+    static bool bridgeDestroy(const std::string& ifname);
     static std::string getIfPrimaryAddr4(std::string);
     static std::string getIfPrimaryAddr6(std::string);
     static std::string getIfMacAddr(std::string);
