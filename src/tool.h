@@ -63,6 +63,8 @@ public:
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
     static bool bridgeAddMember(const std::string& brname, const std::string& memberName);
+    static bool bridgeRemoveMember(const std::string& brname, const std::string& memberName);
+    static bool bridgeGetMembers(const std::string& brname, std::vector<std::string>& members);
     static bool bridgeDestroy(const std::string& ifname);
     static bool loadIfKldModule(const std::string& prefix); // loads kernel module "if_<prefix>" (e.g. "if_epair") if not already loaded
     static std::string getIfPrimaryAddr4(std::string);

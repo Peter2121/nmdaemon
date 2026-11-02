@@ -130,6 +130,19 @@ For example:
 
 **Scope INTERFACE commands**
 
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]] } }
+
+Edit one or more properties of an existing interface in a single command. Currently "MTU" and "MEMBERS" (for BRIDGE interfaces) are supported; more properties will be added over time.
+
+"MEMBERS" describes the desired final member list of a bridge interface: members currently on the bridge but missing from the list are removed, and members in the list not yet on the bridge are added.
+
+For example:
+
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
+
+---
+
     { "SCOPE": "INTERFACE", "CMD": "IP_ADDR_SET", "DATA": { "INTERFACE NAME": "<if_name>", "IPV4 ADDRESS": "<ip_address>", "IPV4 SUBNET MASK": "<ip_address>" } }
 
 Set primary IP address of the interface

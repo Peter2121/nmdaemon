@@ -2,6 +2,7 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #include <stdexcept>
+#include <algorithm>
 
 extern char **environ;
 
@@ -22,6 +23,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
 {
     switch (pcmd->getCommand().cmd)
     {
+        case NmCmd::IF_EDIT :
+            return execCmdIfEdit(pcmd);
         case NmCmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
         case NmCmd::IP4_ADDR_GET :
@@ -307,6 +310,59 @@ addr* if_worker::getAddrFromJson(json cmd)
     return if_addr;
 }
 */
+json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
+{
+    json cmd = {};
+    json cmd_data = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        cmd_data = cmd[JSON_PARAM_DATA];
+        ifName = cmd_data[JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfEdit - cannot get interface name: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+
+    if(cmd_data.contains(JSON_PARAM_MTU))
+    {
+        int mtu = 0;
+        try {
+            mtu = cmd_data[JSON_PARAM_MTU];
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid MTU value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!setMtu(ifName, mtu))
+            return JSON_RESULT_ERR;
+    }
+
+    if(cmd_data.contains(JSON_PARAM_MEMBERS))
+    {
+        std::vector<std::string> members;
+        try {
+            members = cmd_data[JSON_PARAM_MEMBERS].get<std::vector<std::string>>();
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_MEMBERS << " list: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        for(const auto& member : members)
+        {
+            if(!Tool::isValidIfName(member))
+            {
+                LOG_S(ERROR) << "execCmdIfEdit: invalid member interface name " << member;
+                return JSON_RESULT_ERR;
+            }
+        }
+        if(!setBridgeMembers(ifName, members))
+            return JSON_RESULT_ERR;
+    }
+
+    return JSON_RESULT_SUCCESS;
+}
+
 json NmWorkerIf::execCmdIpAddrSet(NmCommandData* pcmd)
 {
     std::string str_ifaddr{};
@@ -472,17 +528,80 @@ json NmWorkerIf::execCmdMtuGet(NmCommandData* pcmd)
     return res;
 }
 
-json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
+bool NmWorkerIf::setMtu(const std::string& ifname, int mtu)
 {
     struct ifreq ifr;
-    int mtu = 0;
-    const int MTU_MAX = 9192;
-    json cmd = {};
-    json cmd_data = {};
-    json res = {};
-    json res_data = {};
 
     memset(&ifr, 0, sizeof(struct ifreq));
+
+    if( (mtu<=0) || (mtu>MTU_MAX) )
+    {
+        LOG_S(ERROR) << "setMtu error - incorrect MTU value: " << mtu;
+        return false;
+    }
+
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_mtu = mtu;
+
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSIFMTU, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(INFO) << "Cannot set current interface " << ifname << " MTU to " << mtu;
+        sock.close();
+        return false;
+    }
+
+    sock.close();
+    return true;
+}
+
+bool NmWorkerIf::setBridgeMembers(const std::string& ifname, const std::vector<std::string>& members)
+{
+    std::vector<std::string> current;
+
+    if(!Tool::bridgeGetMembers(ifname, current))
+    {
+        LOG_S(ERROR) << "setBridgeMembers: cannot get current members of bridge " << ifname;
+        return false;
+    }
+
+    for(const auto& cur : current)
+    {
+        if(std::find(members.begin(), members.end(), cur) == members.end())
+        {
+            if(!Tool::bridgeRemoveMember(ifname, cur))
+            {
+                LOG_S(ERROR) << "setBridgeMembers: cannot remove member " << cur << " from bridge " << ifname;
+                return false;
+            }
+        }
+    }
+
+    for(const auto& member : members)
+    {
+        if(std::find(current.begin(), current.end(), member) == current.end())
+        {
+            if(if_nametoindex(member.c_str()) == 0)
+            {
+                LOG_S(ERROR) << "setBridgeMembers: member interface " << member << " does not exist";
+                return false;
+            }
+            if(!Tool::bridgeAddMember(ifname, member))
+            {
+                LOG_S(ERROR) << "setBridgeMembers: cannot add member " << member << " to bridge " << ifname;
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
+{
+    int mtu = 0;
+    json cmd = {};
+    json cmd_data = {};
 
     try
     {
@@ -498,24 +617,9 @@ json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if( (mtu<=0) || (mtu>MTU_MAX) )
-    {
-            LOG_S(ERROR) << "execCmdMtuSet error - incorrect MTU value: " << mtu;
-            return JSON_RESULT_ERR;
-    }
-
-    strlcpy(ifr.ifr_name, ifName.c_str(), sizeof(ifr.ifr_name));
-    ifr.ifr_mtu = mtu;
-
-    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
-    if (ioctl(sock.handle(), SIOCSIFMTU, (caddr_t)&ifr) < 0)
-    {
-        LOG_S(INFO) << "Cannot set current interface " << ifName << " MTU to " << mtu;
-        sock.close();
+    if(!setMtu(ifName, mtu))
         return JSON_RESULT_ERR;
-    }
 
-    sock.close();
     return JSON_RESULT_SUCCESS;
 }
 

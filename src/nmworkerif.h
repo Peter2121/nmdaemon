@@ -17,6 +17,7 @@ class NmWorkerIf : public NmWorkerBase
 protected:
     static constexpr NmCommand Cmds[] =
     {
+        { NmScope::INTERFACE, NmCmd::IF_EDIT },
         { NmScope::INTERFACE, NmCmd::IP_ADDR_SET },
         { NmScope::INTERFACE, NmCmd::IP4_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::IP6_ADDR_GET },
@@ -32,14 +33,13 @@ protected:
         { NmScope::INTERFACE, NmCmd::MTU_SET },
         { NmScope::INTERFACE, NmCmd::MAC_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::MAC_ADDR_SET }
-//        { nmscope::INTERFACE, nmcmd::IF_ENABLE },
-//        { nmscope::INTERFACE, nmcmd::IF_DISABLE },
     };
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
     const short MEDIA_STATUS_MAX_RETRIES = 100;
     static constexpr std::chrono::milliseconds MEDIA_STATUS_RETRY_DELAY{200};
     static inline const std::string DHCP_CLIENT_EXEC = "/sbin/dhclient";
+    static constexpr int MTU_MAX = 9192;
     std::string ifName = "";
     std::shared_ptr<AddressBase> getMainIfAddr(short family);
     bool removeIfAddr(std::shared_ptr<AddressBase>);
@@ -48,6 +48,8 @@ protected:
     bool termDHCPClient();
     bool killDHCPClient();
     bool enableDHCP();
+    static bool setMtu(const std::string& ifname, int mtu);
+    static bool setBridgeMembers(const std::string& ifname, const std::vector<std::string>& members);
 //    addr* getAddrFromJson(json);
 public:
     NmWorkerIf();
@@ -55,6 +57,7 @@ public:
     NmScope getScope();
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
+    json execCmdIfEdit(NmCommandData*);
     json execCmdIpAddrSet(NmCommandData*);
     json execCmdIp4AddrGet(NmCommandData*);
     json execCmdIp6AddrGet(NmCommandData*);

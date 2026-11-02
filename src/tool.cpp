@@ -219,6 +219,65 @@ bool Tool::loadIfKldModule(const std::string& prefix)
     return true;
 }
 
+bool Tool::bridgeRemoveMember(const std::string& brname, const std::string& memberName)
+{
+    struct ifbreq req;
+    struct ifdrv ifd;
+
+    memset(&req, 0, sizeof(req));
+    memset(&ifd, 0, sizeof(ifd));
+    strlcpy(req.ifbr_ifsname, memberName.c_str(), sizeof(req.ifbr_ifsname));
+    strlcpy(ifd.ifd_name, brname.c_str(), sizeof(ifd.ifd_name));
+    ifd.ifd_cmd = BRDGDEL;
+    ifd.ifd_len = sizeof(req);
+    ifd.ifd_data = &req;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSDRVSPEC, (caddr_t)&ifd) < 0)
+    {
+        LOG_S(ERROR) << "Cannot remove " << memberName << " as member of bridge " << brname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::bridgeGetMembers(const std::string& brname, std::vector<std::string>& members)
+{
+    struct ifbifconf bifc;
+    struct ifdrv ifd;
+    std::vector<char> buf(8192);
+
+    members.clear();
+
+    memset(&bifc, 0, sizeof(bifc));
+    bifc.ifbic_len = buf.size();
+    bifc.ifbic_buf = buf.data();
+
+    memset(&ifd, 0, sizeof(ifd));
+    strlcpy(ifd.ifd_name, brname.c_str(), sizeof(ifd.ifd_name));
+    ifd.ifd_cmd = BRDGGIFS;
+    ifd.ifd_len = sizeof(bifc);
+    ifd.ifd_data = &bifc;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGDRVSPEC, (caddr_t)&ifd) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get member list of bridge " << brname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+
+    const struct ifbreq* req = bifc.ifbic_req;
+    size_t count = bifc.ifbic_len / sizeof(struct ifbreq);
+    for(size_t i = 0; i < count; i++)
+        members.emplace_back(req[i].ifbr_ifsname);
+
+    return true;
+}
+
 bool Tool::bridgeDestroy(const std::string& ifname)
 {
     struct ifreq ifr;
