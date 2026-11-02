@@ -15,7 +15,7 @@ enum class NmCmd
     RCCONF_READ, RCCONF_WRITE,
     JAIL_LIST, RESOLVCONF_READ, RESOLVCONF_WRITE,
 //  if_worker
-    IF_EDIT,
+    IF_EDIT, IF_GET,
     IP4_ADDR_GET, IP6_ADDR_GET, // Returns only primary IP
     IP_ADDR_SET,
     IP4_DHCP_ENABLE, IP6_DHCP_ENABLE,

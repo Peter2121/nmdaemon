@@ -25,6 +25,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
     {
         case NmCmd::IF_EDIT :
             return execCmdIfEdit(pcmd);
+        case NmCmd::IF_GET :
+            return execCmdIfGet(pcmd);
         case NmCmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
         case NmCmd::IP4_ADDR_GET :
@@ -361,6 +363,33 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
     }
 
     return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerIf::execCmdIfGet(NmCommandData* pcmd)
+{
+    json cmd = {};
+    json res = {};
+
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfGet - cannot get interface name: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+
+    std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+    if(ifJson.empty())
+    {
+        LOG_S(ERROR) << "execCmdIfGet: interface " << ifName << " not found";
+        return JSON_RESULT_NOTFOUND;
+    }
+
+    res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+    res[JSON_PARAM_DATA] = ifJson[0];
+    return res;
 }
 
 json NmWorkerIf::execCmdIpAddrSet(NmCommandData* pcmd)

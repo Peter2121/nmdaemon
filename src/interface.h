@@ -23,6 +23,8 @@ protected:
     bool isDhcpEnabled;
     MediaStatus ifStatus;
     std::string mediaDesc;
+    bool isBridge;
+    std::vector<std::string> bridgeMembers;
 public:
     Interface(std::string);
     Interface() : Interface("") {}
@@ -36,6 +38,7 @@ public:
     void setStatus(MediaStatus);
     void setDhcpStatus(bool);
     bool getDhcpStatus() const;
+    void setBridgeMembers(const std::vector<std::string>&);
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);

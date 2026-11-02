@@ -18,6 +18,7 @@ protected:
     static constexpr NmCommand Cmds[] =
     {
         { NmScope::INTERFACE, NmCmd::IF_EDIT },
+        { NmScope::INTERFACE, NmCmd::IF_GET },
         { NmScope::INTERFACE, NmCmd::IP_ADDR_SET },
         { NmScope::INTERFACE, NmCmd::IP4_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::IP6_ADDR_GET },
@@ -58,6 +59,7 @@ public:
     json execCmd(NmCommandData*);
     bool isValidCmd(NmCommandData*);
     json execCmdIfEdit(NmCommandData*);
+    json execCmdIfGet(NmCommandData*);
     json execCmdIpAddrSet(NmCommandData*);
     json execCmdIp4AddrGet(NmCommandData*);
     json execCmdIp6AddrGet(NmCommandData*);

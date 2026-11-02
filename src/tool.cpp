@@ -2,6 +2,7 @@
 #include "tool.h"
 #include "addressgroup.h"
 #include "mediadesc.h"
+#include "interface.h"
 
 std::shared_ptr<AddressGroup> Tool::getAddrFromJson(json cmd)
 {
@@ -292,6 +293,45 @@ bool Tool::bridgeDestroy(const std::string& ifname)
     }
     sock.close();
     return true;
+}
+
+std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
+{
+    struct ifaddrs* ifaddrs_ptr;
+    std::vector<json> vectIfsJson;
+    std::map<std::string, Interface> ifMap;
+
+    if (getifaddrs(&ifaddrs_ptr) == -1) {
+        LOG_S(ERROR) << "Error in getifaddrs: " << errno << " (" << strerror(errno) << ")";
+        return vectIfsJson;
+    }
+
+    for (struct ifaddrs* p = ifaddrs_ptr; p != nullptr; p = p->ifa_next)
+    {
+        if(!ifname.empty() && ifname != p->ifa_name)
+            continue;
+        ifMap[p->ifa_name].setName(std::string(p->ifa_name));
+        ifMap[p->ifa_name].addAddress(p);
+    }
+
+    freeifaddrs(ifaddrs_ptr);
+
+    for (auto& [name, iface] : ifMap)
+    {
+        iface.setDhcpStatus(Tool::isDHCPEnabled(name));
+        iface.setStatus(Tool::getMediaStatus(name));
+        iface.setMediaDesc(Tool::getMediaDesc(name));
+        iface.findPrimaryAndJailAddress();
+        if(name.starts_with(BRIDGE_IF_PREFIX))
+        {
+            std::vector<std::string> members;
+            if(Tool::bridgeGetMembers(name, members))
+                iface.setBridgeMembers(members);
+        }
+        vectIfsJson.push_back(iface.getIfJson());
+    }
+
+    return vectIfsJson;
 }
 
 std::string Tool::getIfPrimaryAddr4(std::string ifname)

@@ -1,7 +1,8 @@
 #include "interface.h"
 
 Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false),
-                                         isIfUp(false), isIfRunning(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN)
+                                         isIfUp(false), isIfRunning(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN),
+                                         isBridge(false)
 {
 }
 
@@ -118,6 +119,9 @@ const nlohmann::json Interface::getIfJson() const
     retIfJson[JSON_PARAM_UP] = isIfUp;
     retIfJson[JSON_PARAM_RUNNING] = isIfRunning;
 
+    if(isBridge)
+        retIfJson[JSON_PARAM_MEMBERS] = bridgeMembers;
+
     for(auto addr : spVectAddrs)
     {
         addrJson = addr->getAddrJson();
@@ -147,6 +151,12 @@ void Interface::setDhcpStatus(bool status)
 bool Interface::getDhcpStatus() const
 {
     return isDhcpEnabled;
+}
+
+void Interface::setBridgeMembers(const std::vector<std::string>& members)
+{
+    isBridge = true;
+    bridgeMembers = members;
 }
 
 const std::string &Interface::getMediaDesc() const

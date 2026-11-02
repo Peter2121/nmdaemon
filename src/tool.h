@@ -54,6 +54,7 @@ protected:
         "lo"
     };
 public:
+    static inline const std::string BRIDGE_IF_PREFIX = "bridge";
     inline static std::random_device RANDOM_DEVICE;
     inline static std::mt19937 RANDOM_MT;
     inline static std::uniform_int_distribution<int> RND_DISTR;
@@ -66,6 +67,7 @@ public:
     static bool bridgeRemoveMember(const std::string& brname, const std::string& memberName);
     static bool bridgeGetMembers(const std::string& brname, std::vector<std::string>& members);
     static bool bridgeDestroy(const std::string& ifname);
+    static std::vector<json> getIfInfoJson(const std::string& ifname = std::string()); // ifname empty => all interfaces, otherwise at most one match
     static bool loadIfKldModule(const std::string& prefix); // loads kernel module "if_<prefix>" (e.g. "if_epair") if not already loaded
     static std::string getIfPrimaryAddr4(std::string);
     static std::string getIfPrimaryAddr6(std::string);

@@ -60,38 +60,10 @@ bool NmWorkerSys::isValidCmd(NmCommandData* pcmd)
 
 json NmWorkerSys::execCmdIfList(NmCommandData*)
 {
-    struct ifaddrs * ifaddrs_ptr;
     nlohmann::json retIfListJson;
     nlohmann::json res_ifaces = {};
-    std::vector<nlohmann::json> vectIfsJson;
-    int status;
-    std::map<std::string, Interface> ifMap;
 
-    status = getifaddrs (& ifaddrs_ptr);
-    if (status == -1) {
-        LOG_S(ERROR) << "Error in getifaddrs: " << errno << " (" << strerror (errno) << ")";
-    }
-
-    while (ifaddrs_ptr) {
-        ifMap[ifaddrs_ptr->ifa_name].setName(std::string(ifaddrs_ptr->ifa_name));
-        ifMap[ifaddrs_ptr->ifa_name].addAddress(ifaddrs_ptr);
-        ifaddrs_ptr = ifaddrs_ptr->ifa_next;
-    }
-
-    freeifaddrs (ifaddrs_ptr);
-
-    for (auto iface=ifMap.begin(); iface!=ifMap.end(); ++iface)
-    {
-        iface->second.setDhcpStatus(Tool::isDHCPEnabled(iface->first));
-        iface->second.setStatus(Tool::getMediaStatus(iface->first));
-        iface->second.setMediaDesc(Tool::getMediaDesc(iface->first));
-        iface->second.findPrimaryAndJailAddress();
-        vectIfsJson.push_back(iface->second.getIfJson());
-    }
-
-    nlohmann::json addrJson;
-
-    retIfListJson[JSON_PARAM_INTERFACES] = vectIfsJson;
+    retIfListJson[JSON_PARAM_INTERFACES] = Tool::getIfInfoJson();
     res_ifaces[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res_ifaces[JSON_PARAM_DATA] = retIfListJson;
 
@@ -253,7 +225,7 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
     {
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
-        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" },
+        { JSON_PARAM_IF_TYPE_BRIDGE, Tool::BRIDGE_IF_PREFIX },
         { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
     };
     struct ifreq ifr;
@@ -354,6 +326,17 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
         }
     }
 
+    if(iftype == JSON_PARAM_IF_TYPE_BRIDGE)
+    {
+        int curflags = Tool::getIfFlags(ifname);
+        if(curflags == 0 || !Tool::setIfFlags(ifname, curflags | IFF_UP))
+        {
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back bridge " << ifname << " after failing to bring it up";
+            Tool::bridgeDestroy(ifname);
+            return JSON_RESULT_ERR;
+        }
+    }
+
     json res = {};
     res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     json res_data = { { JSON_PARAM_IF_NAME, ifname } };
@@ -369,7 +352,7 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
     {
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
-        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" },
+        { JSON_PARAM_IF_TYPE_BRIDGE, Tool::BRIDGE_IF_PREFIX },
         { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
     };
     std::string ifname;

@@ -44,7 +44,7 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
     { "SCOPE": "SYSTEM", "CMD": "IF_LIST" }
 
-List all network interfaces and their IP addresses
+List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media) and, for BRIDGE interfaces, their current "MEMBERS" list.
 
 ---
 
@@ -52,7 +52,7 @@ List all network interfaces and their IP addresses
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridgeX", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "<if_1>", "<if_2>", ... ] } }
 
 
-Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR. For BRIDGE type the members can be mentioned. For EPAIR type the interface name must not include the trailing "a"/"b" side letter (e.g. "epair5"); the daemon creates both sides of the pair and returns the "a" side interface name.
+Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR. For BRIDGE type the members can be mentioned; the bridge is automatically brought up (and its members attached) once created. For EPAIR type the interface name must not include the trailing "a"/"b" side letter (e.g. "epair5"); the daemon creates both sides of the pair and returns the "a" side interface name.
 
 For example:
 
@@ -140,6 +140,17 @@ For example:
 
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
+
+---
+
+    { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "<if_name>" } }
+
+Return the same information as IF_LIST (IP addresses, status, media, and "MEMBERS" for BRIDGE interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
+
+For example:
+
+    { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "em0" } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "bridge5" } }
 
 ---
 
