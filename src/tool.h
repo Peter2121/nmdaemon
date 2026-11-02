@@ -14,6 +14,7 @@
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/ethernet.h>
+#include <sys/linker.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -63,6 +64,7 @@ public:
     static bool setIfFlags(std::string, int);
     static bool bridgeAddMember(const std::string& brname, const std::string& memberName);
     static bool bridgeDestroy(const std::string& ifname);
+    static bool loadIfKldModule(const std::string& prefix); // loads kernel module "if_<prefix>" (e.g. "if_epair") if not already loaded
     static std::string getIfPrimaryAddr4(std::string);
     static std::string getIfPrimaryAddr6(std::string);
     static std::string getIfMacAddr(std::string);

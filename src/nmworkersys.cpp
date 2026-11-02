@@ -253,7 +253,8 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
     {
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
-        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" }
+        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" },
+        { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
     };
     struct ifreq ifr;
     std::string ifname;
@@ -322,9 +323,23 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
     sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
     if (ioctl(sock.handle(), SIOCIFCREATE2, (caddr_t)&ifr) < 0)
     {
-        LOG_S(ERROR) << "execCmdIfAdd: cannot create interface " << ifname << " (" << strerror(errno) << ")";
-        sock.close();
-        return JSON_RESULT_ERR;
+        int create_errno = errno;
+        // EINVAL from SIOCIFCREATE2 means no registered cloner matched the
+        // requested name, which typically happens when the backing kernel
+        // module (e.g. if_epair) has not been loaded yet. Unlike ifconfig(8),
+        // we talk to the ioctl directly, so load the module ourselves and
+        // retry once before giving up.
+        if(create_errno == EINVAL && Tool::loadIfKldModule(it_prefix->second))
+        {
+            strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+            create_errno = (ioctl(sock.handle(), SIOCIFCREATE2, (caddr_t)&ifr) < 0) ? errno : 0;
+        }
+        if(create_errno != 0)
+        {
+            LOG_S(ERROR) << "execCmdIfAdd: cannot create interface " << ifname << " (" << strerror(create_errno) << ")";
+            sock.close();
+            return JSON_RESULT_ERR;
+        }
     }
     sock.close();
     ifname = std::string(ifr.ifr_name);
@@ -354,7 +369,8 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
     {
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
-        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" }
+        { JSON_PARAM_IF_TYPE_BRIDGE, "bridge" },
+        { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
     };
     std::string ifname;
     json cmd_json = {};
@@ -384,8 +400,18 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
     }
     if(!known_type)
     {
-        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " is not a supported clone type (TUN/TAP/BRIDGE)";
+        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " is not a supported clone type (TUN/TAP/BRIDGE/EPAIR)";
         return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+    }
+
+    if(ifname.starts_with(TYPE_PREFIXES.at(JSON_PARAM_IF_TYPE_EPAIR)) && if_nametoindex(ifname.c_str()) == 0)
+    {
+        // Accept the bare "epair<N>" form in addition to the actual
+        // "epair<N>a"/"epair<N>b" kernel interface names: destroying
+        // either side destroys the whole pair, so resolve to the "a" side.
+        std::string epair_a_side = ifname + "a";
+        if(if_nametoindex(epair_a_side.c_str()) != 0)
+            ifname = epair_a_side;
     }
 
     if(if_nametoindex(ifname.c_str()) == 0)

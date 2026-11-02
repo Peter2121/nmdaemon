@@ -202,6 +202,23 @@ bool Tool::bridgeAddMember(const std::string& brname, const std::string& memberN
     return true;
 }
 
+bool Tool::loadIfKldModule(const std::string& prefix)
+{
+    std::string modname = "if_" + prefix;
+
+    if(kldfind(modname.c_str()) >= 0)
+        return true;
+
+    if(kldload(modname.c_str()) < 0)
+    {
+        LOG_S(WARNING) << "Cannot load kernel module " << modname << " (" << strerror(errno) << ")";
+        return false;
+    }
+
+    LOG_S(INFO) << "Loaded kernel module " << modname;
+    return true;
+}
+
 bool Tool::bridgeDestroy(const std::string& ifname)
 {
     struct ifreq ifr;

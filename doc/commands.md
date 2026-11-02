@@ -52,23 +52,26 @@ List all network interfaces and their IP addresses
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridgeX", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "<if_1>", "<if_2>", ... ] } }
 
 
-Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE. For BRIDGE type the members can be mentioned.
+Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR. For BRIDGE type the members can be mentioned. For EPAIR type the interface name must not include the trailing "a"/"b" side letter (e.g. "epair5"); the daemon creates both sides of the pair and returns the "a" side interface name.
 
 For example:
 
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tun5", "INTERFACE TYPE" : "TUN" } }
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tap5", "INTERFACE TYPE" : "TAP" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "epair5", "INTERFACE TYPE" : "EPAIR" } }
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridge5", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "re0", "em0" ] } }
 
 ---
 
     { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "<interface name>" } }
 
-Remove network interface. Currently supported the following interface types: TUN, TAP, BRIDGE.
+Remove network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR. For EPAIR, destroying either side ("epair5a" or "epair5b") destroys both sides of the pair; the bare base name ("epair5") is also accepted and resolved to the "a" side.
 
 For example:
 
     { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "bridge5" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "epair5a" } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "epair5" } }
 
 ---
 
