@@ -44,7 +44,7 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
     { "SCOPE": "SYSTEM", "CMD": "IF_LIST" }
 
-List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media) and, for BRIDGE interfaces, their current "MEMBERS" list.
+List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set) and, for BRIDGE interfaces, their current "MEMBERS" list.
 
 ---
 
@@ -130,25 +130,28 @@ For example:
 
 **Scope INTERFACE commands**
 
-    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]][, "DESCRIPTION": "<description>"] } }
 
-Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU" and "MEMBERS" (for BRIDGE interfaces) are supported; more properties will be added over time.
+Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU", "MEMBERS" (for BRIDGE interfaces) and "DESCRIPTION" are supported; more properties will be added over time.
 
-If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS" in the same command already target the new name.
+If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS"/"DESCRIPTION" in the same command already target the new name.
 
 "MEMBERS" describes the desired final member list of a bridge interface: members currently on the bridge but missing from the list are removed, and members in the list not yet on the bridge are added.
+
+"DESCRIPTION" sets the interface description (equivalent to `ifconfig <if_name> description "<description>"`); an empty string clears it.
 
 For example:
 
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "vnet0", "NAME": "eth0" } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "DESCRIPTION": "uplink to ISP" } }
 
 ---
 
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "<if_name>" } }
 
-Return the same information as IF_LIST (IP addresses, status, media, and "MEMBERS" for BRIDGE interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
+Return the same information as IF_LIST (IP addresses, status, media, "DRIVER NAME", "DESCRIPTION", and "MEMBERS" for BRIDGE interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
 
 For example:
 

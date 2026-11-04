@@ -321,6 +321,8 @@ std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
         iface.setDhcpStatus(Tool::isDHCPEnabled(name));
         iface.setStatus(Tool::getMediaStatus(name));
         iface.setMediaDesc(Tool::getMediaDesc(name));
+        iface.setDriverName(Tool::getIfDriverName(name));
+        iface.setDescription(Tool::getIfDescription(name));
         iface.findPrimaryAndJailAddress();
         if(name.starts_with(BRIDGE_IF_PREFIX))
         {
@@ -823,6 +825,61 @@ std::string Tool::getDescWord(int ifmw, int print_toptype)
         str_desc_word += std::to_string(IFM_INST(ifmw));
     }
     return str_desc_word;
+}
+
+std::string Tool::getIfDriverName(const std::string& ifname)
+{
+    std::string driverName;
+    unsigned int ifindex = if_nametoindex(ifname.c_str());
+
+    if(ifindex == 0)
+    {
+        LOG_S(INFO) << "getIfDriverName: cannot get index of interface " << ifname;
+        return driverName;
+    }
+
+    int mib[6] = { CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_IFDATA, (int)ifindex, IFDATA_DRIVERNAME };
+    size_t len = 0;
+
+    if( (sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0) || (len == 0) )
+    {
+        LOG_S(INFO) << "getIfDriverName: cannot get driver name length for interface " << ifname;
+        return driverName;
+    }
+
+    std::vector<char> buf(len, 0);
+    if(sysctl(mib, 6, buf.data(), &len, nullptr, 0) < 0)
+    {
+        LOG_S(INFO) << "getIfDriverName: cannot get driver name for interface " << ifname;
+        return driverName;
+    }
+
+    driverName.assign(buf.data());
+    return driverName;
+}
+
+std::string Tool::getIfDescription(const std::string& ifname)
+{
+    struct ifreq ifr;
+    std::string description;
+    std::vector<char> buf(1024, 0);
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_buffer.buffer = buf.data();
+    ifr.ifr_buffer.length = buf.size();
+
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGIFDESCR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(INFO) << "Cannot get description for interface " << ifname;
+        sock.close();
+        return description;
+    }
+
+    sock.close();
+    description.assign(buf.data());
+    return description;
 }
 
 std::vector<JailParam> Tool::getJails()

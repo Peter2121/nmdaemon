@@ -53,6 +53,7 @@ protected:
     static bool setMtu(const std::string& ifname, int mtu);
     static bool setBridgeMembers(const std::string& ifname, const std::vector<std::string>& members);
     static bool setIfName(const std::string& ifname, const std::string& newname);
+    static bool setDescription(const std::string& ifname, const std::string& description);
 //    addr* getAddrFromJson(json);
 public:
     NmWorkerIf();

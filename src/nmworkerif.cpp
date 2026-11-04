@@ -380,6 +380,19 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
     }
 
+    if(cmd_data.contains(JSON_PARAM_DESCRIPTION))
+    {
+        std::string description;
+        try {
+            description = cmd_data[JSON_PARAM_DESCRIPTION];
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_DESCRIPTION << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!setDescription(ifName, description))
+            return JSON_RESULT_ERR;
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -693,6 +706,27 @@ bool NmWorkerIf::setIfName(const std::string& ifname, const std::string& newname
     if (ioctl(sock.handle(), SIOCSIFNAME, (caddr_t)&ifr) < 0)
     {
         LOG_S(ERROR) << "Cannot rename interface " << ifname << " to " << newname;
+        sock.close();
+        return false;
+    }
+
+    sock.close();
+    return true;
+}
+
+bool NmWorkerIf::setDescription(const std::string& ifname, const std::string& description)
+{
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_buffer.buffer = const_cast<char*>(description.c_str());
+    ifr.ifr_buffer.length = description.size() + 1;
+
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSIFDESCR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot set description for interface " << ifname;
         sock.close();
         return false;
     }

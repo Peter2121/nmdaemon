@@ -113,6 +113,12 @@ const nlohmann::json Interface::getIfJson() const
     if(!mediaDesc.empty())
         retIfJson[JSON_PARAM_MEDIA] = mediaDesc;
 
+    if(!driverName.empty())
+        retIfJson[JSON_PARAM_DRIVER_NAME] = driverName;
+
+    if(!description.empty())
+        retIfJson[JSON_PARAM_DESCRIPTION] = description;
+
     if(isDhcpEnabled)
         retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
 
@@ -167,6 +173,26 @@ const std::string &Interface::getMediaDesc() const
 void Interface::setMediaDesc(const std::string &newMediaDesc)
 {
     mediaDesc = newMediaDesc;
+}
+
+const std::string &Interface::getDriverName() const
+{
+    return driverName;
+}
+
+void Interface::setDriverName(const std::string &newDriverName)
+{
+    driverName = newDriverName;
+}
+
+const std::string &Interface::getDescription() const
+{
+    return description;
+}
+
+void Interface::setDescription(const std::string &newDescription)
+{
+    description = newDescription;
 }
 
 void Interface::findPrimaryAndJailAddress()

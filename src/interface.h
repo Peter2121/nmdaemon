@@ -23,6 +23,8 @@ protected:
     bool isDhcpEnabled;
     MediaStatus ifStatus;
     std::string mediaDesc;
+    std::string driverName;
+    std::string description;
     bool isBridge;
     std::vector<std::string> bridgeMembers;
 public:
@@ -42,6 +44,10 @@ public:
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);
+    const std::string &getDriverName() const;
+    void setDriverName(const std::string &newDriverName);
+    const std::string &getDescription() const;
+    void setDescription(const std::string &newDescription);
     void findPrimaryAndJailAddress();
 };
 

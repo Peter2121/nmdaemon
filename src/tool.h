@@ -12,6 +12,7 @@
 #include <sys/sysctl.h>
 #include <net/if_media.h>
 #include <net/if.h>
+#include <net/if_mib.h>
 #include <net/if_dl.h>
 #include <net/ethernet.h>
 #include <sys/linker.h>
@@ -80,6 +81,8 @@ public:
     static int getDHCPClientPid(std::string);
     static MediaStatus getMediaStatus(std::string);
     static std::string getMediaDesc(std::string);
+    static std::string getIfDriverName(const std::string&); // original driver-assigned name (e.g. "igb0"), survives interface rename
+    static std::string getIfDescription(const std::string&);
     static std::unique_ptr<struct ifmediareq> getMediaState(std::string);
     static std::string getDescWord(int ifmw, int print_toptype);
     static bool isMediaStatusSupported(std::string);
