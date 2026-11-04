@@ -27,6 +27,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return execCmdIfEdit(pcmd);
         case NmCmd::IF_GET :
             return execCmdIfGet(pcmd);
+        case NmCmd::IF_RENAME :
+            return execCmdIfRename(pcmd);
         case NmCmd::IP_ADDR_SET :
             return execCmdIpAddrSet(pcmd);
         case NmCmd::IP4_ADDR_GET :
@@ -328,6 +330,22 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    if(cmd_data.contains(JSON_PARAM_NAME))
+    {
+        std::string newIfName;
+        try {
+            newIfName = cmd_data[JSON_PARAM_NAME];
+            if(!Tool::isValidIfName(newIfName))
+                throw std::invalid_argument("invalid new interface name");
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_NAME << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!setIfName(ifName, newIfName))
+            return JSON_RESULT_ERR;
+        ifName = newIfName;
+    }
+
     if(cmd_data.contains(JSON_PARAM_MTU))
     {
         int mtu = 0;
@@ -390,6 +408,35 @@ json NmWorkerIf::execCmdIfGet(NmCommandData* pcmd)
     res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res[JSON_PARAM_DATA] = ifJson[0];
     return res;
+}
+
+json NmWorkerIf::execCmdIfRename(NmCommandData* pcmd)
+{
+    std::string newIfName{};
+    json cmd = {};
+    json cmd_data = {};
+
+    try
+    {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+        cmd_data = cmd[JSON_PARAM_DATA];
+        newIfName = cmd_data[JSON_PARAM_NAME];
+        if(!Tool::isValidIfName(newIfName))
+            throw std::invalid_argument("invalid new interface name");
+    } catch (std::exception& e)
+    {
+        LOG_S(ERROR) << "Exception in execCmdIfRename - cannot get command data: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+
+    if(!setIfName(ifName, newIfName))
+        return JSON_RESULT_ERR;
+
+    ifName = newIfName;
+    return JSON_RESULT_SUCCESS;
 }
 
 json NmWorkerIf::execCmdIpAddrSet(NmCommandData* pcmd)
@@ -623,6 +670,34 @@ bool NmWorkerIf::setBridgeMembers(const std::string& ifname, const std::vector<s
         }
     }
 
+    return true;
+}
+
+bool NmWorkerIf::setIfName(const std::string& ifname, const std::string& newname)
+{
+    struct ifreq ifr;
+    char newname_buf[IFNAMSIZ];
+
+    if(newname.empty() || newname.size() >= IFNAMSIZ)
+    {
+        LOG_S(ERROR) << "setIfName error - incorrect new interface name: " << newname;
+        return false;
+    }
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    strlcpy(newname_buf, newname.c_str(), sizeof(newname_buf));
+    ifr.ifr_data = newname_buf;
+
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSIFNAME, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot rename interface " << ifname << " to " << newname;
+        sock.close();
+        return false;
+    }
+
+    sock.close();
     return true;
 }
 

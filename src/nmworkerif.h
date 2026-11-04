@@ -19,6 +19,7 @@ protected:
     {
         { NmScope::INTERFACE, NmCmd::IF_EDIT },
         { NmScope::INTERFACE, NmCmd::IF_GET },
+        { NmScope::INTERFACE, NmCmd::IF_RENAME },
         { NmScope::INTERFACE, NmCmd::IP_ADDR_SET },
         { NmScope::INTERFACE, NmCmd::IP4_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::IP6_ADDR_GET },
@@ -51,6 +52,7 @@ protected:
     bool enableDHCP();
     static bool setMtu(const std::string& ifname, int mtu);
     static bool setBridgeMembers(const std::string& ifname, const std::vector<std::string>& members);
+    static bool setIfName(const std::string& ifname, const std::string& newname);
 //    addr* getAddrFromJson(json);
 public:
     NmWorkerIf();
@@ -60,6 +62,7 @@ public:
     bool isValidCmd(NmCommandData*);
     json execCmdIfEdit(NmCommandData*);
     json execCmdIfGet(NmCommandData*);
+    json execCmdIfRename(NmCommandData*);
     json execCmdIpAddrSet(NmCommandData*);
     json execCmdIp4AddrGet(NmCommandData*);
     json execCmdIp6AddrGet(NmCommandData*);

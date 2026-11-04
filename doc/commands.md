@@ -130,9 +130,11 @@ For example:
 
 **Scope INTERFACE commands**
 
-    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]] } }
 
-Edit one or more properties of an existing interface in a single command. Currently "MTU" and "MEMBERS" (for BRIDGE interfaces) are supported; more properties will be added over time.
+Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU" and "MEMBERS" (for BRIDGE interfaces) are supported; more properties will be added over time.
+
+If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS" in the same command already target the new name.
 
 "MEMBERS" describes the desired final member list of a bridge interface: members currently on the bridge but missing from the list are removed, and members in the list not yet on the bridge are added.
 
@@ -140,6 +142,7 @@ For example:
 
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "vnet0", "NAME": "eth0" } }
 
 ---
 
@@ -151,6 +154,16 @@ For example:
 
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "em0" } }
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "bridge5" } }
+
+---
+
+    { "SCOPE": "INTERFACE", "CMD": "IF_RENAME", "DATA": { "INTERFACE NAME": "<if_name>", "NAME": "<new_if_name>" } }
+
+Rename an existing interface, equivalent to `ifconfig <if_name> name <new_if_name>`.
+
+For example:
+
+    { "SCOPE": "INTERFACE", "CMD": "IF_RENAME", "DATA": { "INTERFACE NAME": "vnet0", "NAME": "eth0" } }
 
 ---
 
