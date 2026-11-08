@@ -136,7 +136,7 @@ set(HEADERS
 set(SOURCES_ALL ${SOURCES} ${WORKERS_SOURCES})
 add_executable(nmdaemon ${SOURCES_ALL} ${HEADERS})
 
-target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} async++-static Sockpp::sockpp-static)
+target_link_libraries(nmdaemon ${PTHREAD_LIBRARY} ${D_LIBRARY} ${KVM_LIBRARY} ${80211_LIBRARY} ${JAIL_LIBRARY} c++ async++ Sockpp::sockpp-static)
 
 include(GNUInstallDirs)
 install(TARGETS nmdaemon DESTINATION ${CMAKE_INSTALL_BINDIR})

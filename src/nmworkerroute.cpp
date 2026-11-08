@@ -469,39 +469,14 @@ json NmWorkerRoute::execCmdRouteSet(NmCommandData* pcmd)
 
     cmd = pcmd->getJsonData();
 
-    // TODO(exception-handling-bug): this deliberately uses a plain
-    // is_string()/bool-return check instead of the project's usual
-    // try{...}catch(std::exception&){...} validation pattern (see e.g.
-    // Tool::isValidIfName() call sites in nmworkerif.cpp/nmworkersys.cpp).
-    // Reason: linking /usr/local/lib/libasync++.a (pulled in solely for
-    // NmWorkerWpa::getSuppParamsAsync()'s async::spawn(), used by
-    // WPA_LIST/WPA_LIST_ASYNC with "DETAILS":true) breaks C++ exception
-    // unwinding FOR THE WHOLE PROCESS: a throw inside a try{} with an
-    // immediately-following matching catch(std::exception&) is NOT caught
-    // -- not locally, not by the dispatcher's own outer catch either --
-    // and instead crashes the daemon with SIGABRT ("Terminating due to
-    // uncaught exception ... of type std::invalid_argument"). Reproduced
-    // with a bare try{throw...;}catch(std::exception&){} at the very top
-    // of main(), and confirmed by linking a trivial standalone program
-    // against only libasync++.a (libsockpp.a alone is fine). Root cause
-    // not yet found (suspect libasync++.a was built without exceptions,
-    // or against a mismatched C++ runtime). Once the root cause is found
-    // and fixed, revert this block back to try/catch for consistency, and
-    // audit every other throw std::invalid_argument(...) in the codebase
-    // (e.g. the "invalid interface name" checks in nmworkerif.cpp,
-    // nmworkersys.cpp, and the std::stoi() try/catch in
-    // NmWorkerWpa::getSuppParamsAsync()) since those are equally exposed.
     if(cmd.contains(JSON_PARAM_DATA) && cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME))
     {
-        if(!cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
-        {
-            LOG_S(ERROR) << "execCmdRouteSet: " << JSON_PARAM_IF_NAME << " must be a string";
-            return JSON_RESULT_ERR;
-        }
-        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
-        if(!Tool::isValidIfName(ifName))
-        {
-            LOG_S(ERROR) << "execCmdRouteSet: invalid " << JSON_PARAM_IF_NAME << " value " << ifName;
+        try {
+            ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+            if(!Tool::isValidIfName(ifName))
+                throw std::invalid_argument("invalid interface name");
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdRouteSet - invalid " << JSON_PARAM_IF_NAME << " value: " << e.what();
             return JSON_RESULT_ERR;
         }
     }
@@ -559,23 +534,14 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    // TODO(exception-handling-bug): see the matching TODO in
-    // execCmdRouteSet() above -- same reason, same pattern deliberately
-    // avoided here (plain is_string()/bool-return check instead of
-    // try{...}catch(std::exception&){...}) because of the libasync++.a
-    // linkage bug that breaks exception unwinding process-wide. Revert to
-    // try/catch once the root cause is found and fixed.
     if(cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME))
     {
-        if(!cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
-        {
-            LOG_S(ERROR) << "execCmdDefRouteSet: " << JSON_PARAM_IF_NAME << " must be a string";
-            return JSON_RESULT_ERR;
-        }
-        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
-        if(!Tool::isValidIfName(ifName))
-        {
-            LOG_S(ERROR) << "execCmdDefRouteSet: invalid " << JSON_PARAM_IF_NAME << " value " << ifName;
+        try {
+            ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+            if(!Tool::isValidIfName(ifName))
+                throw std::invalid_argument("invalid interface name");
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdDefRouteSet - invalid " << JSON_PARAM_IF_NAME << " value: " << e.what();
             return JSON_RESULT_ERR;
         }
     }

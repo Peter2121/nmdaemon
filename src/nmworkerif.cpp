@@ -321,25 +321,14 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
     json cmd = {};
     json cmd_data = {};
 
-    // TODO(exception-handling-bug): was try{...}catch(std::exception&){...}
-    // (throwing on an invalid interface name), replaced with a plain
-    // is_string()/bool-return check after it was caught live crashing the
-    // daemon via the libasync++.a exception-unwinding bug -- see the matching
-    // TODO on the LINK ADDRESS block below, and nmworkerroute.cpp's
-    // execCmdRouteSet() for the full explanation. Revert to try/catch for
-    // consistency once that bug is root-caused and fixed.
-    cmd = pcmd->getJsonData();
-    if(!cmd.contains(JSON_PARAM_DATA) || !cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME) ||
-       !cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
-    {
-        LOG_S(ERROR) << "execCmdIfEdit: cannot get interface name";
-        return JSON_RESULT_ERR;
-    }
-    cmd_data = cmd[JSON_PARAM_DATA];
-    ifName = cmd_data[JSON_PARAM_IF_NAME].get<std::string>();
-    if(!Tool::isValidIfName(ifName))
-    {
-        LOG_S(ERROR) << "execCmdIfEdit: invalid interface name " << ifName;
+    try {
+        cmd = pcmd->getJsonData();
+        cmd_data = cmd[JSON_PARAM_DATA];
+        ifName = cmd_data[JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdIfEdit - cannot get interface name: " << e.what();
         return JSON_RESULT_ERR;
     }
 
@@ -462,21 +451,15 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
     }
 
-    // TODO(exception-handling-bug): deliberately uses a plain is_string()/
-    // bool-return check instead of the project's usual try{...}catch
-    // (std::exception&){...} pattern used elsewhere in this function -- see
-    // the TODO in execCmdMacAddrSet() / nmworkerroute.cpp's execCmdRouteSet()
-    // for the full explanation (linking libasync++.a breaks exception
-    // unwinding for the whole process). Revert to try/catch once that is
-    // root-caused and fixed.
     if(cmd_data.contains(JSON_PARAM_LINK_ADDR))
     {
-        if(!cmd_data[JSON_PARAM_LINK_ADDR].is_string())
-        {
-            LOG_S(ERROR) << "execCmdIfEdit: " << JSON_PARAM_LINK_ADDR << " must be a string";
+        std::string macAddr;
+        try {
+            macAddr = cmd_data[JSON_PARAM_LINK_ADDR];
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_LINK_ADDR << " value: " << e.what();
             return JSON_RESULT_ERR;
         }
-        std::string macAddr = cmd_data[JSON_PARAM_LINK_ADDR].get<std::string>();
         if(!Tool::setIfMacAddr(ifName, macAddr))
             return JSON_RESULT_ERR;
     }
@@ -981,39 +964,21 @@ json NmWorkerIf::execCmdMacAddrGet(NmCommandData *pcmd)
     return res;
 }
 
-// TODO(exception-handling-bug): deliberately uses plain is_string()/bool-return
-// checks instead of the project's usual try{...}catch(std::exception&){...}
-// pattern (see execCmdMacAddrGet() above for that pattern, and the matching
-// TODO in nmworkerroute.cpp's execCmdRouteSet()/execCmdDefRouteSet() for the
-// full explanation) -- linking libasync++.a breaks exception unwinding for the
-// whole process, so new code avoids throw/catch until that is root-caused and
-// fixed. Revert to try/catch for consistency once it is.
 json NmWorkerIf::execCmdMacAddrSet(NmCommandData* pcmd)
 {
     json cmd = {};
     std::string macAddr;
 
-    cmd = pcmd->getJsonData();
-
-    if(!cmd.contains(JSON_PARAM_DATA) || !cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME) ||
-       !cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
-    {
-        LOG_S(ERROR) << "execCmdMacAddrSet: cannot get interface name";
+    try {
+        cmd = pcmd->getJsonData();
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
+        if(!Tool::isValidIfName(ifName))
+            throw std::invalid_argument("invalid interface name");
+        macAddr = cmd[JSON_PARAM_DATA][JSON_PARAM_LINK_ADDR];
+    } catch (std::exception& e) {
+        LOG_S(ERROR) << "Exception in execCmdMacAddrSet - cannot get command data: " << e.what();
         return JSON_RESULT_ERR;
     }
-    ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
-    if(!Tool::isValidIfName(ifName))
-    {
-        LOG_S(ERROR) << "execCmdMacAddrSet: invalid interface name " << ifName;
-        return JSON_RESULT_ERR;
-    }
-
-    if(!cmd[JSON_PARAM_DATA].contains(JSON_PARAM_LINK_ADDR) || !cmd[JSON_PARAM_DATA][JSON_PARAM_LINK_ADDR].is_string())
-    {
-        LOG_S(ERROR) << "execCmdMacAddrSet: " << JSON_PARAM_LINK_ADDR << " must be a string";
-        return JSON_RESULT_ERR;
-    }
-    macAddr = cmd[JSON_PARAM_DATA][JSON_PARAM_LINK_ADDR].get<std::string>();
 
     if(!Tool::setIfMacAddr(ifName, macAddr))
         return JSON_RESULT_ERR;
