@@ -1,4 +1,5 @@
 #include "nmworkerroute.h"
+#include <cstddef>
 
 /*
  * Round up 'a' to next multiple of 'size', which must be a power of 2
@@ -91,10 +92,20 @@ void NmWorkerRoute::setPsaStruct6(sockaddr_in6 *psa6, const std::shared_ptr<Addr
     memcpy(psa6, spstrt->getSockAddr(), sizeof(struct sockaddr_in6));
 }
 
-bool NmWorkerRoute::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
+// Identifies the interface by index only (matches route(8)'s '-ifp' handling), no
+// name/link-address payload needed for the kernel to pin the route to it.
+void NmWorkerRoute::setPsaStructIfp(struct sockaddr_dl *psdl, const std::string& ifname)
 {
-    std::unique_ptr<static_route> up_new_route=nullptr;
-    std::unique_ptr<static_route6> up_new_route6=nullptr;
+    memset(psdl, 0, sizeof(struct sockaddr_dl));
+    psdl->sdl_len = sizeof(struct sockaddr_dl);
+    psdl->sdl_family = AF_LINK;
+    psdl->sdl_index = if_nametoindex(ifname.c_str());
+}
+
+bool NmWorkerRoute::setStaticRoute(std::shared_ptr<AddressGroup> stroute, const std::string& ifname)
+{
+    std::unique_ptr<static_route_ifp> up_new_route=nullptr;
+    std::unique_ptr<static_route6_ifp> up_new_route6=nullptr;
     void* pnr=nullptr;
     size_t pnr_size=0;
     struct rt_msghdr *prtm_hdr=nullptr;
@@ -102,24 +113,32 @@ bool NmWorkerRoute::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
     time_t curtime = time(NULL);
     struct tm *info = localtime(&curtime);
     int seq = 3600*info->tm_hour + 60*info->tm_min + info->tm_sec;
+    bool useIfp = !ifname.empty();
+
+    if(useIfp && if_nametoindex(ifname.c_str()) == 0)
+    {
+        LOG_S(ERROR) << "setStaticRoute: interface " << ifname << " does not exist";
+        return false;
+    }
 
     if(fam == AF_INET)
     {
-        up_new_route = std::make_unique<static_route>();
-        memset(up_new_route.get(), 0x00, sizeof(static_route));
+        up_new_route = std::make_unique<static_route_ifp>();
+        memset(up_new_route.get(), 0x00, sizeof(static_route_ifp));
         prtm_hdr = &(up_new_route->head);
-        prtm_hdr->rtm_msglen = sizeof(static_route);
+        pnr_size = useIfp ? sizeof(static_route_ifp) : offsetof(static_route_ifp, ifp);
     }
     else if(fam == AF_INET6)
     {
-        up_new_route6 = std::make_unique<static_route6>();
-        memset(up_new_route6.get(), 0x00, sizeof(static_route6));
+        up_new_route6 = std::make_unique<static_route6_ifp>();
+        memset(up_new_route6.get(), 0x00, sizeof(static_route6_ifp));
         prtm_hdr = &(up_new_route6->head);
-        prtm_hdr->rtm_msglen = sizeof(static_route6);
+        pnr_size = useIfp ? sizeof(static_route6_ifp) : offsetof(static_route6_ifp, ifp);
     }
     else
         return false;
 
+    prtm_hdr->rtm_msglen = pnr_size;
     prtm_hdr->rtm_type = RTM_ADD;
     prtm_hdr->rtm_flags = RTF_UP | RTF_GATEWAY | RTF_STATIC;
     prtm_hdr->rtm_version = RTM_VERSION;
@@ -127,21 +146,26 @@ bool NmWorkerRoute::setStaticRoute(std::shared_ptr<AddressGroup> stroute)
     prtm_hdr->rtm_addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
     prtm_hdr->rtm_pid = getpid();
 
+    if(useIfp)
+        prtm_hdr->rtm_addrs |= RTA_IFP;
+
     if(fam == AF_INET)
     {
         setPsaStruct(&(up_new_route->dest), stroute->getAddr());
         setPsaStruct(&(up_new_route->gateway), stroute->getData());
         setPsaStruct(&(up_new_route->netmask), stroute->getMask());
+        if(useIfp)
+            setPsaStructIfp(&(up_new_route->ifp), ifname);
         pnr=up_new_route.get();
-        pnr_size = sizeof(static_route);
     }
     else if(fam == AF_INET6)
     {
         setPsaStruct6(&(up_new_route6->dest), stroute->getAddr());
         setPsaStruct6(&(up_new_route6->gateway), stroute->getData());
         setPsaStruct6(&(up_new_route6->netmask), stroute->getMask());
+        if(useIfp)
+            setPsaStructIfp(&(up_new_route6->ifp), ifname);
         pnr=up_new_route6.get();
-        pnr_size = sizeof(static_route6);
     }
 
     sockpp::socket sock = sockpp::socket::create(AF_ROUTE, SOCK_RAW);
@@ -441,15 +465,55 @@ json NmWorkerRoute::execCmdDefRouteGet6(NmCommandData*)
 json NmWorkerRoute::execCmdRouteSet(NmCommandData* pcmd)
 {
     json cmd = {};
+    std::string ifName;
 
-    auto rt_addr = Tool::getAddrFromJson(pcmd->getJsonData());
+    cmd = pcmd->getJsonData();
+
+    // TODO(exception-handling-bug): this deliberately uses a plain
+    // is_string()/bool-return check instead of the project's usual
+    // try{...}catch(std::exception&){...} validation pattern (see e.g.
+    // Tool::isValidIfName() call sites in nmworkerif.cpp/nmworkersys.cpp).
+    // Reason: linking /usr/local/lib/libasync++.a (pulled in solely for
+    // NmWorkerWpa::getSuppParamsAsync()'s async::spawn(), used by
+    // WPA_LIST/WPA_LIST_ASYNC with "DETAILS":true) breaks C++ exception
+    // unwinding FOR THE WHOLE PROCESS: a throw inside a try{} with an
+    // immediately-following matching catch(std::exception&) is NOT caught
+    // -- not locally, not by the dispatcher's own outer catch either --
+    // and instead crashes the daemon with SIGABRT ("Terminating due to
+    // uncaught exception ... of type std::invalid_argument"). Reproduced
+    // with a bare try{throw...;}catch(std::exception&){} at the very top
+    // of main(), and confirmed by linking a trivial standalone program
+    // against only libasync++.a (libsockpp.a alone is fine). Root cause
+    // not yet found (suspect libasync++.a was built without exceptions,
+    // or against a mismatched C++ runtime). Once the root cause is found
+    // and fixed, revert this block back to try/catch for consistency, and
+    // audit every other throw std::invalid_argument(...) in the codebase
+    // (e.g. the "invalid interface name" checks in nmworkerif.cpp,
+    // nmworkersys.cpp, and the std::stoi() try/catch in
+    // NmWorkerWpa::getSuppParamsAsync()) since those are equally exposed.
+    if(cmd.contains(JSON_PARAM_DATA) && cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME))
+    {
+        if(!cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
+        {
+            LOG_S(ERROR) << "execCmdRouteSet: " << JSON_PARAM_IF_NAME << " must be a string";
+            return JSON_RESULT_ERR;
+        }
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
+        if(!Tool::isValidIfName(ifName))
+        {
+            LOG_S(ERROR) << "execCmdRouteSet: invalid " << JSON_PARAM_IF_NAME << " value " << ifName;
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    auto rt_addr = Tool::getAddrFromJson(cmd);
     if(rt_addr==nullptr)
     {
         LOG_S(ERROR) << "Cannot decode JSON data";
         return JSON_RESULT_ERR;
     }
 
-    if(!NmWorkerRoute::setStaticRoute(rt_addr))
+    if(!NmWorkerRoute::setStaticRoute(rt_addr, ifName))
     {
         LOG_S(ERROR) << "Cannot set route";
         return JSON_RESULT_ERR;
@@ -485,6 +549,7 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
     json cmd = {};
     std::string strDefAddr4 = "0.0.0.0";
     std::string strDefAddr6 = "0:0:0:0:0:0:0:0";
+    std::string ifName;
 
     cmd = pcmd->getJsonData();
 
@@ -492,6 +557,27 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
     {
         LOG_S(ERROR) << "execCmdDefRouteSet - JSON does not contain data section";
         return JSON_RESULT_ERR;
+    }
+
+    // TODO(exception-handling-bug): see the matching TODO in
+    // execCmdRouteSet() above -- same reason, same pattern deliberately
+    // avoided here (plain is_string()/bool-return check instead of
+    // try{...}catch(std::exception&){...}) because of the libasync++.a
+    // linkage bug that breaks exception unwinding process-wide. Revert to
+    // try/catch once the root cause is found and fixed.
+    if(cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME))
+    {
+        if(!cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
+        {
+            LOG_S(ERROR) << "execCmdDefRouteSet: " << JSON_PARAM_IF_NAME << " must be a string";
+            return JSON_RESULT_ERR;
+        }
+        ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
+        if(!Tool::isValidIfName(ifName))
+        {
+            LOG_S(ERROR) << "execCmdDefRouteSet: invalid " << JSON_PARAM_IF_NAME << " value " << ifName;
+            return JSON_RESULT_ERR;
+        }
     }
 
     if(cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IPV4_GW))
@@ -517,7 +603,7 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    if(!NmWorkerRoute::setStaticRoute(rt_addr))
+    if(!NmWorkerRoute::setStaticRoute(rt_addr, ifName))
     {
         LOG_S(ERROR) << "Cannot set default route";
         return JSON_RESULT_ERR;

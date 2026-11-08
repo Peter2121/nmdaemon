@@ -1,4 +1,5 @@
 #include <net/if_bridgevar.h>
+#include <net/if_lagg.h>
 #include "tool.h"
 #include "addressgroup.h"
 #include "mediadesc.h"
@@ -179,7 +180,7 @@ bool Tool::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 
-bool Tool::bridgeAddMember(const std::string& brname, const std::string& memberName)
+bool Tool::clonedIfAddMember(const std::string& brname, const std::string& memberName)
 {
     struct ifbreq req;
     struct ifdrv ifd;
@@ -279,7 +280,7 @@ bool Tool::bridgeGetMembers(const std::string& brname, std::vector<std::string>&
     return true;
 }
 
-bool Tool::bridgeDestroy(const std::string& ifname)
+bool Tool::clonedIfDestroy(const std::string& ifname)
 {
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
@@ -288,6 +289,206 @@ bool Tool::bridgeDestroy(const std::string& ifname)
     if (ioctl(sock.handle(), SIOCIFDESTROY, (caddr_t)&ifr) < 0)
     {
         LOG_S(ERROR) << "Cannot destroy interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::laggAddPort(const std::string& laggname, const std::string& portname)
+{
+    struct lagg_reqport rp;
+
+    memset(&rp, 0, sizeof(rp));
+    strlcpy(rp.rp_ifname, laggname.c_str(), sizeof(rp.rp_ifname));
+    strlcpy(rp.rp_portname, portname.c_str(), sizeof(rp.rp_portname));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSLAGGPORT, (caddr_t)&rp) < 0)
+    {
+        LOG_S(ERROR) << "Cannot add " << portname << " as port of lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::laggRemovePort(const std::string& laggname, const std::string& portname)
+{
+    struct lagg_reqport rp;
+
+    memset(&rp, 0, sizeof(rp));
+    strlcpy(rp.rp_ifname, laggname.c_str(), sizeof(rp.rp_ifname));
+    strlcpy(rp.rp_portname, portname.c_str(), sizeof(rp.rp_portname));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSLAGGDELPORT, (caddr_t)&rp) < 0)
+    {
+        LOG_S(ERROR) << "Cannot remove " << portname << " as port of lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::laggGetPorts(const std::string& laggname, std::vector<std::string>& ports)
+{
+    struct lagg_reqall ra;
+    std::vector<struct lagg_reqport> buf(LAGG_MAX_PORTS);
+
+    ports.clear();
+    memset(&ra, 0, sizeof(ra));
+    strlcpy(ra.ra_ifname, laggname.c_str(), sizeof(ra.ra_ifname));
+    ra.ra_size = buf.size() * sizeof(struct lagg_reqport);
+    ra.ra_port = buf.data();
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGLAGG, (caddr_t)&ra) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get ports of lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+
+    int count = std::min(ra.ra_ports, (int)buf.size());
+    for(int i = 0; i < count; i++)
+        ports.push_back(std::string(buf[i].rp_portname));
+
+    return true;
+}
+
+bool Tool::laggGetMaster(const std::string& laggname, std::string& master)
+{
+    struct lagg_reqall ra;
+    std::vector<struct lagg_reqport> buf(LAGG_MAX_PORTS);
+
+    master.clear();
+    memset(&ra, 0, sizeof(ra));
+    strlcpy(ra.ra_ifname, laggname.c_str(), sizeof(ra.ra_ifname));
+    ra.ra_size = buf.size() * sizeof(struct lagg_reqport);
+    ra.ra_port = buf.data();
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGLAGG, (caddr_t)&ra) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get master port of lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+
+    int count = std::min(ra.ra_ports, (int)buf.size());
+    for(int i = 0; i < count; i++)
+    {
+        if(buf[i].rp_flags & LAGG_PORT_MASTER)
+        {
+            master = std::string(buf[i].rp_portname);
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool Tool::laggGetProto(const std::string& laggname, int& proto)
+{
+    struct lagg_reqall ra;
+    struct lagg_reqport rp;
+
+    memset(&ra, 0, sizeof(ra));
+    memset(&rp, 0, sizeof(rp));
+    strlcpy(ra.ra_ifname, laggname.c_str(), sizeof(ra.ra_ifname));
+    ra.ra_size = sizeof(rp);
+    ra.ra_port = &rp;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGLAGG, (caddr_t)&ra) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get protocol of lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+
+    proto = (int)ra.ra_proto;
+    return true;
+}
+
+bool Tool::laggProtoFromName(const std::string& name, int& proto)
+{
+    static const std::map<std::string, lagg_proto> LAGG_PROTO_NAME_MAP =
+    {
+        { JSON_PARAM_LAGG_PROTO_NONE, LAGG_PROTO_NONE },
+        { JSON_PARAM_LAGG_PROTO_ROUNDROBIN, LAGG_PROTO_ROUNDROBIN },
+        { JSON_PARAM_LAGG_PROTO_FAILOVER, LAGG_PROTO_FAILOVER },
+        { JSON_PARAM_LAGG_PROTO_LOADBALANCE, LAGG_PROTO_LOADBALANCE },
+        { JSON_PARAM_LAGG_PROTO_LACP, LAGG_PROTO_LACP },
+        { JSON_PARAM_LAGG_PROTO_BROADCAST, LAGG_PROTO_BROADCAST }
+    };
+
+    auto it = LAGG_PROTO_NAME_MAP.find(name);
+    if(it == LAGG_PROTO_NAME_MAP.end())
+        return false;
+
+    proto = (int)it->second;
+    return true;
+}
+
+std::string Tool::laggProtoName(int proto)
+{
+    static const std::map<int, std::string> LAGG_PROTO_VALUE_MAP =
+    {
+        { (int)LAGG_PROTO_NONE, JSON_PARAM_LAGG_PROTO_NONE },
+        { (int)LAGG_PROTO_ROUNDROBIN, JSON_PARAM_LAGG_PROTO_ROUNDROBIN },
+        { (int)LAGG_PROTO_FAILOVER, JSON_PARAM_LAGG_PROTO_FAILOVER },
+        { (int)LAGG_PROTO_LOADBALANCE, JSON_PARAM_LAGG_PROTO_LOADBALANCE },
+        { (int)LAGG_PROTO_LACP, JSON_PARAM_LAGG_PROTO_LACP },
+        { (int)LAGG_PROTO_BROADCAST, JSON_PARAM_LAGG_PROTO_BROADCAST }
+    };
+
+    auto it = LAGG_PROTO_VALUE_MAP.find(proto);
+    if(it == LAGG_PROTO_VALUE_MAP.end())
+        return std::string();
+
+    return it->second;
+}
+
+bool Tool::laggSetProto(const std::string& laggname, int proto)
+{
+    struct lagg_reqall ra;
+
+    memset(&ra, 0, sizeof(ra));
+    strlcpy(ra.ra_ifname, laggname.c_str(), sizeof(ra.ra_ifname));
+    ra.ra_proto = (u_int)proto;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSLAGG, (caddr_t)&ra) < 0)
+    {
+        LOG_S(ERROR) << "Cannot set protocol for lagg " << laggname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::laggSetRRLimit(const std::string& laggname, int limit)
+{
+    struct lagg_reqopts ro;
+
+    memset(&ro, 0, sizeof(ro));
+    strlcpy(ro.ro_ifname, laggname.c_str(), sizeof(ro.ro_ifname));
+    ro.ro_opts = LAGG_OPT_RR_LIMIT;
+    ro.ro_bkt = (uint32_t)limit;
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSLAGGOPTS, (caddr_t)&ro) < 0)
+    {
+        LOG_S(ERROR) << "Cannot set " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " for lagg " << laggname << " (" << strerror(errno) << ")";
         sock.close();
         return false;
     }
@@ -323,12 +524,30 @@ std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
         iface.setMediaDesc(Tool::getMediaDesc(name));
         iface.setDriverName(Tool::getIfDriverName(name));
         iface.setDescription(Tool::getIfDescription(name));
+        {
+            std::string curMac = Tool::getIfMacAddr(name);
+            std::string hwMac = Tool::getIfHwAddr(name);
+            if(!hwMac.empty() && hwMac != curMac)
+                iface.setHardwareAddress(hwMac);
+        }
         iface.findPrimaryAndJailAddress();
         if(name.starts_with(BRIDGE_IF_PREFIX))
         {
             std::vector<std::string> members;
             if(Tool::bridgeGetMembers(name, members))
                 iface.setBridgeMembers(members);
+        }
+        if(name.starts_with(LAGG_IF_PREFIX))
+        {
+            std::vector<std::string> ports;
+            if(Tool::laggGetPorts(name, ports))
+                iface.setLaggMembers(ports);
+            int proto = 0;
+            if(Tool::laggGetProto(name, proto))
+                iface.setLaggProto(Tool::laggProtoName(proto));
+            std::string master;
+            if(Tool::laggGetMaster(name, master))
+                iface.setLaggMaster(master);
         }
         vectIfsJson.push_back(iface.getIfJson());
     }
@@ -426,6 +645,58 @@ std::string Tool::getIfMacAddr(std::string ifname)
         LOG_S(ERROR) << "Cannot get MAC address for interface: " << ifname;
 
     return str_mac;
+}
+
+bool Tool::setIfMacAddr(const std::string& ifname, const std::string& macaddr)
+{
+    struct ifreq ifr;
+    struct ether_addr eaddr;
+
+    if(ether_aton_r(macaddr.c_str(), &eaddr) == nullptr)
+    {
+        LOG_S(ERROR) << "setIfMacAddr: invalid MAC address " << macaddr;
+        return false;
+    }
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+    ifr.ifr_addr.sa_family = AF_LINK;
+    ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
+    memcpy(ifr.ifr_addr.sa_data, &eaddr, ETHER_ADDR_LEN);
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCSIFLLADDR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot set MAC address " << macaddr << " for interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+std::string Tool::getIfHwAddr(const std::string& ifname)
+{
+    struct ifreq ifr;
+    char buf[32];
+    std::string str_hwaddr;
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGHWADDR, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(INFO) << "Cannot get hardware address for interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return str_hwaddr;
+    }
+    sock.close();
+
+    if(ether_ntoa_r((const struct ether_addr*)ifr.ifr_addr.sa_data, buf) != nullptr)
+        str_hwaddr = buf;
+
+    return str_hwaddr;
 }
 
 bool Tool::isValidGw4(uint32_t addr, uint32_t mask, uint32_t gw)

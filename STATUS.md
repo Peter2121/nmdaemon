@@ -18,10 +18,12 @@
 | INTERFACE   | IP6\_GET\_DHCP_STATUS | Not Implemented | *Not Applicable* | Not Implemented  |
 | INTERFACE   | IP\_ADDR_ADD          | Works           | Works            | Not Implemented  |
 | INTERFACE   | IP\_ADDR_REMOVE       | Works           | Works            | Not Implemented  |
+| INTERFACE   | IF_GET                | Works           | Works            | Works            |
+| INTERFACE   | IF_EDIT               | Works           | Not Implemented  | Not Implemented  |
 | INTERFACE   | MTU_GET               | Works           | Works            | Works            |
 | INTERFACE   | MTU_SET               | Works           | Works            | Works            |
 | INTERFACE   | MAC\_ADDR_GET         | Works           | *Not Applicable* | *Not Applicable* |
-| INTERFACE   | MAC\_ADDR_SET         | Not Implemented | *Not Applicable* | *Not Applicable* |
+| INTERFACE   | MAC\_ADDR_SET         | Works           | *Not Applicable* | *Not Applicable* |
 | ROUTE       | RT_GET                | Works           | Works            | Works            |
 | ROUTE       | RT\_DEF_GET           | Works           | Works            | *Not Applicable* |
 | ROUTE       | RT\_DEF6_GET          | Works           | *Not Applicable* | Untested         |

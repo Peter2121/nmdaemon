@@ -1,5 +1,6 @@
 #include "nmworkersys.h"
 #include "nmworkerroute.h"
+#include <net/if_lagg.h>
 
 NmWorkerSys::NmWorkerSys()
 {
@@ -226,15 +227,27 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
         { JSON_PARAM_IF_TYPE_BRIDGE, Tool::BRIDGE_IF_PREFIX },
-        { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
+        { JSON_PARAM_IF_TYPE_EPAIR, "epair" },
+        { JSON_PARAM_IF_TYPE_LAGG, Tool::LAGG_IF_PREFIX }
+    };
+    static const std::map<std::string, lagg_type> LAGG_TYPE_MAP =
+    {
+        { JSON_PARAM_LAGG_TYPE_ETHERNET, LAGG_TYPE_ETHERNET },
+        { JSON_PARAM_LAGG_TYPE_INFINIBAND, LAGG_TYPE_INFINIBAND }
     };
     struct ifreq ifr;
+    struct iflaggparam iflp;
     std::string ifname;
     std::string iftype;
     std::vector<std::string> members;
+    bool have_laggproto = false;
+    int laggproto = (int)LAGG_PROTO_FAILOVER;
+    bool have_rrlimit = false;
+    int rrlimit = 0;
     json cmd_json = {};
 
     memset(&ifr, 0, sizeof(struct ifreq));
+    memset(&iflp, 0, sizeof(iflp));
     try {
         cmd_json = pcmd->getJsonData();
         ifname = cmd_json[JSON_PARAM_DATA][JSON_PARAM_IF_NAME];
@@ -268,12 +281,12 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
         return JSON_RESULT_EXISTS;
     }
 
-    if(iftype == JSON_PARAM_IF_TYPE_BRIDGE && cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_MEMBERS))
+    if((iftype == JSON_PARAM_IF_TYPE_BRIDGE || iftype == JSON_PARAM_IF_TYPE_LAGG) && cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_MEMBERS))
     {
         try {
             members = cmd_json[JSON_PARAM_DATA][JSON_PARAM_MEMBERS].get<std::vector<std::string>>();
         } catch (std::exception& e) {
-            LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_MEMBERS << " list for bridge " << ifname;
+            LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_MEMBERS << " list for " << ifname;
             return JSON_RESULT_ERR;
         }
         for(const auto& member : members)
@@ -288,6 +301,62 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
                 LOG_S(ERROR) << "execCmdIfAdd: member interface " << member << " does not exist";
                 return JSON_RESULT_NOTFOUND;
             }
+        }
+    }
+
+    if(iftype == JSON_PARAM_IF_TYPE_LAGG)
+    {
+        if(cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_LAGG_TYPE))
+        {
+            std::string lagg_type_str;
+            try {
+                lagg_type_str = cmd_json[JSON_PARAM_DATA][JSON_PARAM_LAGG_TYPE];
+            } catch (std::exception& e) {
+                LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_LAGG_TYPE << " value";
+                return JSON_RESULT_ERR;
+            }
+            auto it_type = LAGG_TYPE_MAP.find(lagg_type_str);
+            if(it_type == LAGG_TYPE_MAP.end())
+            {
+                LOG_S(ERROR) << "execCmdIfAdd: unsupported " << JSON_PARAM_LAGG_TYPE << " value " << lagg_type_str;
+                return JSON_RESULT_ERR;
+            }
+            iflp.lagg_type = (uint8_t)it_type->second;
+            ifr.ifr_data = (caddr_t)&iflp;
+        }
+
+        if(cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_LAGG_PROTO))
+        {
+            std::string lagg_proto_str;
+            try {
+                lagg_proto_str = cmd_json[JSON_PARAM_DATA][JSON_PARAM_LAGG_PROTO];
+            } catch (std::exception& e) {
+                LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_LAGG_PROTO << " value";
+                return JSON_RESULT_ERR;
+            }
+            if(!Tool::laggProtoFromName(lagg_proto_str, laggproto))
+            {
+                LOG_S(ERROR) << "execCmdIfAdd: unsupported " << JSON_PARAM_LAGG_PROTO << " value " << lagg_proto_str;
+                return JSON_RESULT_ERR;
+            }
+            have_laggproto = true;
+        }
+
+        if(cmd_json[JSON_PARAM_DATA].contains(JSON_PARAM_LAGG_ROUNDROBIN_LIMIT))
+        {
+            if(!have_laggproto || laggproto != (int)LAGG_PROTO_ROUNDROBIN)
+            {
+                LOG_S(ERROR) << "execCmdIfAdd: " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " is only valid with "
+                             << JSON_PARAM_LAGG_PROTO << "=" << JSON_PARAM_LAGG_PROTO_ROUNDROBIN;
+                return JSON_RESULT_ERR;
+            }
+            try {
+                rrlimit = cmd_json[JSON_PARAM_DATA][JSON_PARAM_LAGG_ROUNDROBIN_LIMIT];
+            } catch (std::exception& e) {
+                LOG_S(ERROR) << "execCmdIfAdd: invalid " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " value";
+                return JSON_RESULT_ERR;
+            }
+            have_rrlimit = true;
         }
     }
 
@@ -316,23 +385,44 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
     sock.close();
     ifname = std::string(ifr.ifr_name);
 
-    for(const auto& member : members)
+    if(iftype == JSON_PARAM_IF_TYPE_LAGG && have_laggproto)
     {
-        if(!Tool::bridgeAddMember(ifname, member))
+        if(!Tool::laggSetProto(ifname, laggproto))
         {
-            LOG_S(ERROR) << "execCmdIfAdd: rolling back bridge " << ifname << " after failing to add member " << member;
-            Tool::bridgeDestroy(ifname);
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back lagg " << ifname << " after failing to set " << JSON_PARAM_LAGG_PROTO;
+            Tool::clonedIfDestroy(ifname);
             return JSON_RESULT_ERR;
         }
     }
 
-    if(iftype == JSON_PARAM_IF_TYPE_BRIDGE)
+    if(iftype == JSON_PARAM_IF_TYPE_LAGG && have_rrlimit)
+    {
+        if(!Tool::laggSetRRLimit(ifname, rrlimit))
+        {
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back lagg " << ifname << " after failing to set " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT;
+            Tool::clonedIfDestroy(ifname);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    for(const auto& member : members)
+    {
+        bool added = (iftype == JSON_PARAM_IF_TYPE_LAGG) ? Tool::laggAddPort(ifname, member) : Tool::clonedIfAddMember(ifname, member);
+        if(!added)
+        {
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back " << ifname << " after failing to add member " << member;
+            Tool::clonedIfDestroy(ifname);
+            return JSON_RESULT_ERR;
+        }
+    }
+
+    if(iftype == JSON_PARAM_IF_TYPE_BRIDGE || iftype == JSON_PARAM_IF_TYPE_LAGG)
     {
         int curflags = Tool::getIfFlags(ifname);
         if(curflags == 0 || !Tool::setIfFlags(ifname, curflags | IFF_UP))
         {
-            LOG_S(ERROR) << "execCmdIfAdd: rolling back bridge " << ifname << " after failing to bring it up";
-            Tool::bridgeDestroy(ifname);
+            LOG_S(ERROR) << "execCmdIfAdd: rolling back " << ifname << " after failing to bring it up";
+            Tool::clonedIfDestroy(ifname);
             return JSON_RESULT_ERR;
         }
     }
@@ -353,7 +443,8 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
         { JSON_PARAM_IF_TYPE_TUN, "tun" },
         { JSON_PARAM_IF_TYPE_TAP, "tap" },
         { JSON_PARAM_IF_TYPE_BRIDGE, Tool::BRIDGE_IF_PREFIX },
-        { JSON_PARAM_IF_TYPE_EPAIR, "epair" }
+        { JSON_PARAM_IF_TYPE_EPAIR, "epair" },
+        { JSON_PARAM_IF_TYPE_LAGG, Tool::LAGG_IF_PREFIX }
     };
     std::string ifname;
     json cmd_json = {};
@@ -383,7 +474,7 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
     }
     if(!known_type)
     {
-        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " is not a supported clone type (TUN/TAP/BRIDGE/EPAIR)";
+        LOG_S(ERROR) << "execCmdIfRemove: interface " << ifname << " is not a supported clone type (TUN/TAP/BRIDGE/EPAIR/LAGG)";
         return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
     }
 
@@ -403,7 +494,7 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
         return JSON_RESULT_NOTFOUND;
     }
 
-    if(!Tool::bridgeDestroy(ifname))
+    if(!Tool::clonedIfDestroy(ifname))
         return JSON_RESULT_ERR;
 
     return JSON_RESULT_SUCCESS;

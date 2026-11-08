@@ -44,15 +44,18 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
     { "SCOPE": "SYSTEM", "CMD": "IF_LIST" }
 
-List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set) and, for BRIDGE interfaces, their current "MEMBERS" list.
+List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address.
 
 ---
 
     { "SCOPE": "SYSTEM", "CMD": "IF_ADD", "DATA" : { "INTERFACE NAME" : "<interface name>", "INTERFACE TYPE" : "<interface type>" } }
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridgeX", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "<if_1>", "<if_2>", ... ] } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "laggX", "INTERFACE TYPE" : "LAGG"[, "LAGG TYPE": "ETHERNET|INFINIBAND"][, "LAGG PROTOCOL": "FAILOVER|LACP|LOADBALANCE|ROUNDROBIN|BROADCAST|NONE"][, "RR_LIMIT": <stride>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]] } }
 
 
-Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR. For BRIDGE type the members can be mentioned; the bridge is automatically brought up (and its members attached) once created. For EPAIR type the interface name must not include the trailing "a"/"b" side letter (e.g. "epair5"); the daemon creates both sides of the pair and returns the "a" side interface name.
+Add network interface. Currently supported the following interface types: TUN, TAP, BRIDGE, EPAIR, LAGG. For BRIDGE and LAGG types the members ("MEMBERS"/laggport) can be mentioned; the interface is automatically brought up (and its members/ports attached) once created. For EPAIR type the interface name must not include the trailing "a"/"b" side letter (e.g. "epair5"); the daemon creates both sides of the pair and returns the "a" side interface name.
+
+For LAGG: "LAGG TYPE" selects the underlying link type (defaults to "ETHERNET" if omitted) and must be set at creation time. "LAGG PROTOCOL" selects the aggregation protocol (defaults to the kernel's own default, "FAILOVER", if omitted). "RR_LIMIT" sets the round-robin stride and is only accepted when "LAGG PROTOCOL" is "ROUNDROBIN". "MEMBERS" lists the ports (laggport) to attach, in the same way as for BRIDGE.
 
 For example:
 
@@ -60,6 +63,8 @@ For example:
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "tap5", "INTERFACE TYPE" : "TAP" } }
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "epair5", "INTERFACE TYPE" : "EPAIR" } }
     { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "bridge5", "INTERFACE TYPE" : "BRIDGE", "MEMBERS": [ "re0", "em0" ] } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "lagg5", "INTERFACE TYPE" : "LAGG", "LAGG PROTOCOL": "LACP", "MEMBERS": [ "re0", "em0" ] } }
+    { "SCOPE" : "SYSTEM", "CMD" : "IF_ADD", "DATA" : { "INTERFACE NAME" : "lagg6", "INTERFACE TYPE" : "LAGG", "LAGG PROTOCOL": "ROUNDROBIN", "RR_LIMIT": 16, "MEMBERS": [ "re0", "em0" ] } }
 
 ---
 
@@ -130,15 +135,19 @@ For example:
 
 **Scope INTERFACE commands**
 
-    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]][, "DESCRIPTION": "<description>"] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]][, "DESCRIPTION": "<description>"][, "LAGG PROTOCOL": "FAILOVER|LACP|LOADBALANCE|ROUNDROBIN|BROADCAST|NONE"][, "RR_LIMIT": <stride>][, "LINK ADDRESS": "<mac_address>"] } }
 
-Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU", "MEMBERS" (for BRIDGE interfaces) and "DESCRIPTION" are supported; more properties will be added over time.
+Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU", "MEMBERS" (for BRIDGE and LAGG interfaces), "DESCRIPTION", "LAGG PROTOCOL", "RR_LIMIT" (both LAGG-only) and "LINK ADDRESS" are supported; more properties will be added over time.
 
-If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS"/"DESCRIPTION" in the same command already target the new name.
+If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS"/"DESCRIPTION"/"LAGG PROTOCOL"/"RR_LIMIT"/"LINK ADDRESS" in the same command already target the new name.
 
-"MEMBERS" describes the desired final member list of a bridge interface: members currently on the bridge but missing from the list are removed, and members in the list not yet on the bridge are added.
+"MEMBERS" describes the desired final member list of the interface: for a BRIDGE, its member interfaces; for a LAGG, its ports (laggport). Members currently attached but missing from the list are removed, and members in the list not yet attached are added.
 
 "DESCRIPTION" sets the interface description (equivalent to `ifconfig <if_name> description "<description>"`); an empty string clears it.
+
+"LAGG PROTOCOL" changes the aggregation protocol of an existing LAGG interface; returns an error for any other interface type. "RR_LIMIT" sets the round-robin stride and is only accepted for a LAGG interface that is (or is being, in the same command) set to the "ROUNDROBIN" protocol.
+
+"LINK ADDRESS" sets the interface's current MAC address, equivalent to MAC_ADDR_SET (`ifconfig <if_name> ether <mac_address>`). The hardware's permanent address is unaffected and, once they differ, is reported separately by IF_GET/IF_LIST as "HARDWARE ADDRESS".
 
 For example:
 
@@ -146,17 +155,21 @@ For example:
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "vnet0", "NAME": "eth0" } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "DESCRIPTION": "uplink to ISP" } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "lagg5", "LAGG PROTOCOL": "LACP", "MEMBERS": [ "re0", "em0" ] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "lagg5", "LAGG PROTOCOL": "ROUNDROBIN", "RR_LIMIT": 16 } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "LINK ADDRESS": "02:01:02:03:04:05" } }
 
 ---
 
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "<if_name>" } }
 
-Return the same information as IF_LIST (IP addresses, status, media, "DRIVER NAME", "DESCRIPTION", and "MEMBERS" for BRIDGE interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
+Return the same information as IF_LIST (IP addresses, status, media, "DRIVER NAME", "DESCRIPTION", "HARDWARE ADDRESS" when different from the current MAC, "MEMBERS" for BRIDGE interfaces, and "MEMBERS"/"LAGG PROTOCOL"/"MASTER" for LAGG interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
 
 For example:
 
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "em0" } }
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "bridge5" } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "lagg5" } }
 
 ---
 
@@ -248,6 +261,20 @@ For example:
 
     { "SCOPE": "INTERFACE", "CMD": "MTU_SET", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
 
+---
+
+    { "SCOPE": "INTERFACE", "CMD": "MAC_ADDR_GET", "DATA": { "INTERFACE NAME" : "<if_name>" } }
+
+    { "SCOPE": "INTERFACE", "CMD": "MAC_ADDR_SET", "DATA": { "INTERFACE NAME" : "<if_name>", "LINK ADDRESS": "<mac_address>" } }
+
+Get/Set the current MAC (link-layer) address of the interface, equivalent to `ifconfig <if_name> ether <mac_address>`. This changes the interface's active address only; the hardware's permanent/burned-in address is unaffected and, once they differ, is reported separately as "HARDWARE ADDRESS" by IF_GET/IF_LIST.
+
+For example:
+
+    { "SCOPE": "INTERFACE", "CMD": "MAC_ADDR_GET", "DATA": { "INTERFACE NAME": "em0" } }
+
+    { "SCOPE": "INTERFACE", "CMD": "MAC_ADDR_SET", "DATA": { "INTERFACE NAME": "em0", "LINK ADDRESS": "02:01:02:03:04:05" } }
+
 
 **Scope ROUTE commands**
 
@@ -281,23 +308,29 @@ List all IPv6 routes
 
 ---
 
-    { "SCOPE": "ROUTE", "CMD": "RT_DEF_SET", "DATA": { "IPV4 GATEWAY": "<ip_address>" } }
+    { "SCOPE": "ROUTE", "CMD": "RT_DEF_SET", "DATA": { "IPV4 GATEWAY": "<ip_address>"[, "INTERFACE NAME": "<if_name>"] } }
 
 Set default IPv4 route
+
+If "INTERFACE NAME" is given, the route is forced to use that interface, equivalent to passing `-ifp <if_name>` to `route(8)`.
 
 For example:
 
     { "SCOPE": "ROUTE", "CMD": "RT_DEF_SET", "DATA": { "IPV4 GATEWAY": "192.168.212.2" } }
+    { "SCOPE": "ROUTE", "CMD": "RT_DEF_SET", "DATA": { "IPV4 GATEWAY": "192.168.212.2", "INTERFACE NAME": "em0" } }
 
 ---
 
-    { "SCOPE": "ROUTE", "CMD": "RT_SET", "DATA": { "IPV4 ADDRESS": "<ip_address>", "IPV4 SUBNET MASK": "<ip_address>", "IPV4 GATEWAY": "<ip_address>" } }
+    { "SCOPE": "ROUTE", "CMD": "RT_SET", "DATA": { "IPV4 ADDRESS": "<ip_address>", "IPV4 SUBNET MASK": "<ip_address>", "IPV4 GATEWAY": "<ip_address>"[, "INTERFACE NAME": "<if_name>"] } }
 
 Add IPv4 static route
+
+If "INTERFACE NAME" is given, the route is forced to use that interface, equivalent to passing `-ifp <if_name>` to `route(8)`.
 
 For example:
 
     { "SCOPE": "ROUTE", "CMD": "RT_SET", "DATA": { "IPV4 ADDRESS": "99.99.99.0", "IPV4 SUBNET MASK": "255.255.255.0", "IPV4 GATEWAY": "192.168.211.2" } }
+    { "SCOPE": "ROUTE", "CMD": "RT_SET", "DATA": { "IPV4 ADDRESS": "99.99.99.0", "IPV4 SUBNET MASK": "255.255.255.0", "IPV4 GATEWAY": "192.168.211.2", "INTERFACE NAME": "em0" } }
 
 ---
 

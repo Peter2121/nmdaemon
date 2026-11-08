@@ -2,7 +2,7 @@
 
 Interface::Interface(std::string name) : strName(name), hasIPv4(false), hasIPv6(false),
                                          isIfUp(false), isIfRunning(false), isDhcpEnabled(false), ifStatus(MediaStatus::UNKNOWN),
-                                         isBridge(false)
+                                         isBridge(false), isLagg(false)
 {
 }
 
@@ -119,6 +119,9 @@ const nlohmann::json Interface::getIfJson() const
     if(!description.empty())
         retIfJson[JSON_PARAM_DESCRIPTION] = description;
 
+    if(!hardwareAddress.empty())
+        retIfJson[JSON_PARAM_HWADDR] = hardwareAddress;
+
     if(isDhcpEnabled)
         retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
 
@@ -127,6 +130,15 @@ const nlohmann::json Interface::getIfJson() const
 
     if(isBridge)
         retIfJson[JSON_PARAM_MEMBERS] = bridgeMembers;
+
+    if(isLagg)
+    {
+        retIfJson[JSON_PARAM_MEMBERS] = laggMembers;
+        if(!laggProto.empty())
+            retIfJson[JSON_PARAM_LAGG_PROTO] = laggProto;
+        if(!laggMaster.empty())
+            retIfJson[JSON_PARAM_LAGG_MASTER] = laggMaster;
+    }
 
     for(auto addr : spVectAddrs)
     {
@@ -165,6 +177,24 @@ void Interface::setBridgeMembers(const std::vector<std::string>& members)
     bridgeMembers = members;
 }
 
+void Interface::setLaggMembers(const std::vector<std::string>& members)
+{
+    isLagg = true;
+    laggMembers = members;
+}
+
+void Interface::setLaggProto(const std::string& proto)
+{
+    isLagg = true;
+    laggProto = proto;
+}
+
+void Interface::setLaggMaster(const std::string& master)
+{
+    isLagg = true;
+    laggMaster = master;
+}
+
 const std::string &Interface::getMediaDesc() const
 {
     return mediaDesc;
@@ -193,6 +223,11 @@ const std::string &Interface::getDescription() const
 void Interface::setDescription(const std::string &newDescription)
 {
     description = newDescription;
+}
+
+void Interface::setHardwareAddress(const std::string &newHardwareAddress)
+{
+    hardwareAddress = newHardwareAddress;
 }
 
 void Interface::findPrimaryAndJailAddress()

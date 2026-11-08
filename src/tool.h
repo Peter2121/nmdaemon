@@ -56,6 +56,7 @@ protected:
     };
 public:
     static inline const std::string BRIDGE_IF_PREFIX = "bridge";
+    static inline const std::string LAGG_IF_PREFIX = "lagg";
     inline static std::random_device RANDOM_DEVICE;
     inline static std::mt19937 RANDOM_MT;
     inline static std::uniform_int_distribution<int> RND_DISTR;
@@ -64,15 +65,26 @@ public:
     static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
-    static bool bridgeAddMember(const std::string& brname, const std::string& memberName);
+    static bool clonedIfAddMember(const std::string& brname, const std::string& memberName);
     static bool bridgeRemoveMember(const std::string& brname, const std::string& memberName);
     static bool bridgeGetMembers(const std::string& brname, std::vector<std::string>& members);
-    static bool bridgeDestroy(const std::string& ifname);
+    static bool clonedIfDestroy(const std::string& ifname);
+    static bool laggAddPort(const std::string& laggname, const std::string& portname);
+    static bool laggRemovePort(const std::string& laggname, const std::string& portname);
+    static bool laggGetPorts(const std::string& laggname, std::vector<std::string>& ports);
+    static bool laggGetMaster(const std::string& laggname, std::string& master); // empty on success if no port currently has the MASTER flag
+    static bool laggSetProto(const std::string& laggname, int proto); // proto is a lagg_proto (net/if_lagg.h) value
+    static bool laggGetProto(const std::string& laggname, int& proto);
+    static bool laggSetRRLimit(const std::string& laggname, int limit);
+    static bool laggProtoFromName(const std::string& name, int& proto); // maps a JSON_PARAM_LAGG_PROTO_* string to its lagg_proto value
+    static std::string laggProtoName(int proto); // reverse of laggProtoFromName; empty string if unknown
     static std::vector<json> getIfInfoJson(const std::string& ifname = std::string()); // ifname empty => all interfaces, otherwise at most one match
     static bool loadIfKldModule(const std::string& prefix); // loads kernel module "if_<prefix>" (e.g. "if_epair") if not already loaded
     static std::string getIfPrimaryAddr4(std::string);
     static std::string getIfPrimaryAddr6(std::string);
     static std::string getIfMacAddr(std::string);
+    static bool setIfMacAddr(const std::string& ifname, const std::string& macaddr);
+    static std::string getIfHwAddr(const std::string& ifname); // permanent/burned-in address, as reported by SIOCGHWADDR (ifconfig's "hwaddr")
     static bool isValidGw4(uint32_t, uint32_t, uint32_t);
     static bool isValidBcast4(uint32_t, uint32_t, uint32_t);
     static std::vector<std::tuple<int, std::string, std::string>> getActiveProcesses();

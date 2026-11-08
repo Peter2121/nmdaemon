@@ -25,8 +25,13 @@ protected:
     std::string mediaDesc;
     std::string driverName;
     std::string description;
+    std::string hardwareAddress;
     bool isBridge;
     std::vector<std::string> bridgeMembers;
+    bool isLagg;
+    std::vector<std::string> laggMembers;
+    std::string laggProto;
+    std::string laggMaster;
 public:
     Interface(std::string);
     Interface() : Interface("") {}
@@ -41,6 +46,9 @@ public:
     void setDhcpStatus(bool);
     bool getDhcpStatus() const;
     void setBridgeMembers(const std::vector<std::string>&);
+    void setLaggMembers(const std::vector<std::string>&);
+    void setLaggProto(const std::string&);
+    void setLaggMaster(const std::string&);
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);
@@ -48,6 +56,7 @@ public:
     void setDriverName(const std::string &newDriverName);
     const std::string &getDescription() const;
     void setDescription(const std::string &newDescription);
+    void setHardwareAddress(const std::string &newHardwareAddress);
     void findPrimaryAndJailAddress();
 };
 

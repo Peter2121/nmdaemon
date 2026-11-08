@@ -38,6 +38,28 @@ typedef struct
       struct sockaddr_dl netmask;
 } static_route_link;
 
+// Same leading layout as static_route/static_route6, with a trailing RTA_IFP
+// sockaddr_dl used only when a specific outgoing interface ('-ifp') is forced;
+// when it is not, the message is sent truncated right before this member
+// (see offsetof(..., ifp) in setStaticRoute).
+typedef struct
+{
+      struct rt_msghdr head;
+      struct sockaddr_in dest;
+      struct sockaddr_in gateway;
+      struct sockaddr_in netmask;
+      struct sockaddr_dl ifp;
+} static_route_ifp;
+
+typedef struct
+{
+      struct rt_msghdr head;
+      struct sockaddr_in6 dest;
+      struct sockaddr_in6 gateway;
+      struct sockaddr_in6 netmask;
+      struct sockaddr_dl ifp;
+} static_route6_ifp;
+
 class NmWorkerRoute : public NmWorkerBase
 {
 protected:
@@ -53,12 +75,13 @@ protected:
         { NmScope::ROUTE, NmCmd::RT_LIST },
         { NmScope::ROUTE, NmCmd::RT_LIST6 }
     };
-    bool setStaticRoute(std::shared_ptr<AddressGroup>);
+    bool setStaticRoute(std::shared_ptr<AddressGroup>, const std::string& ifname = std::string());
     bool delStaticRoute(std::shared_ptr<AddressGroup>);
     std::unique_ptr<Interface> getStaticRoute(std::shared_ptr<AddressGroup>);
 //    bool getStaticRouteN(std::shared_ptr<addr>);
     void setPsaStruct(sockaddr_in *, const std::shared_ptr<AddressBase>);
     void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<AddressBase>);
+    void setPsaStructIfp(struct sockaddr_dl *, const std::string& ifname);
 public:
     NmWorkerRoute();
     ~NmWorkerRoute();

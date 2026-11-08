@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <stdexcept>
 #include <algorithm>
+#include <net/if_lagg.h>
 
 extern char **environ;
 
@@ -37,6 +38,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return execCmdIp6AddrGet(pcmd);
         case NmCmd::MAC_ADDR_GET :
             return execCmdMacAddrGet(pcmd);
+        case NmCmd::MAC_ADDR_SET :
+            return execCmdMacAddrSet(pcmd);
         case NmCmd::IP_ADDR_ADD :
             return execCmdIpAddrAdd(pcmd);
         case NmCmd::IP_ADDR_REMOVE :
@@ -54,7 +57,6 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
         case NmCmd::IP6_DHCP_ENABLE :
         case NmCmd::IP6_DHCP_DISABLE :
         case NmCmd::IP6_GET_DHCP_STATUS :
-        case NmCmd::MAC_ADDR_SET :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
@@ -319,14 +321,25 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
     json cmd = {};
     json cmd_data = {};
 
-    try {
-        cmd = pcmd->getJsonData();
-        cmd_data = cmd[JSON_PARAM_DATA];
-        ifName = cmd_data[JSON_PARAM_IF_NAME];
-        if(!Tool::isValidIfName(ifName))
-            throw std::invalid_argument("invalid interface name");
-    } catch (std::exception& e) {
-        LOG_S(ERROR) << "Exception in execCmdIfEdit - cannot get interface name: " << e.what();
+    // TODO(exception-handling-bug): was try{...}catch(std::exception&){...}
+    // (throwing on an invalid interface name), replaced with a plain
+    // is_string()/bool-return check after it was caught live crashing the
+    // daemon via the libasync++.a exception-unwinding bug -- see the matching
+    // TODO on the LINK ADDRESS block below, and nmworkerroute.cpp's
+    // execCmdRouteSet() for the full explanation. Revert to try/catch for
+    // consistency once that bug is root-caused and fixed.
+    cmd = pcmd->getJsonData();
+    if(!cmd.contains(JSON_PARAM_DATA) || !cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME) ||
+       !cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
+    {
+        LOG_S(ERROR) << "execCmdIfEdit: cannot get interface name";
+        return JSON_RESULT_ERR;
+    }
+    cmd_data = cmd[JSON_PARAM_DATA];
+    ifName = cmd_data[JSON_PARAM_IF_NAME].get<std::string>();
+    if(!Tool::isValidIfName(ifName))
+    {
+        LOG_S(ERROR) << "execCmdIfEdit: invalid interface name " << ifName;
         return JSON_RESULT_ERR;
     }
 
@@ -359,6 +372,61 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
     }
 
+    bool laggProtoSetToRoundRobin = false;
+
+    if(cmd_data.contains(JSON_PARAM_LAGG_PROTO))
+    {
+        if(!ifName.starts_with(Tool::LAGG_IF_PREFIX))
+        {
+            LOG_S(ERROR) << "execCmdIfEdit: " << JSON_PARAM_LAGG_PROTO << " is only valid for LAGG interfaces";
+            return JSON_RESULT_ERR;
+        }
+        std::string laggProtoStr;
+        int laggProtoVal = 0;
+        try {
+            laggProtoStr = cmd_data[JSON_PARAM_LAGG_PROTO];
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_LAGG_PROTO << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!Tool::laggProtoFromName(laggProtoStr, laggProtoVal))
+        {
+            LOG_S(ERROR) << "execCmdIfEdit: unsupported " << JSON_PARAM_LAGG_PROTO << " value " << laggProtoStr;
+            return JSON_RESULT_ERR;
+        }
+        if(!Tool::laggSetProto(ifName, laggProtoVal))
+            return JSON_RESULT_ERR;
+        laggProtoSetToRoundRobin = (laggProtoVal == (int)LAGG_PROTO_ROUNDROBIN);
+    }
+
+    if(cmd_data.contains(JSON_PARAM_LAGG_ROUNDROBIN_LIMIT))
+    {
+        if(!ifName.starts_with(Tool::LAGG_IF_PREFIX))
+        {
+            LOG_S(ERROR) << "execCmdIfEdit: " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " is only valid for LAGG interfaces";
+            return JSON_RESULT_ERR;
+        }
+        if(!laggProtoSetToRoundRobin)
+        {
+            int curProto = 0;
+            if(!Tool::laggGetProto(ifName, curProto) || curProto != (int)LAGG_PROTO_ROUNDROBIN)
+            {
+                LOG_S(ERROR) << "execCmdIfEdit: " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " is only valid with "
+                             << JSON_PARAM_LAGG_PROTO << "=" << JSON_PARAM_LAGG_PROTO_ROUNDROBIN;
+                return JSON_RESULT_ERR;
+            }
+        }
+        int rrLimit = 0;
+        try {
+            rrLimit = cmd_data[JSON_PARAM_LAGG_ROUNDROBIN_LIMIT];
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_LAGG_ROUNDROBIN_LIMIT << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!Tool::laggSetRRLimit(ifName, rrLimit))
+            return JSON_RESULT_ERR;
+    }
+
     if(cmd_data.contains(JSON_PARAM_MEMBERS))
     {
         std::vector<std::string> members;
@@ -376,7 +444,8 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
                 return JSON_RESULT_ERR;
             }
         }
-        if(!setBridgeMembers(ifName, members))
+        bool membersOk = ifName.starts_with(Tool::LAGG_IF_PREFIX) ? setLaggMembers(ifName, members) : setBridgeMembers(ifName, members);
+        if(!membersOk)
             return JSON_RESULT_ERR;
     }
 
@@ -390,6 +459,25 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
         }
         if(!setDescription(ifName, description))
+            return JSON_RESULT_ERR;
+    }
+
+    // TODO(exception-handling-bug): deliberately uses a plain is_string()/
+    // bool-return check instead of the project's usual try{...}catch
+    // (std::exception&){...} pattern used elsewhere in this function -- see
+    // the TODO in execCmdMacAddrSet() / nmworkerroute.cpp's execCmdRouteSet()
+    // for the full explanation (linking libasync++.a breaks exception
+    // unwinding for the whole process). Revert to try/catch once that is
+    // root-caused and fixed.
+    if(cmd_data.contains(JSON_PARAM_LINK_ADDR))
+    {
+        if(!cmd_data[JSON_PARAM_LINK_ADDR].is_string())
+        {
+            LOG_S(ERROR) << "execCmdIfEdit: " << JSON_PARAM_LINK_ADDR << " must be a string";
+            return JSON_RESULT_ERR;
+        }
+        std::string macAddr = cmd_data[JSON_PARAM_LINK_ADDR].get<std::string>();
+        if(!Tool::setIfMacAddr(ifName, macAddr))
             return JSON_RESULT_ERR;
     }
 
@@ -675,9 +763,51 @@ bool NmWorkerIf::setBridgeMembers(const std::string& ifname, const std::vector<s
                 LOG_S(ERROR) << "setBridgeMembers: member interface " << member << " does not exist";
                 return false;
             }
-            if(!Tool::bridgeAddMember(ifname, member))
+            if(!Tool::clonedIfAddMember(ifname, member))
             {
                 LOG_S(ERROR) << "setBridgeMembers: cannot add member " << member << " to bridge " << ifname;
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool NmWorkerIf::setLaggMembers(const std::string& ifname, const std::vector<std::string>& members)
+{
+    std::vector<std::string> current;
+
+    if(!Tool::laggGetPorts(ifname, current))
+    {
+        LOG_S(ERROR) << "setLaggMembers: cannot get current ports of lagg " << ifname;
+        return false;
+    }
+
+    for(const auto& cur : current)
+    {
+        if(std::find(members.begin(), members.end(), cur) == members.end())
+        {
+            if(!Tool::laggRemovePort(ifname, cur))
+            {
+                LOG_S(ERROR) << "setLaggMembers: cannot remove port " << cur << " from lagg " << ifname;
+                return false;
+            }
+        }
+    }
+
+    for(const auto& member : members)
+    {
+        if(std::find(current.begin(), current.end(), member) == current.end())
+        {
+            if(if_nametoindex(member.c_str()) == 0)
+            {
+                LOG_S(ERROR) << "setLaggMembers: member interface " << member << " does not exist";
+                return false;
+            }
+            if(!Tool::laggAddPort(ifname, member))
+            {
+                LOG_S(ERROR) << "setLaggMembers: cannot add port " << member << " to lagg " << ifname;
                 return false;
             }
         }
@@ -849,6 +979,46 @@ json NmWorkerIf::execCmdMacAddrGet(NmCommandData *pcmd)
         res = JSON_RESULT_ERR;
     }
     return res;
+}
+
+// TODO(exception-handling-bug): deliberately uses plain is_string()/bool-return
+// checks instead of the project's usual try{...}catch(std::exception&){...}
+// pattern (see execCmdMacAddrGet() above for that pattern, and the matching
+// TODO in nmworkerroute.cpp's execCmdRouteSet()/execCmdDefRouteSet() for the
+// full explanation) -- linking libasync++.a breaks exception unwinding for the
+// whole process, so new code avoids throw/catch until that is root-caused and
+// fixed. Revert to try/catch for consistency once it is.
+json NmWorkerIf::execCmdMacAddrSet(NmCommandData* pcmd)
+{
+    json cmd = {};
+    std::string macAddr;
+
+    cmd = pcmd->getJsonData();
+
+    if(!cmd.contains(JSON_PARAM_DATA) || !cmd[JSON_PARAM_DATA].contains(JSON_PARAM_IF_NAME) ||
+       !cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].is_string())
+    {
+        LOG_S(ERROR) << "execCmdMacAddrSet: cannot get interface name";
+        return JSON_RESULT_ERR;
+    }
+    ifName = cmd[JSON_PARAM_DATA][JSON_PARAM_IF_NAME].get<std::string>();
+    if(!Tool::isValidIfName(ifName))
+    {
+        LOG_S(ERROR) << "execCmdMacAddrSet: invalid interface name " << ifName;
+        return JSON_RESULT_ERR;
+    }
+
+    if(!cmd[JSON_PARAM_DATA].contains(JSON_PARAM_LINK_ADDR) || !cmd[JSON_PARAM_DATA][JSON_PARAM_LINK_ADDR].is_string())
+    {
+        LOG_S(ERROR) << "execCmdMacAddrSet: " << JSON_PARAM_LINK_ADDR << " must be a string";
+        return JSON_RESULT_ERR;
+    }
+    macAddr = cmd[JSON_PARAM_DATA][JSON_PARAM_LINK_ADDR].get<std::string>();
+
+    if(!Tool::setIfMacAddr(ifName, macAddr))
+        return JSON_RESULT_ERR;
+
+    return JSON_RESULT_SUCCESS;
 }
 
 bool NmWorkerIf::isDHCPEnabled()

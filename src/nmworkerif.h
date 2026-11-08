@@ -52,6 +52,7 @@ protected:
     bool enableDHCP();
     static bool setMtu(const std::string& ifname, int mtu);
     static bool setBridgeMembers(const std::string& ifname, const std::vector<std::string>& members);
+    static bool setLaggMembers(const std::string& ifname, const std::vector<std::string>& members);
     static bool setIfName(const std::string& ifname, const std::string& newname);
     static bool setDescription(const std::string& ifname, const std::string& description);
 //    addr* getAddrFromJson(json);
@@ -68,6 +69,7 @@ public:
     json execCmdIp4AddrGet(NmCommandData*);
     json execCmdIp6AddrGet(NmCommandData*);
     json execCmdMacAddrGet(NmCommandData*);
+    json execCmdMacAddrSet(NmCommandData*);
     json execCmdIpAddrAdd(NmCommandData*);
     json execCmdIpAddrRemove(NmCommandData*);
     json execCmdMtuGet(NmCommandData*);
