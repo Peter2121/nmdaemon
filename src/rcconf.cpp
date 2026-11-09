@@ -278,12 +278,18 @@ std::string RcConf::ipv4FromOctets(unsigned int a, unsigned int b, unsigned int 
     return std::to_string(a) + "." + std::to_string(b) + "." + std::to_string(c) + "." + std::to_string(d);
 }
 
+bool RcConf::validOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d)
+{
+    return a <= 255 && b <= 255 && c <= 255 && d <= 255;
+}
+
 json RcConf::getIpConfFromString(std::string ifconfig)
 {
     unsigned int o1, o2, o3, o4;
     unsigned int m1, m2, m3, m4;
     unsigned int prefix;
     unsigned int hexmask;
+    int consumed;
     struct in_addr ip_mask;
     const std::string quotes = "\"";
     const std::string space = " ";
@@ -300,7 +306,7 @@ json RcConf::getIpConfFromString(std::string ifconfig)
 
     // "inet 127.0.0.251/24"
     if(sscanf(ifconfig.c_str(), IF_FORMAT_CIDR.c_str(), &o1, &o2, &o3, &o4, &prefix) == 5 &&
-       prefix > 0 && prefix <= 32)
+       validOctets(o1, o2, o3, o4) && prefix > 0 && prefix <= 32)
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(prefix);
@@ -308,7 +314,9 @@ json RcConf::getIpConfFromString(std::string ifconfig)
     }
 
     // "inet 127.0.0.251 netmask 255.255.255.0"
-    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_DOTTED.c_str(), &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4) == 8)
+    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_DOTTED.c_str(), &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4, &consumed) == 8 &&
+       consumed == static_cast<int>(ifconfig.length()) &&
+       validOctets(o1, o2, o3, o4) && validOctets(m1, m2, m3, m4))
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = ipv4FromOctets(m1, m2, m3, m4);
@@ -316,7 +324,9 @@ json RcConf::getIpConfFromString(std::string ifconfig)
     }
 
     // "inet 127.0.0.251 netmask 0xffffff00"
-    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask) == 5)
+    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask, &consumed) == 5 &&
+       consumed == static_cast<int>(ifconfig.length()) &&
+       validOctets(o1, o2, o3, o4))
     {
         hexmask = htonl(hexmask);
         ip_mask.s_addr = hexmask;
@@ -335,6 +345,7 @@ json RcConf::getRouteConfFromString(std::string rtconfig)
     unsigned int g1, g2, g3, g4;
     unsigned int prefix;
     unsigned int hexmask;
+    int consumed;
     struct in_addr ip_mask;
     const std::string quotes = "\"";
     const std::string space = " ";
@@ -345,7 +356,7 @@ json RcConf::getRouteConfFromString(std::string rtconfig)
 
     // "-net 192.168.32.0/24 192.168.213.252"
     if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_CIDR.c_str(), &o1, &o2, &o3, &o4, &prefix, &g1, &g2, &g3, &g4) == 9 &&
-       prefix > 0 && prefix <= 32)
+       validOctets(o1, o2, o3, o4) && validOctets(g1, g2, g3, g4) && prefix > 0 && prefix <= 32)
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(prefix);
@@ -355,7 +366,9 @@ json RcConf::getRouteConfFromString(std::string rtconfig)
 
     // "-net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252"
     if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_DOTTED.c_str(),
-              &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4, &g1, &g2, &g3, &g4) == 12)
+              &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4, &g1, &g2, &g3, &g4, &consumed) == 12 &&
+       consumed == static_cast<int>(rtconfig.length()) &&
+       validOctets(o1, o2, o3, o4) && validOctets(m1, m2, m3, m4) && validOctets(g1, g2, g3, g4))
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = ipv4FromOctets(m1, m2, m3, m4);
@@ -364,7 +377,9 @@ json RcConf::getRouteConfFromString(std::string rtconfig)
     }
 
     // "-net 192.168.32.0 -netmask 0xffffff00 192.168.213.252"
-    if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask, &g1, &g2, &g3, &g4) == 9)
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask, &g1, &g2, &g3, &g4, &consumed) == 9 &&
+       consumed == static_cast<int>(rtconfig.length()) &&
+       validOctets(o1, o2, o3, o4) && validOctets(g1, g2, g3, g4))
     {
         hexmask = htonl(hexmask);
         ip_mask.s_addr = hexmask;
@@ -375,7 +390,8 @@ json RcConf::getRouteConfFromString(std::string rtconfig)
     }
 
     // "-host 191.1.200.4 192.168.213.254"
-    if(sscanf(rtconfig.c_str(), RT_FORMAT_HOST.c_str(), &o1, &o2, &o3, &o4, &g1, &g2, &g3, &g4) == 8)
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_HOST.c_str(), &o1, &o2, &o3, &o4, &g1, &g2, &g3, &g4) == 8 &&
+       validOctets(o1, o2, o3, o4) && validOctets(g1, g2, g3, g4))
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = IPV4_MASK_HOST;

@@ -37,17 +37,23 @@ protected:
     static constexpr int MAX_ALIASES = 999;
     // sscanf() format strings used by getIpConfFromString()/getRouteConfFromString(),
     // named after what they match rather than left as anonymous locals.
-    static inline const std::string IF_FORMAT_CIDR = "inet %3d.%3d.%3d.%3d/%2d";                       // "inet 127.0.0.251/24"
-    static inline const std::string IF_FORMAT_NETMASK_DOTTED = "inet %3d.%3d.%3d.%3d netmask %3d.%3d.%3d.%3d"; // "inet 127.0.0.251 netmask 255.255.255.0"
-    static inline const std::string IF_FORMAT_NETMASK_HEX = "inet %3d.%3d.%3d.%3d netmask %10x";        // "inet 127.0.0.251 netmask 0xffffff00"
-    static inline const std::string RT_FORMAT_NET_CIDR = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d/%2d %3d.%3d.%3d.%3d"; // "-net 192.168.32.0/24 192.168.213.252"
-    static inline const std::string RT_FORMAT_NET_DOTTED = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // "-net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252"
-    static inline const std::string RT_FORMAT_NET_HEX = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %10x %3d.%3d.%3d.%3d"; // "-net 192.168.32.0 -netmask 0xffffff00 192.168.213.252"
-    static inline const std::string RT_FORMAT_HOST = ROUTE_PREFIX_HOST + " %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // "-host 191.1.200.4 192.168.213.254"
+    // %u (not %d) matches the unsigned int* arguments passed at each call site.
+    static inline const std::string IF_FORMAT_CIDR = "inet %3u.%3u.%3u.%3u/%2u";                       // "inet 127.0.0.251/24"
+    // These two pairs share a "netmask"/"-netmask" prefix and differ only in how the
+    // trailing token is read, so an out-of-range dotted mask can otherwise be accepted
+    // as a partial match by the hex form (sscanf doesn't require consuming the whole
+    // string). The trailing %n + a consumed-length check at the call site rejects that.
+    static inline const std::string IF_FORMAT_NETMASK_DOTTED = "inet %3u.%3u.%3u.%3u netmask %3u.%3u.%3u.%3u%n"; // "inet 127.0.0.251 netmask 255.255.255.0"
+    static inline const std::string IF_FORMAT_NETMASK_HEX = "inet %3u.%3u.%3u.%3u netmask %10x%n";        // "inet 127.0.0.251 netmask 0xffffff00"
+    static inline const std::string RT_FORMAT_NET_CIDR = ROUTE_PREFIX_NET + " %3u.%3u.%3u.%3u/%2u %3u.%3u.%3u.%3u"; // "-net 192.168.32.0/24 192.168.213.252"
+    static inline const std::string RT_FORMAT_NET_DOTTED = ROUTE_PREFIX_NET + " %3u.%3u.%3u.%3u -netmask %3u.%3u.%3u.%3u %3u.%3u.%3u.%3u%n"; // "-net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252"
+    static inline const std::string RT_FORMAT_NET_HEX = ROUTE_PREFIX_NET + " %3u.%3u.%3u.%3u -netmask %10x %3u.%3u.%3u.%3u%n"; // "-net 192.168.32.0 -netmask 0xffffff00 192.168.213.252"
+    static inline const std::string RT_FORMAT_HOST = ROUTE_PREFIX_HOST + " %3u.%3u.%3u.%3u %3u.%3u.%3u.%3u"; // "-host 191.1.200.4 192.168.213.254"
     std::string rcFileName;
     std::unique_ptr<CIniFile> rcIniFile;
     std::string getStrInetMaskFromPrefix(int);
     static std::string ipv4FromOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d);
+    static bool validOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d);
     json getIpConfFromString(std::string);
     json getRouteConfFromString(std::string);
     short nBackups;
