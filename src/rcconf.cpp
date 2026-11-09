@@ -1,13 +1,11 @@
 #include "rcconf.h"
 
-RcConf::RcConf(std::string path, short nbkp) : rcFileName(path), nBackups(nbkp)
+RcConf::RcConf(std::string path, short nbkp) : rcFileName(path), rcIniFile(std::make_unique<CIniFile>()), nBackups(nbkp)
 {
-    rcIniFile = new CIniFile();
 }
 
 RcConf::~RcConf()
 {
-    delete rcIniFile;
 }
 
 bool RcConf::iniLoad()
@@ -51,8 +49,8 @@ json RcConf::getRcIpConfig()
     std::map<std::string, std::string> mapInterfaces;
     std::map<std::string, std::string> mapRoutes;
     std::set<std::string> setActiveRoutes;
+    std::set<std::string> ifacesWithAliasesForm;
     bool is_primary = false;
-    bool aliases_processed = false;
 
     for( SecIndex::const_iterator itr = rcIniFile->GetSections().begin(); itr != rcIniFile->GetSections().end(); ++itr )
     {
@@ -105,6 +103,18 @@ json RcConf::getRcIpConfig()
     jaliases.clear();
     if(!mapInterfaces.empty())
     {
+        // Interfaces that have an ifconfig_<name>_aliases (plural) record: that
+        // form takes priority over ifconfig_<name>_aliasN (singular) for the
+        // SAME interface. Collected up front, per interface name, rather than
+        // tracked as a single running flag, so an _aliases record on one
+        // interface can't suppress _aliasN parsing on a different interface
+        // that happens to sort later in mapInterfaces.
+        for (const auto& [ifname, ifconfig] : mapInterfaces)
+        {
+            if(pos1=ifname.find_last_of("_"); pos1!=std::string::npos && ifname.find(ALIASES_SUFFIX)!=std::string::npos)
+                ifacesWithAliasesForm.insert(ifname.substr(0, pos1));
+        }
+
         for (const auto& [ifname, ifconfig] : mapInterfaces)
         {
             jdata.clear();
@@ -138,7 +148,6 @@ json RcConf::getRcIpConfig()
                         }
                         pos0 = pos2;
                     }
-                    aliases_processed = true;
                     continue;
                 }
                 else if(pos2=ifname.find(ALIAS_SUFFIX); pos2!=std::string::npos)
@@ -148,10 +157,10 @@ json RcConf::getRcIpConfig()
                 // ifconfig_em0_alias1="inet 192.168.212.202/24"
                 // TODO: check that the aliases numbers start from 0 (if not - they are ignored by system)
                 {
-                    if(aliases_processed)
-                        // ALIASES_SUFFIX has priority over ALIAS_SUFFIX
-                        continue;
                     name=ifname.substr(0, pos1);
+                    if(ifacesWithAliasesForm.contains(name))
+                        // ALIASES_SUFFIX has priority over ALIAS_SUFFIX, per interface
+                        continue;
                     alias_name=ifname.substr(pos1+1, std::string::npos);
                     jdata = getIpConfFromString(ifconfig);
                     if(!jdata.empty())
@@ -264,161 +273,116 @@ json RcConf::getRcIpConfig()
     return jret;
 }
 
+std::string RcConf::ipv4FromOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d)
+{
+    return std::to_string(a) + "." + std::to_string(b) + "." + std::to_string(c) + "." + std::to_string(d);
+}
+
 json RcConf::getIpConfFromString(std::string ifconfig)
 {
-    unsigned int arrIntIp4Conf[12];
-    unsigned int imask;
+    unsigned int o1, o2, o3, o4;
+    unsigned int m1, m2, m3, m4;
+    unsigned int prefix;
+    unsigned int hexmask;
     struct in_addr ip_mask;
-    std::string element;
     const std::string quotes = "\"";
     const std::string space = " ";
     json jdata = {};
-    std::string full_mask = "255.255.255.255";
-    std::string if_format_1 = "inet %3d.%3d.%3d.%3d/%2d";   // inet 127.0.0.251/24
-    std::string if_format_2 = "inet %3d.%3d.%3d.%3d netmask %10x";   // inet 127.0.0.251 netmask 0xffffff00
-    std::string if_format_3 = "inet %3d.%3d.%3d.%3d netmask %3d.%3d.%3d.%3d";   // inet 127.0.0.251 netmask 255.255.255.0
 
     Trim(ifconfig, quotes);
     Trim(ifconfig, space);
 
-    if(ifconfig.find(DHCP_SUFFIX)!=std::string::npos)
+    if(ifconfig.find(DHCP_SUFFIX) != std::string::npos)
     {
         jdata[JSON_PARAM_IPV4_ADDR] = ifconfig;
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(ifconfig.c_str(), if_format_1.c_str(),
-                &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3], &imask)==5) &&
-                    (imask>0) && (imask<=32) )
-    // inet 127.0.0.251/24
+
+    // "inet 127.0.0.251/24"
+    if(sscanf(ifconfig.c_str(), IF_FORMAT_CIDR.c_str(), &o1, &o2, &o3, &o4, &prefix) == 5 &&
+       prefix > 0 && prefix <= 32)
     {
-        jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(imask);
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(prefix);
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(ifconfig.c_str(), if_format_3.c_str(),
-                     &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3],
-                     &arrIntIp4Conf[4], &arrIntIp4Conf[5], &arrIntIp4Conf[6], &arrIntIp4Conf[7])==8) )
+
     // "inet 127.0.0.251 netmask 255.255.255.0"
+    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_DOTTED.c_str(), &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4) == 8)
     {
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
-        jdata[JSON_PARAM_IPV4_MASK] = std::to_string(arrIntIp4Conf[4]) + "." +
-                                      std::to_string(arrIntIp4Conf[5]) + "." +
-                                      std::to_string(arrIntIp4Conf[6]) + "." +
-                                      std::to_string(arrIntIp4Conf[7]);
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = ipv4FromOctets(m1, m2, m3, m4);
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(ifconfig.c_str(), if_format_2.c_str(),
-                     &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3], &imask)==5) )
+
     // "inet 127.0.0.251 netmask 0xffffff00"
+    if(sscanf(ifconfig.c_str(), IF_FORMAT_NETMASK_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask) == 5)
     {
-        imask = htonl(imask);
-        ip_mask.s_addr = imask;
-        element = std::string(inet_ntoa(ip_mask));
-        jdata[JSON_PARAM_IPV4_MASK] = element;
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
+        hexmask = htonl(hexmask);
+        ip_mask.s_addr = hexmask;
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = std::string(inet_ntoa(ip_mask));
+        return jdata;
     }
+
     return jdata;
 }
 
 json RcConf::getRouteConfFromString(std::string rtconfig)
 {
-    unsigned int arrIntIp4Conf[12];
+    unsigned int o1, o2, o3, o4;
+    unsigned int m1, m2, m3, m4;
+    unsigned int g1, g2, g3, g4;
+    unsigned int prefix;
+    unsigned int hexmask;
+    struct in_addr ip_mask;
     const std::string quotes = "\"";
     const std::string space = " ";
-    unsigned int imask;
-    struct in_addr ip_mask;
-    std::string element;
-//    std::string full_mask = "255.255.255.255";
-    std::string rt_format_net_1 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d/%2d %3d.%3d.%3d.%3d"; // -net 192.168.32.0/24 192.168.213.252
-    std::string rt_format_net_2 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %10x %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 0xffffff00 192.168.213.252
-    std::string rt_format_net_3 = ROUTE_PREFIX_NET + " %3d.%3d.%3d.%3d -netmask %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252
-    std::string rt_format_host_1 = ROUTE_PREFIX_HOST + " %3d.%3d.%3d.%3d %3d.%3d.%3d.%3d"; // -host 191.1.200.4 192.168.213.254
     json jdata = {};
 
     Trim(rtconfig, quotes);
     Trim(rtconfig, space);
 
-    if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-        (sscanf(rtconfig.c_str(), rt_format_net_1.c_str(),
-                &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3], &imask,
-                &arrIntIp4Conf[4], &arrIntIp4Conf[5], &arrIntIp4Conf[6], &arrIntIp4Conf[7])==9) &&
-                    (imask>0) && (imask<=32) )
-    // -net 192.168.32.0/24 192.168.213.252
+    // "-net 192.168.32.0/24 192.168.213.252"
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_CIDR.c_str(), &o1, &o2, &o3, &o4, &prefix, &g1, &g2, &g3, &g4) == 9 &&
+       prefix > 0 && prefix <= 32)
     {
-        jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(imask);
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
-        jdata[JSON_PARAM_IPV4_GW]   = std::to_string(arrIntIp4Conf[4]) + "." +
-                                      std::to_string(arrIntIp4Conf[5]) + "." +
-                                      std::to_string(arrIntIp4Conf[6]) + "." +
-                                      std::to_string(arrIntIp4Conf[7]);
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = getStrInetMaskFromPrefix(prefix);
+        jdata[JSON_PARAM_IPV4_GW] = ipv4FromOctets(g1, g2, g3, g4);
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(rtconfig.c_str(), rt_format_net_3.c_str(),
-                     &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3],
-                     &arrIntIp4Conf[4], &arrIntIp4Conf[5], &arrIntIp4Conf[6], &arrIntIp4Conf[7],
-                     &arrIntIp4Conf[8], &arrIntIp4Conf[9], &arrIntIp4Conf[10], &arrIntIp4Conf[11])==12) )
-    // -net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252
+
+    // "-net 192.168.32.0 -netmask 255.255.255.0 192.168.213.252"
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_DOTTED.c_str(),
+              &o1, &o2, &o3, &o4, &m1, &m2, &m3, &m4, &g1, &g2, &g3, &g4) == 12)
     {
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
-        jdata[JSON_PARAM_IPV4_MASK] = std::to_string(arrIntIp4Conf[4]) + "." +
-                                      std::to_string(arrIntIp4Conf[5]) + "." +
-                                      std::to_string(arrIntIp4Conf[6]) + "." +
-                                      std::to_string(arrIntIp4Conf[7]);
-        jdata[JSON_PARAM_IPV4_GW]   = std::to_string(arrIntIp4Conf[8]) + "." +
-                                      std::to_string(arrIntIp4Conf[9]) + "." +
-                                      std::to_string(arrIntIp4Conf[10]) + "." +
-                                      std::to_string(arrIntIp4Conf[11]);
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = ipv4FromOctets(m1, m2, m3, m4);
+        jdata[JSON_PARAM_IPV4_GW] = ipv4FromOctets(g1, g2, g3, g4);
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(rtconfig.c_str(), rt_format_net_2.c_str(),
-                     &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3], &imask,
-                     &arrIntIp4Conf[4], &arrIntIp4Conf[5], &arrIntIp4Conf[6], &arrIntIp4Conf[7])==9) )
-    // -net 192.168.32.0 -netmask 0xffffff00 192.168.213.252
+
+    // "-net 192.168.32.0 -netmask 0xffffff00 192.168.213.252"
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_NET_HEX.c_str(), &o1, &o2, &o3, &o4, &hexmask, &g1, &g2, &g3, &g4) == 9)
     {
-        imask = htonl(imask);
-        ip_mask.s_addr = imask;
-        element = std::string(inet_ntoa(ip_mask));
-        jdata[JSON_PARAM_IPV4_MASK] = element;
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
-        jdata[JSON_PARAM_IPV4_GW]   = std::to_string(arrIntIp4Conf[4]) + "." +
-                                      std::to_string(arrIntIp4Conf[5]) + "." +
-                                      std::to_string(arrIntIp4Conf[6]) + "." +
-                                      std::to_string(arrIntIp4Conf[7]);
+        hexmask = htonl(hexmask);
+        ip_mask.s_addr = hexmask;
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
+        jdata[JSON_PARAM_IPV4_MASK] = std::string(inet_ntoa(ip_mask));
+        jdata[JSON_PARAM_IPV4_GW] = ipv4FromOctets(g1, g2, g3, g4);
+        return jdata;
     }
-    else if( memset(arrIntIp4Conf, 0, 12*sizeof(int));
-             (sscanf(rtconfig.c_str(), rt_format_host_1.c_str(),
-                     &arrIntIp4Conf[0], &arrIntIp4Conf[1], &arrIntIp4Conf[2], &arrIntIp4Conf[3],
-                     &arrIntIp4Conf[4], &arrIntIp4Conf[5], &arrIntIp4Conf[6], &arrIntIp4Conf[7])==8) )
-    // -host 191.1.200.4 192.168.213.254
+
+    // "-host 191.1.200.4 192.168.213.254"
+    if(sscanf(rtconfig.c_str(), RT_FORMAT_HOST.c_str(), &o1, &o2, &o3, &o4, &g1, &g2, &g3, &g4) == 8)
     {
-        jdata[JSON_PARAM_IPV4_ADDR] = std::to_string(arrIntIp4Conf[0]) + "." +
-                                      std::to_string(arrIntIp4Conf[1]) + "." +
-                                      std::to_string(arrIntIp4Conf[2]) + "." +
-                                      std::to_string(arrIntIp4Conf[3]);
+        jdata[JSON_PARAM_IPV4_ADDR] = ipv4FromOctets(o1, o2, o3, o4);
         jdata[JSON_PARAM_IPV4_MASK] = IPV4_MASK_HOST;
-        jdata[JSON_PARAM_IPV4_GW]   = std::to_string(arrIntIp4Conf[4]) + "." +
-                                      std::to_string(arrIntIp4Conf[5]) + "." +
-                                      std::to_string(arrIntIp4Conf[6]) + "." +
-                                      std::to_string(arrIntIp4Conf[7]);
+        jdata[JSON_PARAM_IPV4_GW] = ipv4FromOctets(g1, g2, g3, g4);
+        return jdata;
     }
+
     return jdata;
 }
 
@@ -461,7 +425,7 @@ bool RcConf::setRcIpConfig(json rcdata)
     bool is_dhcp = false;
 
     if(!iniLoad())
-        return JSON_RESULT_ERR;
+        return false;
 
     try
     {
