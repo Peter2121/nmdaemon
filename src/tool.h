@@ -57,6 +57,7 @@ protected:
 public:
     static inline const std::string BRIDGE_IF_PREFIX = "bridge";
     static inline const std::string LAGG_IF_PREFIX = "lagg";
+    static std::string classifyIfType(const std::string& ifname); // maps a clone interface's name prefix to its JSON_PARAM_IF_TYPE_* value; empty if none match (e.g. a physical/non-clone interface)
     inline static std::random_device RANDOM_DEVICE;
     inline static std::mt19937 RANDOM_MT;
     inline static std::uniform_int_distribution<int> RND_DISTR;

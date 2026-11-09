@@ -59,12 +59,83 @@ bool NmWorkerSys::isValidCmd(NmCommandData* pcmd)
     return false;
 }
 
-json NmWorkerSys::execCmdIfList(NmCommandData*)
+// Checks every filter criterion that's actually present in `filter` against
+// one interface's JSON (as produced by Tool::getIfInfoJson()), ANDing them
+// together. Currently only "INTERFACE TYPE" is implemented; a future
+// criterion is added the same way: look it up in `filter`, and if present,
+// AND its own match result into `matches`.
+bool NmWorkerSys::ifMatchesFilterCriteria(const json& ifJson, const json& filter)
+{
+    bool matches = true;
+
+    if(filter.contains(JSON_PARAM_IF_TYPE))
+    {
+        std::string ifname = ifJson.value(JSON_PARAM_IF_NAME, std::string());
+        std::string iftype = Tool::classifyIfType(ifname);
+        bool typeMatches = false;
+        for(const auto& allowed : filter[JSON_PARAM_IF_TYPE])
+        {
+            if(allowed.is_string() && allowed.get<std::string>() == iftype)
+            {
+                typeMatches = true;
+                break;
+            }
+        }
+        matches = matches && typeMatches;
+    }
+
+    return matches;
+}
+
+bool NmWorkerSys::applyIfListFilter(std::vector<json>& ifList, const json& filter)
+{
+    std::string mode;
+
+    if(!filter.contains(JSON_PARAM_MODE) || !filter[JSON_PARAM_MODE].is_string())
+    {
+        LOG_S(ERROR) << "execCmdIfList: filter " << JSON_PARAM_MODE << " is missing or not a string";
+        return false;
+    }
+    mode = filter[JSON_PARAM_MODE].get<std::string>();
+    if(mode != JSON_PARAM_INCLUDE && mode != JSON_PARAM_EXCLUDE)
+    {
+        LOG_S(ERROR) << "execCmdIfList: filter " << JSON_PARAM_MODE << " must be " << JSON_PARAM_INCLUDE << " or " << JSON_PARAM_EXCLUDE;
+        return false;
+    }
+
+    if(filter.contains(JSON_PARAM_IF_TYPE) && !filter[JSON_PARAM_IF_TYPE].is_array())
+    {
+        LOG_S(ERROR) << "execCmdIfList: filter " << JSON_PARAM_IF_TYPE << " must be an array";
+        return false;
+    }
+
+    std::vector<json> filtered;
+    for(const auto& ifJson : ifList)
+    {
+        bool matches = ifMatchesFilterCriteria(ifJson, filter);
+        bool keep = (mode == JSON_PARAM_INCLUDE) ? matches : !matches;
+        if(keep)
+            filtered.push_back(ifJson);
+    }
+
+    ifList = filtered;
+    return true;
+}
+
+json NmWorkerSys::execCmdIfList(NmCommandData* pcmd)
 {
     nlohmann::json retIfListJson;
     nlohmann::json res_ifaces = {};
+    std::vector<json> ifList = Tool::getIfInfoJson();
 
-    retIfListJson[JSON_PARAM_INTERFACES] = Tool::getIfInfoJson();
+    json cmd = pcmd->getJsonData();
+    if(cmd.contains(JSON_PARAM_DATA) && cmd[JSON_PARAM_DATA].contains(JSON_PARAM_FILTER))
+    {
+        if(!applyIfListFilter(ifList, cmd[JSON_PARAM_DATA][JSON_PARAM_FILTER]))
+            return JSON_RESULT_ERR;
+    }
+
+    retIfListJson[JSON_PARAM_INTERFACES] = ifList;
     res_ifaces[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     res_ifaces[JSON_PARAM_DATA] = retIfListJson;
 

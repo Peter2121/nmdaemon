@@ -46,6 +46,13 @@ protected:
     std::unique_ptr<ResolvConf> presConf;
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
+    // IF_LIST "FILTER" support. ifMatchesFilterCriteria() ANDs together every
+    // criterion present in the filter; to support a new one (e.g. "STATUS",
+    // "INTERFACE NAME"), add one more "if(filter.contains(...)) { ... matches
+    // = matches && ...; }" block there -- applyIfListFilter() and MODE
+    // (INCLUDE/EXCLUDE) handling stay unchanged.
+    static bool ifMatchesFilterCriteria(const json& ifJson, const json& filter);
+    static bool applyIfListFilter(std::vector<json>& ifList, const json& filter);
 public:
     NmWorkerSys();
     ~NmWorkerSys();

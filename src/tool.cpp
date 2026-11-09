@@ -242,6 +242,25 @@ bool Tool::getIfCaps(const std::string& ifname, int& curcap, int& reqcap)
     return true;
 }
 
+std::string Tool::classifyIfType(const std::string& ifname)
+{
+    static const std::vector<std::pair<std::string, std::string>> TYPE_PREFIXES =
+    {
+        { "epair", JSON_PARAM_IF_TYPE_EPAIR },
+        { BRIDGE_IF_PREFIX, JSON_PARAM_IF_TYPE_BRIDGE },
+        { LAGG_IF_PREFIX, JSON_PARAM_IF_TYPE_LAGG },
+        { "tap", JSON_PARAM_IF_TYPE_TAP },
+        { "tun", JSON_PARAM_IF_TYPE_TUN }
+    };
+
+    for(const auto& [prefix, type] : TYPE_PREFIXES)
+    {
+        if(ifname.starts_with(prefix))
+            return type;
+    }
+    return std::string();
+}
+
 bool Tool::clonedIfAddMember(const std::string& brname, const std::string& memberName)
 {
     struct ifbreq req;

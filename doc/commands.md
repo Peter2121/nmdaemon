@@ -42,9 +42,16 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
 **Scope SYSTEM commands**
 
-    { "SCOPE": "SYSTEM", "CMD": "IF_LIST" }
+    { "SCOPE": "SYSTEM", "CMD": "IF_LIST"[, "DATA": { "FILTER": { "MODE": "INCLUDE|EXCLUDE", "INTERFACE TYPE": [ "<type_1>", "<type_2>", ... ] } }] }
 
 List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address. Driver-reported hardware offload capabilities (currently "TXCSUM" and "TXCSUM6", see IF_EDIT) are reported as "ON"/"OFF"; a capability is omitted entirely when the interface's driver doesn't support it (more capabilities may be added to this list over time).
+
+An optional "DATA"."FILTER" narrows the returned list. "MODE" is required and is either "INCLUDE" (only interfaces matching every given criterion are returned) or "EXCLUDE" (interfaces matching every given criterion are removed, everything else is returned). Currently the only supported criterion is "INTERFACE TYPE", an array of the same type strings used by IF_ADD ("TUN", "TAP", "EPAIR", "BRIDGE", "LAGG"); an interface that is none of these (e.g. a physical NIC or wlan0) never matches it. More criteria (e.g. "INTERFACE NAME", "STATUS", "MEDIA") may be added over time; when several are present in the same FILTER, an interface must satisfy all of them to match. An invalid or malformed FILTER returns `{ "RESULT": "ERROR" }`.
+
+For example:
+
+    { "SCOPE": "SYSTEM", "CMD": "IF_LIST", "DATA": { "FILTER": { "MODE": "INCLUDE", "INTERFACE TYPE": [ "TUN", "TAP" ] } } }
+    { "SCOPE": "SYSTEM", "CMD": "IF_LIST", "DATA": { "FILTER": { "MODE": "EXCLUDE", "INTERFACE TYPE": [ "BRIDGE", "LAGG" ] } } }
 
 ---
 
