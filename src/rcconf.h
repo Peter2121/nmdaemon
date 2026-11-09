@@ -34,7 +34,6 @@ protected:
     static inline const std::string IPV4_MASK_HOST = "255.255.255.255";
     static inline const std::string ROUTE_PREFIX_HOST = "-host";
     static inline const std::string ROUTE_PREFIX_NET = "-net";
-    static constexpr int MAX_ALIASES = 999;
     // sscanf() format strings used by getIpConfFromString()/getRouteConfFromString(),
     // named after what they match rather than left as anonymous locals.
     // %u (not %d) matches the unsigned int* arguments passed at each call site.
@@ -54,6 +53,12 @@ protected:
     std::string getStrInetMaskFromPrefix(int);
     static std::string ipv4FromOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d);
     static bool validOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d);
+    // "em0_101" (rc.conf key form) <-> "em0.101" (display form) for VLAN sub-interfaces.
+    // Each returns its argument unchanged if it doesn't look like a VLAN name (no
+    // trailing "_"/"." followed by a positive number), so they're safe to call
+    // unconditionally and stay each other's exact inverse.
+    static std::string vlanConfigNameToDisplay(const std::string& ifname);
+    static std::string vlanDisplayNameToConfig(const std::string& ifname);
     json getIpConfFromString(std::string);
     json getRouteConfFromString(std::string);
     short nBackups;

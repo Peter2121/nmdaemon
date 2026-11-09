@@ -37,7 +37,6 @@ json RcConf::getRcIpConfig()
     std::unique_ptr<AddressGroup> upaddr4=nullptr;
     const char DELIM = ' ';
     const std::string quotes = "\"";
-    const std::string point = ".";
     size_t pos0,pos1,pos2;
     json jdata {};
     json jif;
@@ -170,11 +169,9 @@ json RcConf::getRcIpConfig()
                     }
                     continue;
                 }
-                else if(element=ifname.substr(pos1+1,std::string::npos); strtol(element.c_str(),nullptr,10)>0)
+                else if(element=vlanConfigNameToDisplay(ifname); element != ifname)
                 // ifconfig_em0_101="inet 192.0.2.1/24"
                 {
-                    element = ifname;
-                    element.replace(pos1, 1, point);
                     jif[JSON_PARAM_IF_NAME] = element;
                 }
                 else
@@ -281,6 +278,26 @@ std::string RcConf::ipv4FromOctets(unsigned int a, unsigned int b, unsigned int 
 bool RcConf::validOctets(unsigned int a, unsigned int b, unsigned int c, unsigned int d)
 {
     return a <= 255 && b <= 255 && c <= 255 && d <= 255;
+}
+
+std::string RcConf::vlanConfigNameToDisplay(const std::string& ifname)
+{
+    size_t pos = ifname.find_last_of("_");
+    if(pos == std::string::npos || strtol(ifname.substr(pos+1, std::string::npos).c_str(), nullptr, 10) <= 0)
+        return ifname;
+    std::string result = ifname;
+    result.replace(pos, 1, ".");
+    return result;
+}
+
+std::string RcConf::vlanDisplayNameToConfig(const std::string& ifname)
+{
+    size_t pos = ifname.find_last_of(".");
+    if(pos == std::string::npos || strtol(ifname.substr(pos+1, std::string::npos).c_str(), nullptr, 10) <= 0)
+        return ifname;
+    std::string result = ifname;
+    result.replace(pos, 1, "_");
+    return result;
 }
 
 json RcConf::getIpConfFromString(std::string ifconfig)
@@ -436,8 +453,6 @@ bool RcConf::setRcIpConfig(json rcdata)
     std::string ip_gw;
     std::string str_rt_status;
     std::string str_active_routes;
-    size_t pos1;
-    std::string element;
     bool is_dhcp = false;
 
     if(!iniLoad())
@@ -479,11 +494,7 @@ bool RcConf::setRcIpConfig(json rcdata)
                 continue;
             }
 //          Fix VLAN interface name
-            if(pos1=str_if_name.find_last_of("."); pos1!=std::string::npos)
-            {
-                if(element=str_if_name.substr(pos1+1,std::string::npos); strtol(element.c_str(),nullptr,10)>0)
-                    str_if_name.replace(pos1, 1, "_");
-            }
+            str_if_name = vlanDisplayNameToConfig(str_if_name);
             jar_addresses = jif.at(JSON_PARAM_ADDRESSES);
             if(jar_addresses.empty())
             {
@@ -621,11 +632,25 @@ bool RcConf::setRcIpConfig(json rcdata)
         {
             rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
         }
-        for(int i=0; i<MAX_ALIASES; i++)
-        // Remove old records like ifconfig_em0_alias0="..." from config file
+        // Remove stale records like ifconfig_em0_alias0="..." from the config file:
+        // only keys that actually exist are looked up and removed (rather than
+        // blindly probing hundreds of indices on every write).
         {
-            str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX + std::to_string(i);
-            rcIniFile->GetSection(DEFAULT_SECTION)->RemoveKey(str_conf_key);
+            CIniSection* section = rcIniFile->GetSection(DEFAULT_SECTION);
+            std::string alias_key_prefix = IFCONFIG_KEY_PREFIX + str_if_name + "_" + ALIAS_SUFFIX;
+            std::set<std::string> stale_alias_keys;
+            for(const auto& key : section->GetKeys())
+            {
+                std::string key_name = key->GetKeyName();
+                if(key_name.length() > alias_key_prefix.length() &&
+                   key_name.compare(0, alias_key_prefix.length(), alias_key_prefix) == 0 &&
+                   key_name.find_first_not_of("0123456789", alias_key_prefix.length()) == std::string::npos)
+                {
+                    stale_alias_keys.insert(key_name);
+                }
+            }
+            for(const auto& key_name : stale_alias_keys)
+                section->RemoveKey(key_name);
         }
     }
 
