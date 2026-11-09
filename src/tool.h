@@ -65,6 +65,8 @@ public:
     static std::shared_ptr<AddressGroup> getAddrFromJson(json);
     static int getIfFlags(std::string);
     static bool setIfFlags(std::string, int);
+    static bool setIfCap(const std::string& ifname, int capbit, bool enable); // enable/disable one IFCAP_* capability (e.g. IFCAP_TXCSUM), no-op error if unsupported by the driver
+    static bool getIfCaps(const std::string& ifname, int& curcap, int& reqcap); // curcap: currently enabled; reqcap: supported by the driver (both bitmasks of IFCAP_*)
     static bool clonedIfAddMember(const std::string& brname, const std::string& memberName);
     static bool bridgeRemoveMember(const std::string& brname, const std::string& memberName);
     static bool bridgeGetMembers(const std::string& brname, std::vector<std::string>& members);

@@ -5,6 +5,7 @@
 #include <exception>
 #include <memory>
 #include <algorithm>
+#include <map>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "addressgroup.h"
@@ -32,6 +33,12 @@ protected:
     std::vector<std::string> laggMembers;
     std::string laggProto;
     std::string laggMaster;
+    // Driver-reported on/off status of individual IFCAP_* capabilities (e.g.
+    // JSON_PARAM_TXCSUM_IPV4), keyed by the JSON field name that reports it.
+    // Only capabilities the driver actually supports are present here, so new
+    // ones can be added later (see Tool::getIfInfoJson()) just by adding an
+    // entry to the {capbit, JSON key} table there -- no other code changes.
+    std::map<std::string, bool> capStatus;
 public:
     Interface(std::string);
     Interface() : Interface("") {}
@@ -49,6 +56,7 @@ public:
     void setLaggMembers(const std::vector<std::string>&);
     void setLaggProto(const std::string&);
     void setLaggMaster(const std::string&);
+    void setCapStatus(const std::string& jsonKey, bool enabled);
     ~Interface();
     const std::string &getMediaDesc() const;
     void setMediaDesc(const std::string &newMediaDesc);

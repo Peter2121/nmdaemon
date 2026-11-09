@@ -140,6 +140,9 @@ const nlohmann::json Interface::getIfJson() const
             retIfJson[JSON_PARAM_LAGG_MASTER] = laggMaster;
     }
 
+    for(const auto& [jsonKey, enabled] : capStatus)
+        retIfJson[jsonKey] = enabled ? JSON_PARAM_ON : JSON_PARAM_OFF;
+
     for(auto addr : spVectAddrs)
     {
         addrJson = addr->getAddrJson();
@@ -193,6 +196,11 @@ void Interface::setLaggMaster(const std::string& master)
 {
     isLagg = true;
     laggMaster = master;
+}
+
+void Interface::setCapStatus(const std::string& jsonKey, bool enabled)
+{
+    capStatus[jsonKey] = enabled;
 }
 
 const std::string &Interface::getMediaDesc() const

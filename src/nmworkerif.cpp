@@ -464,6 +464,36 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
             return JSON_RESULT_ERR;
     }
 
+    if(cmd_data.contains(JSON_PARAM_TXCSUM_IPV4))
+    {
+        std::string onoff;
+        try {
+            onoff = cmd_data[JSON_PARAM_TXCSUM_IPV4];
+            if(onoff != JSON_PARAM_ON && onoff != JSON_PARAM_OFF)
+                throw std::invalid_argument("must be " + JSON_PARAM_ON + " or " + JSON_PARAM_OFF);
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_TXCSUM_IPV4 << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!Tool::setIfCap(ifName, IFCAP_TXCSUM, onoff == JSON_PARAM_ON))
+            return JSON_RESULT_ERR;
+    }
+
+    if(cmd_data.contains(JSON_PARAM_TXCSUM_IPV6))
+    {
+        std::string onoff;
+        try {
+            onoff = cmd_data[JSON_PARAM_TXCSUM_IPV6];
+            if(onoff != JSON_PARAM_ON && onoff != JSON_PARAM_OFF)
+                throw std::invalid_argument("must be " + JSON_PARAM_ON + " or " + JSON_PARAM_OFF);
+        } catch (std::exception& e) {
+            LOG_S(ERROR) << "Exception in execCmdIfEdit - invalid " << JSON_PARAM_TXCSUM_IPV6 << " value: " << e.what();
+            return JSON_RESULT_ERR;
+        }
+        if(!Tool::setIfCap(ifName, IFCAP_TXCSUM_IPV6, onoff == JSON_PARAM_ON))
+            return JSON_RESULT_ERR;
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 

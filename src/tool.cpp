@@ -180,6 +180,68 @@ bool Tool::setIfFlags(std::string ifname, int setflags)
     return true;
 }
 
+bool Tool::setIfCap(const std::string& ifname, int capbit, bool enable)
+{
+    struct ifreq ifr;
+    int supported;
+    int newcap;
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGIFCAP, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot get capabilities for interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+
+    // After SIOCGIFCAP, ifr_curcap is the currently enabled set and ifr_reqcap
+    // is the set of capabilities the driver supports (the same field is reused
+    // as "the requested set" when writing back via SIOCSIFCAP below).
+    supported = ifr.ifr_reqcap;
+    if(!(supported & capbit))
+    {
+        LOG_S(ERROR) << "Interface " << ifname << " does not support the requested capability";
+        sock.close();
+        return false;
+    }
+
+    newcap = enable ? (ifr.ifr_curcap | capbit) : (ifr.ifr_curcap & ~capbit);
+    ifr.ifr_reqcap = newcap & supported;
+
+    if (ioctl(sock.handle(), SIOCSIFCAP, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(ERROR) << "Cannot set capability for interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+    return true;
+}
+
+bool Tool::getIfCaps(const std::string& ifname, int& curcap, int& reqcap)
+{
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+
+    sockpp::socket sock = sockpp::socket::create(AF_LOCAL, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGIFCAP, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(INFO) << "Cannot get capabilities for interface " << ifname << " (" << strerror(errno) << ")";
+        sock.close();
+        return false;
+    }
+    sock.close();
+
+    curcap = ifr.ifr_curcap;
+    reqcap = ifr.ifr_reqcap;
+    return true;
+}
+
 bool Tool::clonedIfAddMember(const std::string& brname, const std::string& memberName)
 {
     struct ifbreq req;
@@ -498,6 +560,15 @@ bool Tool::laggSetRRLimit(const std::string& laggname, int limit)
 
 std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
 {
+    // Capability bits reported via IF_GET/IF_LIST, each as "ON"/"OFF" under its
+    // JSON key, only when the driver actually supports it. To report another
+    // IFCAP_* capability later, add its {bit, JSON key} pair here -- no other
+    // code changes needed.
+    static const std::vector<std::pair<int, std::string>> CAP_STATUS_FIELDS =
+    {
+        { IFCAP_TXCSUM, JSON_PARAM_TXCSUM_IPV4 },
+        { IFCAP_TXCSUM_IPV6, JSON_PARAM_TXCSUM_IPV6 }
+    };
     struct ifaddrs* ifaddrs_ptr;
     std::vector<json> vectIfsJson;
     std::map<std::string, Interface> ifMap;
@@ -529,6 +600,17 @@ std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
             std::string hwMac = Tool::getIfHwAddr(name);
             if(!hwMac.empty() && hwMac != curMac)
                 iface.setHardwareAddress(hwMac);
+        }
+        {
+            int curcap = 0, reqcap = 0;
+            if(Tool::getIfCaps(name, curcap, reqcap))
+            {
+                for(const auto& [capbit, jsonKey] : CAP_STATUS_FIELDS)
+                {
+                    if(reqcap & capbit)
+                        iface.setCapStatus(jsonKey, (curcap & capbit) != 0);
+                }
+            }
         }
         iface.findPrimaryAndJailAddress();
         if(name.starts_with(BRIDGE_IF_PREFIX))

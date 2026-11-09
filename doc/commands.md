@@ -44,7 +44,7 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
     { "SCOPE": "SYSTEM", "CMD": "IF_LIST" }
 
-List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address.
+List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address. Driver-reported hardware offload capabilities (currently "TXCSUM" and "TXCSUM6", see IF_EDIT) are reported as "ON"/"OFF"; a capability is omitted entirely when the interface's driver doesn't support it (more capabilities may be added to this list over time).
 
 ---
 
@@ -135,11 +135,11 @@ For example:
 
 **Scope INTERFACE commands**
 
-    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]][, "DESCRIPTION": "<description>"][, "LAGG PROTOCOL": "FAILOVER|LACP|LOADBALANCE|ROUNDROBIN|BROADCAST|NONE"][, "RR_LIMIT": <stride>][, "LINK ADDRESS": "<mac_address>"] } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "<if_name>"[, "NAME": "<new_if_name>"][, "MTU": <mtu_value>][, "MEMBERS": [ "<if_1>", "<if_2>", ... ]][, "DESCRIPTION": "<description>"][, "LAGG PROTOCOL": "FAILOVER|LACP|LOADBALANCE|ROUNDROBIN|BROADCAST|NONE"][, "RR_LIMIT": <stride>][, "LINK ADDRESS": "<mac_address>"][, "TXCSUM": "ON|OFF"][, "TXCSUM6": "ON|OFF"] } }
 
-Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU", "MEMBERS" (for BRIDGE and LAGG interfaces), "DESCRIPTION", "LAGG PROTOCOL", "RR_LIMIT" (both LAGG-only) and "LINK ADDRESS" are supported; more properties will be added over time.
+Edit one or more properties of an existing interface in a single command. Currently "NAME" (rename), "MTU", "MEMBERS" (for BRIDGE and LAGG interfaces), "DESCRIPTION", "LAGG PROTOCOL", "RR_LIMIT" (both LAGG-only), "LINK ADDRESS", "TXCSUM" and "TXCSUM6" are supported; more properties will be added over time.
 
-If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS"/"DESCRIPTION"/"LAGG PROTOCOL"/"RR_LIMIT"/"LINK ADDRESS" in the same command already target the new name.
+If "NAME" is given, the interface is renamed before any other requested change is applied, so "MTU"/"MEMBERS"/"DESCRIPTION"/"LAGG PROTOCOL"/"RR_LIMIT"/"LINK ADDRESS"/"TXCSUM"/"TXCSUM6" in the same command already target the new name.
 
 "MEMBERS" describes the desired final member list of the interface: for a BRIDGE, its member interfaces; for a LAGG, its ports (laggport). Members currently attached but missing from the list are removed, and members in the list not yet attached are added.
 
@@ -148,6 +148,8 @@ If "NAME" is given, the interface is renamed before any other requested change i
 "LAGG PROTOCOL" changes the aggregation protocol of an existing LAGG interface; returns an error for any other interface type. "RR_LIMIT" sets the round-robin stride and is only accepted for a LAGG interface that is (or is being, in the same command) set to the "ROUNDROBIN" protocol.
 
 "LINK ADDRESS" sets the interface's current MAC address, equivalent to MAC_ADDR_SET (`ifconfig <if_name> ether <mac_address>`). The hardware's permanent address is unaffected and, once they differ, is reported separately by IF_GET/IF_LIST as "HARDWARE ADDRESS".
+
+"TXCSUM"/"TXCSUM6" enable or disable IPv4/IPv6 transmit checksum offloading, equivalent to `ifconfig <if_name> txcsum`/`-txcsum`/`txcsum6`/`-txcsum6`. Returns an error if the interface's driver doesn't support the requested capability.
 
 For example:
 
@@ -158,12 +160,13 @@ For example:
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "lagg5", "LAGG PROTOCOL": "LACP", "MEMBERS": [ "re0", "em0" ] } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "lagg5", "LAGG PROTOCOL": "ROUNDROBIN", "RR_LIMIT": 16 } }
     { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "LINK ADDRESS": "02:01:02:03:04:05" } }
+    { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "TXCSUM": "OFF", "TXCSUM6": "OFF" } }
 
 ---
 
     { "SCOPE": "INTERFACE", "CMD": "IF_GET", "DATA": { "INTERFACE NAME": "<if_name>" } }
 
-Return the same information as IF_LIST (IP addresses, status, media, "DRIVER NAME", "DESCRIPTION", "HARDWARE ADDRESS" when different from the current MAC, "MEMBERS" for BRIDGE interfaces, and "MEMBERS"/"LAGG PROTOCOL"/"MASTER" for LAGG interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
+Return the same information as IF_LIST (IP addresses, status, media, "DRIVER NAME", "DESCRIPTION", "HARDWARE ADDRESS" when different from the current MAC, driver-supported capability status such as "TXCSUM"/"TXCSUM6", "MEMBERS" for BRIDGE interfaces, and "MEMBERS"/"LAGG PROTOCOL"/"MASTER" for LAGG interfaces), but for a single named interface. Returns `{ "RESULT": "NOTFOUND" }` if the interface does not exist.
 
 For example:
 
