@@ -206,7 +206,7 @@ json RcConf::getRcIpConfig()
             jdata = getRouteConfFromString(rtconfig);
             if(!jdata.empty())
             {
-                jrt[JSON_PARAM_ADDRESSES] = jdata;
+                jrt[JSON_PARAM_ADDRESSES] = json::array({jdata});
                 jarRoutes.push_back(jrt);
             }
         }
@@ -245,7 +245,7 @@ json RcConf::getRcIpConfig()
     {
         if(setActiveRoutes.contains(jit.value().at(JSON_PARAM_RT_NAME).get<std::string>()))
         {
-            jdata = jit.value().at(JSON_PARAM_ADDRESSES);
+            jdata = jit.value().at(JSON_PARAM_ADDRESSES).at(0);
             try {
                 spipaddr4 = std::make_shared<AddressIp4>(jdata[JSON_PARAM_IPV4_ADDR].get<std::string>());
                 spipmask4 = std::make_shared<AddressIp4>(jdata[JSON_PARAM_IPV4_MASK].get<std::string>());
@@ -687,6 +687,7 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig cannot get addresses for route " << str_rt_name;
                 continue;
             }
+            jar_addresses = jar_addresses.at(0);
         }
         catch (std::exception& e)
         {
