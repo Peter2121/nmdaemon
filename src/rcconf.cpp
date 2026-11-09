@@ -47,6 +47,7 @@ json RcConf::getRcIpConfig()
     json jret {};
     std::map<std::string, std::string> mapInterfaces;
     std::map<std::string, std::string> mapRoutes;
+    std::map<std::string, std::vector<std::string>> bridgeMembersByName;
     std::set<std::string> setActiveRoutes;
     std::set<std::string> ifacesWithAliasesForm;
     bool is_primary = false;
@@ -186,7 +187,15 @@ json RcConf::getRcIpConfig()
                 is_primary = true;
             }
 
-            jdata = getIpConfFromString(ifconfig);
+            element = ifconfig;
+            if(Tool::classifyIfType(ifname) == JSON_PARAM_IF_TYPE_BRIDGE)
+            {
+                Trim(element, quotes);
+                std::vector<std::string> members = extractBridgeMembers(element);
+                if(!members.empty())
+                    bridgeMembersByName[ifname] = members;
+            }
+            jdata = getIpConfFromString(element);
             if(!jdata.empty())
             {
                 if(is_primary)
@@ -238,6 +247,30 @@ json RcConf::getRcIpConfig()
             }
         } catch (std::exception& e) {
             LOG_S(WARNING) << "getRcIpConfig cannot validate IP configuration";
+        }
+    }
+// Cloned interfaces (bridge, ...): attach MEMBERS (parsed out of
+// ifconfig_<name>'s "addm" tokens, in the main loop above) to an interface
+// already present (one that also carries an address), or add a
+// members-only entry for one that doesn't (e.g. a bridge with no address).
+    for(const auto& [cloned_name, cloned_members] : bridgeMembersByName)
+    {
+        bool found = false;
+        for(auto& j : jarInterfaces)
+        {
+            if(j[JSON_PARAM_IF_NAME].get<std::string>() == cloned_name)
+            {
+                j[JSON_PARAM_MEMBERS] = cloned_members;
+                found = true;
+                break;
+            }
+        }
+        if(!found)
+        {
+            json j_cloned;
+            j_cloned[JSON_PARAM_IF_NAME] = cloned_name;
+            j_cloned[JSON_PARAM_MEMBERS] = cloned_members;
+            jarInterfaces.push_back(j_cloned);
         }
     }
 // Iterate routes to remove inactive ones and validate the active ones
@@ -298,6 +331,54 @@ std::string RcConf::vlanDisplayNameToConfig(const std::string& ifname)
     std::string result = ifname;
     result.replace(pos, 1, "_");
     return result;
+}
+
+std::vector<std::string> RcConf::parseIfNameList(const std::string& value)
+{
+    std::vector<std::string> names;
+    std::stringstream ss(value);
+    std::string name;
+
+    while(ss >> name)
+        names.push_back(name);
+    return names;
+}
+
+std::string RcConf::joinIfNameList(const std::vector<std::string>& names)
+{
+    std::string result;
+
+    for(const auto& name : names)
+    {
+        if(!result.empty())
+            result += " ";
+        result += name;
+    }
+    return result;
+}
+
+std::vector<std::string> RcConf::extractBridgeMembers(std::string& ifconfig)
+{
+    std::vector<std::string> members;
+    std::vector<std::string> remaining_tokens;
+    std::stringstream ss(ifconfig);
+    std::string token;
+
+    while(ss >> token)
+    {
+        if(token == BRIDGE_MEMBER_TOKEN)
+        {
+            if(ss >> token)
+                members.push_back(token);
+            continue;
+        }
+        if(token == IF_UP_TOKEN)
+            continue;
+        remaining_tokens.push_back(token);
+    }
+
+    ifconfig = joinIfNameList(remaining_tokens);
+    return members;
 }
 
 json RcConf::getIpConfFromString(std::string ifconfig)
@@ -454,6 +535,8 @@ bool RcConf::setRcIpConfig(json rcdata)
     std::string str_rt_status;
     std::string str_active_routes;
     std::set<std::string> submitted_route_names;
+    std::set<std::string> cloned_interface_names;
+    const std::string quotes = "\"";
     bool is_dhcp = false;
 
     if(!iniLoad())
@@ -481,6 +564,25 @@ bool RcConf::setRcIpConfig(json rcdata)
 
     for(const auto &jif : jar_interfaces)
     {
+        // Cloned interfaces (bridge, tun, tap; lagg deferred - its own token
+        // vocabulary is more involved). A cloned-type interface needs to be
+        // listed in cloned_interfaces regardless of whether it has an
+        // address or MEMBERS, so /etc/rc.d/netif actually creates it at
+        // boot - so it's also allowed through below with neither (a bare
+        // registration request, e.g. a tun/tap meant only to exist for
+        // software like OpenVPN to open on its own, not an error). Only
+        // bridge currently supports MEMBERS, folded into the same
+        // ifconfig_<name> value as the address, as "addm <member>" tokens -
+        // the documented FreeBSD rc.conf(5) convention (e.g.
+        // ifconfig_bridge0="addm em0 addm em1 up"). MEMBERS for any other
+        // type is rejected now rather than silently written where
+        // rc.d/netif wouldn't recognize it as membership at all.
+        std::string str_members_portion;
+        std::string iftype_classified;
+        bool is_bridge = false;
+        bool is_cloned_type = false;
+        bool members_given = false;
+        bool wrote_primary_ifconfig = false;
         try
         {
             str_if_name = jif.at(JSON_PARAM_IF_NAME);
@@ -496,8 +598,12 @@ bool RcConf::setRcIpConfig(json rcdata)
             }
 //          Fix VLAN interface name
             str_if_name = vlanDisplayNameToConfig(str_if_name);
-            jar_addresses = jif.at(JSON_PARAM_ADDRESSES);
-            if(jar_addresses.empty())
+            iftype_classified = Tool::classifyIfType(str_if_name);
+            is_bridge = iftype_classified == JSON_PARAM_IF_TYPE_BRIDGE;
+            is_cloned_type = is_bridge || iftype_classified == JSON_PARAM_IF_TYPE_TUN || iftype_classified == JSON_PARAM_IF_TYPE_TAP;
+            members_given = jif.contains(JSON_PARAM_MEMBERS) && is_bridge;
+            jar_addresses = jif.contains(JSON_PARAM_ADDRESSES) ? jif.at(JSON_PARAM_ADDRESSES) : json::array();
+            if(jar_addresses.empty() && !jif.contains(JSON_PARAM_MEMBERS) && !is_cloned_type)
             {
                 LOG_S(WARNING) << "setRcIpConfig cannot get addresses for interface " << str_if_name;
                 continue;
@@ -508,6 +614,49 @@ bool RcConf::setRcIpConfig(json rcdata)
             LOG_S(WARNING) << "Exception in setRcIpConfig trying to access addresses of interface " << str_if_name;
             LOG_S(WARNING) << e.what();
             continue;
+        }
+        if(is_cloned_type)
+            cloned_interface_names.insert(str_if_name);
+        if(jif.contains(JSON_PARAM_MEMBERS) && !is_bridge)
+        {
+            LOG_S(WARNING) << "setRcIpConfig: " << JSON_PARAM_MEMBERS << " is not supported for interface " << str_if_name;
+        }
+        else if(members_given)
+        {
+            std::vector<std::string> member_names;
+            bool members_valid = true;
+            try
+            {
+                member_names = jif.at(JSON_PARAM_MEMBERS).get<std::vector<std::string>>();
+            }
+            catch(std::exception& e)
+            {
+                LOG_S(WARNING) << "setRcIpConfig: invalid " << JSON_PARAM_MEMBERS << " list for " << str_if_name;
+                members_valid = false;
+            }
+            for(const auto& member : member_names)
+            {
+                if(!Tool::isValidIfName(member))
+                {
+                    LOG_S(WARNING) << "setRcIpConfig: invalid member interface name " << member << " for " << str_if_name;
+                    members_valid = false;
+                    break;
+                }
+            }
+            if(members_valid)
+            {
+                std::vector<std::string> member_tokens;
+                for(const auto& member : member_names)
+                {
+                    member_tokens.push_back(BRIDGE_MEMBER_TOKEN);
+                    member_tokens.push_back(member);
+                }
+                str_members_portion = joinIfNameList(member_tokens);
+            }
+            else
+            {
+                members_given = false;
+            }
         }
 //  First cycle - put principal address and default route
         for(const auto &jad : jar_addresses)
@@ -542,14 +691,22 @@ bool RcConf::setRcIpConfig(json rcdata)
                             throw std::invalid_argument("invalid DHCP keyword");
                     }
                     str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
-                    if(ip_mask.empty())
-                        str_conf_value = "\"" + ip_addr + "\"";
-                    else
-                        str_conf_value = "\"" + INET_ADDR + " " + ip_addr + " "
-                                              + INET_MASK + " " + ip_mask + "\"";
+                    {
+                        std::vector<std::string> ifconfig_tokens;
+                        if(!str_members_portion.empty())
+                            ifconfig_tokens.push_back(str_members_portion);
+                        if(ip_mask.empty())
+                            ifconfig_tokens.push_back(ip_addr);
+                        else
+                            ifconfig_tokens.push_back(INET_ADDR + " " + ip_addr + " " + INET_MASK + " " + ip_mask);
+                        if(is_bridge)
+                            ifconfig_tokens.push_back(IF_UP_TOKEN);
+                        str_conf_value = "\"" + joinIfNameList(ifconfig_tokens) + "\"";
+                    }
                     str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
                     if(str_conf_value != str_old_conf_value)
                         rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+                    wrote_primary_ifconfig = true;
                 }
             }
             catch(std::exception& e)
@@ -582,6 +739,23 @@ bool RcConf::setRcIpConfig(json rcdata)
             {
                 LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name << " : " << e.what();
             }
+        }
+//  A cloned-type interface with no primary address (a members-only bridge,
+//  or a bare tun/tap that's only meant to exist, e.g. for software like
+//  OpenVPN to open on its own): ifconfig_<name> is never written by the
+//  cycle above, so write it here directly instead - at minimum "up", plus
+//  any members portion for a bridge.
+        if(!wrote_primary_ifconfig && is_cloned_type)
+        {
+            str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
+            std::vector<std::string> ifconfig_tokens;
+            if(!str_members_portion.empty())
+                ifconfig_tokens.push_back(str_members_portion);
+            ifconfig_tokens.push_back(IF_UP_TOKEN);
+            str_conf_value = "\"" + joinIfNameList(ifconfig_tokens) + "\"";
+            str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+            if(str_conf_value != str_old_conf_value)
+                rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
         }
 //  Second cycle - put aliases
 //  TODO: integrate the second cycle into the first one
@@ -652,6 +826,24 @@ bool RcConf::setRcIpConfig(json rcdata)
             }
             for(const auto& key_name : stale_alias_keys)
                 section->RemoveKey(key_name);
+        }
+    }
+
+//  Ensure every interface that was just given MEMBERS is tracked in
+//  cloned_interfaces, without disturbing any name already listed there.
+    if(!cloned_interface_names.empty())
+    {
+        std::string str_existing_cloned = rcIniFile->GetKeyValue(DEFAULT_SECTION, CLONED_INTERFACES_KEY);
+        Trim(str_existing_cloned, quotes);
+        std::vector<std::string> existing_cloned_list = parseIfNameList(str_existing_cloned);
+        std::set<std::string> all_cloned(existing_cloned_list.begin(), existing_cloned_list.end());
+        size_t before = all_cloned.size();
+        all_cloned.insert(cloned_interface_names.begin(), cloned_interface_names.end());
+        if(all_cloned.size() != before)
+        {
+            std::vector<std::string> new_cloned_list(all_cloned.begin(), all_cloned.end());
+            str_conf_value = "\"" + joinIfNameList(new_cloned_list) + "\"";
+            rcIniFile->SetKeyValue(DEFAULT_SECTION, CLONED_INTERFACES_KEY, str_conf_value);
         }
     }
 

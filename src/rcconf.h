@@ -4,6 +4,8 @@
 #include <string>
 #include <stdlib.h>
 #include <map>
+#include <set>
+#include <vector>
 #include <memory>
 #include <filesystem>
 #include <cstdio>
@@ -34,6 +36,19 @@ protected:
     static inline const std::string IPV4_MASK_HOST = "255.255.255.255";
     static inline const std::string ROUTE_PREFIX_HOST = "-host";
     static inline const std::string ROUTE_PREFIX_NET = "-net";
+    // Cloned interfaces (bridge, tun, tap; lagg deferred - more involved),
+    // following the documented FreeBSD rc.conf(5) convention:
+    // cloned_interfaces lists names for /etc/rc.d/netif to create at boot.
+    // Bridge membership is a sequence of "addm <member>" tokens inside that
+    // interface's own ifconfig_<name> value - e.g.
+    // ifconfig_bridge0="addm em0 addm em1 up". tun/tap have no equivalent
+    // (no membership concept), just cloned_interfaces + a plain
+    // ifconfig_<name> (address, or bare "up" if nothing else is configured).
+    // The interface's TYPE is inferred from its name prefix
+    // (Tool::classifyIfType), same convention IF_ADD/IF_LIST already use.
+    static inline const std::string CLONED_INTERFACES_KEY = "cloned_interfaces";
+    static inline const std::string BRIDGE_MEMBER_TOKEN = "addm";
+    static inline const std::string IF_UP_TOKEN = "up";
     // sscanf() format strings used by getIpConfFromString()/getRouteConfFromString(),
     // named after what they match rather than left as anonymous locals.
     // %u (not %d) matches the unsigned int* arguments passed at each call site.
@@ -61,6 +76,15 @@ protected:
     static std::string vlanDisplayNameToConfig(const std::string& ifname);
     json getIpConfFromString(std::string);
     json getRouteConfFromString(std::string);
+    // Space-separated interface-name list helper for cloned_interfaces.
+    static std::vector<std::string> parseIfNameList(const std::string& value);
+    static std::string joinIfNameList(const std::vector<std::string>& names);
+    // Pulls "addm <member>" pairs and a bare "up" out of ifconfig (mutated in
+    // place to remove them), returning the member list. Anything else in the
+    // string - an "inet ..."/DHCP portion, or an as-yet-unrecognized token -
+    // is left untouched, so the caller can still run the remainder through
+    // getIpConfFromString()/rebuild it unmodified.
+    static std::vector<std::string> extractBridgeMembers(std::string& ifconfig);
     short nBackups;
 public:
     RcConf(std::string, short);
