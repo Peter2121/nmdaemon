@@ -453,6 +453,7 @@ bool RcConf::setRcIpConfig(json rcdata)
     std::string ip_gw;
     std::string str_rt_status;
     std::string str_active_routes;
+    std::set<std::string> submitted_route_names;
     bool is_dhcp = false;
 
     if(!iniLoad())
@@ -672,6 +673,7 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig rejected invalid route name";
                 continue;
             }
+            submitted_route_names.insert(str_rt_name);
             str_rt_status = jrt.at(JSON_PARAM_STATUS);
             if(str_rt_status.empty())
             {
@@ -731,15 +733,38 @@ bool RcConf::setRcIpConfig(json rcdata)
         }
     }
 
-    // TODO: remove old routes!!!
-
-    if(!str_active_routes.empty())
+    // Remove stale route_<name> records for routes no longer present in the submitted
+    // config, mirroring the alias cleanup above: only keys that actually exist are
+    // looked up and removed. Scoped to have_routes so an interfaces-only write (no
+    // ROUTES data at all) can't be misread as "delete every route".
+    if(have_routes)
     {
+        CIniSection* section = rcIniFile->GetSection(DEFAULT_SECTION);
+        std::set<std::string> stale_route_keys;
+        for(const auto& key : section->GetKeys())
+        {
+            std::string key_name = key->GetKeyName();
+            if(key_name.compare(0, ROUTE_KEY_PREFIX.length(), ROUTE_KEY_PREFIX) == 0 &&
+               !submitted_route_names.contains(key_name.substr(ROUTE_KEY_PREFIX.length())))
+            {
+                stale_route_keys.insert(key_name);
+            }
+        }
+        for(const auto& key_name : stale_route_keys)
+            section->RemoveKey(key_name);
+
         str_conf_key = ROUTES_KEY;
-        str_conf_value = "\"" + str_active_routes + "\"";
-        str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
-        if(str_conf_value != str_old_conf_value)
-            rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+        if(!str_active_routes.empty())
+        {
+            str_conf_value = "\"" + str_active_routes + "\"";
+            str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
+            if(str_conf_value != str_old_conf_value)
+                rcIniFile->SetKeyValue(DEFAULT_SECTION, str_conf_key, str_conf_value);
+        }
+        else
+        {
+            section->RemoveKey(str_conf_key);
+        }
     }
 
     return iniSave();
