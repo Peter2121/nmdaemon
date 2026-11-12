@@ -188,21 +188,24 @@ json RcConf::getRcIpConfig()
             }
 
             element = ifconfig;
+            Trim(element, quotes);
             if(Tool::classifyIfType(ifname) == JSON_PARAM_IF_TYPE_BRIDGE)
             {
-                Trim(element, quotes);
                 std::vector<std::string> members = extractBridgeMembers(element);
                 if(!members.empty())
                     bridgeMembersByName[ifname] = members;
             }
+            extractMtuAndCaps(element, jif);
+            bool jif_has_extra = jif.contains(JSON_PARAM_MTU) || jif.contains(JSON_PARAM_TXCSUM_IPV4) || jif.contains(JSON_PARAM_TXCSUM_IPV6);
             jdata = getIpConfFromString(element);
             if(!jdata.empty())
             {
                 if(is_primary)
                     jdata[JSON_PARAM_ADDR_PRIMARY] = is_primary;
                 jif[JSON_PARAM_ADDRESSES].push_back(jdata);
-                jarInterfaces.push_back(jif);
             }
+            if(!jdata.empty() || jif_has_extra)
+                jarInterfaces.push_back(jif);
         }
         jdata.clear();
     }
@@ -224,6 +227,12 @@ json RcConf::getRcIpConfig()
 // Iterate interfaces to insert default route and aliases
     for(auto& j : jarInterfaces)
     {
+        // An interface can now reach this array with no ADDRESSES at all
+        // (e.g. only MTU/capability settings, or bridge/tun/tap MEMBERS with
+        // no address of its own) - nothing to validate a default route
+        // against in that case.
+        if(!j.contains(JSON_PARAM_ADDRESSES))
+            continue;
         if(j[JSON_PARAM_ADDRESSES][0][JSON_PARAM_IPV4_ADDR].get<std::string>().find(DHCP_SUFFIX)!=std::string::npos)
             continue;
         name = j[JSON_PARAM_IF_NAME].get<std::string>();
@@ -379,6 +388,53 @@ std::vector<std::string> RcConf::extractBridgeMembers(std::string& ifconfig)
 
     ifconfig = joinIfNameList(remaining_tokens);
     return members;
+}
+
+void RcConf::extractMtuAndCaps(std::string& ifconfig, json& jif)
+{
+    std::vector<std::string> remaining_tokens;
+    std::stringstream ss(ifconfig);
+    std::string token;
+
+    while(ss >> token)
+    {
+        if(token == MTU_TOKEN)
+        {
+            std::string mtu_str;
+            char* end = nullptr;
+            long mtu_val;
+            if(ss >> mtu_str)
+            {
+                mtu_val = strtol(mtu_str.c_str(), &end, 10);
+                if(end != nullptr && *end == '\0' && mtu_val > 0 && mtu_val <= 65535)
+                    jif[JSON_PARAM_MTU] = (int)mtu_val;
+            }
+            continue;
+        }
+        if(token == TXCSUM_TOKEN)
+        {
+            jif[JSON_PARAM_TXCSUM_IPV4] = JSON_PARAM_ON;
+            continue;
+        }
+        if(token == "-" + TXCSUM_TOKEN)
+        {
+            jif[JSON_PARAM_TXCSUM_IPV4] = JSON_PARAM_OFF;
+            continue;
+        }
+        if(token == TXCSUM6_TOKEN)
+        {
+            jif[JSON_PARAM_TXCSUM_IPV6] = JSON_PARAM_ON;
+            continue;
+        }
+        if(token == "-" + TXCSUM6_TOKEN)
+        {
+            jif[JSON_PARAM_TXCSUM_IPV6] = JSON_PARAM_OFF;
+            continue;
+        }
+        remaining_tokens.push_back(token);
+    }
+
+    ifconfig = joinIfNameList(remaining_tokens);
 }
 
 json RcConf::getIpConfFromString(std::string ifconfig)
@@ -603,7 +659,8 @@ bool RcConf::setRcIpConfig(json rcdata)
             is_cloned_type = is_bridge || iftype_classified == JSON_PARAM_IF_TYPE_TUN || iftype_classified == JSON_PARAM_IF_TYPE_TAP;
             members_given = jif.contains(JSON_PARAM_MEMBERS) && is_bridge;
             jar_addresses = jif.contains(JSON_PARAM_ADDRESSES) ? jif.at(JSON_PARAM_ADDRESSES) : json::array();
-            if(jar_addresses.empty() && !jif.contains(JSON_PARAM_MEMBERS) && !is_cloned_type)
+            if(jar_addresses.empty() && !jif.contains(JSON_PARAM_MEMBERS) && !is_cloned_type &&
+               !jif.contains(JSON_PARAM_MTU) && !jif.contains(JSON_PARAM_TXCSUM_IPV4) && !jif.contains(JSON_PARAM_TXCSUM_IPV6))
             {
                 LOG_S(WARNING) << "setRcIpConfig cannot get addresses for interface " << str_if_name;
                 continue;
@@ -658,6 +715,65 @@ bool RcConf::setRcIpConfig(json rcdata)
                 members_given = false;
             }
         }
+//  MTU and checksum-offload capability toggles: universal ifconfig(8)
+//  keywords, valid for any interface (not just a cloned type), folded into
+//  the same ifconfig_<name> value as the address/members portion.
+        std::vector<std::string> extra_config_tokens;
+        if(jif.contains(JSON_PARAM_MTU))
+        {
+            try
+            {
+                int mtu = jif.at(JSON_PARAM_MTU);
+                if(mtu > 0 && mtu <= 65535)
+                {
+                    extra_config_tokens.push_back(MTU_TOKEN);
+                    extra_config_tokens.push_back(std::to_string(mtu));
+                }
+                else
+                {
+                    LOG_S(WARNING) << "setRcIpConfig: invalid " << JSON_PARAM_MTU << " value for " << str_if_name;
+                }
+            }
+            catch(std::exception& e)
+            {
+                LOG_S(WARNING) << "setRcIpConfig: invalid " << JSON_PARAM_MTU << " value for " << str_if_name;
+            }
+        }
+        if(jif.contains(JSON_PARAM_TXCSUM_IPV4))
+        {
+            try
+            {
+                std::string onoff = jif.at(JSON_PARAM_TXCSUM_IPV4);
+                if(onoff == JSON_PARAM_ON)
+                    extra_config_tokens.push_back(TXCSUM_TOKEN);
+                else if(onoff == JSON_PARAM_OFF)
+                    extra_config_tokens.push_back("-" + TXCSUM_TOKEN);
+                else
+                    LOG_S(WARNING) << "setRcIpConfig: " << JSON_PARAM_TXCSUM_IPV4 << " must be " << JSON_PARAM_ON << " or " << JSON_PARAM_OFF << " for " << str_if_name;
+            }
+            catch(std::exception& e)
+            {
+                LOG_S(WARNING) << "setRcIpConfig: invalid " << JSON_PARAM_TXCSUM_IPV4 << " value for " << str_if_name;
+            }
+        }
+        if(jif.contains(JSON_PARAM_TXCSUM_IPV6))
+        {
+            try
+            {
+                std::string onoff = jif.at(JSON_PARAM_TXCSUM_IPV6);
+                if(onoff == JSON_PARAM_ON)
+                    extra_config_tokens.push_back(TXCSUM6_TOKEN);
+                else if(onoff == JSON_PARAM_OFF)
+                    extra_config_tokens.push_back("-" + TXCSUM6_TOKEN);
+                else
+                    LOG_S(WARNING) << "setRcIpConfig: " << JSON_PARAM_TXCSUM_IPV6 << " must be " << JSON_PARAM_ON << " or " << JSON_PARAM_OFF << " for " << str_if_name;
+            }
+            catch(std::exception& e)
+            {
+                LOG_S(WARNING) << "setRcIpConfig: invalid " << JSON_PARAM_TXCSUM_IPV6 << " value for " << str_if_name;
+            }
+        }
+        std::string str_extra_portion = joinIfNameList(extra_config_tokens);
 //  First cycle - put principal address and default route
         for(const auto &jad : jar_addresses)
         {
@@ -699,6 +815,8 @@ bool RcConf::setRcIpConfig(json rcdata)
                             ifconfig_tokens.push_back(ip_addr);
                         else
                             ifconfig_tokens.push_back(INET_ADDR + " " + ip_addr + " " + INET_MASK + " " + ip_mask);
+                        if(!str_extra_portion.empty())
+                            ifconfig_tokens.push_back(str_extra_portion);
                         if(is_bridge)
                             ifconfig_tokens.push_back(IF_UP_TOKEN);
                         str_conf_value = "\"" + joinIfNameList(ifconfig_tokens) + "\"";
@@ -740,18 +858,21 @@ bool RcConf::setRcIpConfig(json rcdata)
                 LOG_S(WARNING) << "setRcIpConfig cannot decode data: " << jad.dump() << " for interface " << str_if_name << " : " << e.what();
             }
         }
-//  A cloned-type interface with no primary address (a members-only bridge,
-//  or a bare tun/tap that's only meant to exist, e.g. for software like
-//  OpenVPN to open on its own): ifconfig_<name> is never written by the
-//  cycle above, so write it here directly instead - at minimum "up", plus
-//  any members portion for a bridge.
-        if(!wrote_primary_ifconfig && is_cloned_type)
+//  No primary address was written above, but there's still something to
+//  persist: a cloned-type interface (members-only bridge, or a bare tun/tap
+//  that's only meant to exist, e.g. for software like OpenVPN to open on
+//  its own - gets at minimum "up"), and/or MTU/capability settings on a
+//  plain interface with no address of its own.
+        if(!wrote_primary_ifconfig && (is_cloned_type || !str_extra_portion.empty()))
         {
             str_conf_key = IFCONFIG_KEY_PREFIX + str_if_name;
             std::vector<std::string> ifconfig_tokens;
             if(!str_members_portion.empty())
                 ifconfig_tokens.push_back(str_members_portion);
-            ifconfig_tokens.push_back(IF_UP_TOKEN);
+            if(!str_extra_portion.empty())
+                ifconfig_tokens.push_back(str_extra_portion);
+            if(is_cloned_type)
+                ifconfig_tokens.push_back(IF_UP_TOKEN);
             str_conf_value = "\"" + joinIfNameList(ifconfig_tokens) + "\"";
             str_old_conf_value = rcIniFile->GetKeyValue(DEFAULT_SECTION, str_conf_key);
             if(str_conf_value != str_old_conf_value)

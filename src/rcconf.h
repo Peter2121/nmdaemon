@@ -49,6 +49,13 @@ protected:
     static inline const std::string CLONED_INTERFACES_KEY = "cloned_interfaces";
     static inline const std::string BRIDGE_MEMBER_TOKEN = "addm";
     static inline const std::string IF_UP_TOKEN = "up";
+    // MTU and checksum-offload capability toggles are universal ifconfig(8)
+    // keywords, valid inside any interface's ifconfig_<name> value (not just
+    // cloned types): "mtu <n>", and "txcsum"/"-txcsum"/"txcsum6"/"-txcsum6"
+    // to enable/disable. See ifconfig(8).
+    static inline const std::string MTU_TOKEN = "mtu";
+    static inline const std::string TXCSUM_TOKEN = "txcsum";
+    static inline const std::string TXCSUM6_TOKEN = "txcsum6";
     // sscanf() format strings used by getIpConfFromString()/getRouteConfFromString(),
     // named after what they match rather than left as anonymous locals.
     // %u (not %d) matches the unsigned int* arguments passed at each call site.
@@ -85,6 +92,12 @@ protected:
     // is left untouched, so the caller can still run the remainder through
     // getIpConfFromString()/rebuild it unmodified.
     static std::vector<std::string> extractBridgeMembers(std::string& ifconfig);
+    // Pulls "mtu <n>" and "txcsum"/"-txcsum"/"txcsum6"/"-txcsum6" tokens out
+    // of ifconfig (mutated in place to remove them, same convention as
+    // extractBridgeMembers()), setting JSON_PARAM_MTU/TXCSUM_IPV4/TXCSUM_IPV6
+    // on jif for whichever were actually found. Applies to any interface
+    // type, not just cloned ones.
+    static void extractMtuAndCaps(std::string& ifconfig, json& jif);
     short nBackups;
 public:
     RcConf(std::string, short);
