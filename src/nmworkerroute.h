@@ -73,11 +73,21 @@ protected:
         { NmScope::ROUTE, NmCmd::RT_DEL },
         { NmScope::ROUTE, NmCmd::RT_DEF_DEL },
         { NmScope::ROUTE, NmCmd::RT_LIST },
-        { NmScope::ROUTE, NmCmd::RT_LIST6 }
+        { NmScope::ROUTE, NmCmd::RT_LIST6 },
+        { NmScope::ROUTE, NmCmd::SUBSCRIBE }
     };
     bool setStaticRoute(std::shared_ptr<AddressGroup>, const std::string& ifname = std::string());
     bool delStaticRoute(std::shared_ptr<AddressGroup>);
     std::unique_ptr<Interface> getStaticRoute(std::shared_ptr<AddressGroup>);
+    // Core of RT_LIST/RT_LIST6 (dumps the kernel routing table for the given
+    // address family), factored out so ROUTE-scope notifications can reuse it
+    // directly without going through an NmCommandData.
+    json getRouteListJson(int family);
+    // Publishes the current routing table (RT_LIST/RT_LIST6-equivalent, for
+    // whichever family the just-completed operation affected) as a ROUTE
+    // event's DATA - an empty "ROUTES" array when none remain (e.g. the last
+    // route was just deleted), rather than skipping the notification.
+    void publishRouteListEvent(NmCmd cmd, int family);
 //    bool getStaticRouteN(std::shared_ptr<addr>);
     void setPsaStruct(sockaddr_in *, const std::shared_ptr<AddressBase>);
     void setPsaStruct6(sockaddr_in6 *, const std::shared_ptr<AddressBase>);

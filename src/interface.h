@@ -27,6 +27,7 @@ protected:
     std::string driverName;
     std::string description;
     std::string hardwareAddress;
+    int mtu = 0; // 0 means "not known" (not queried, or the query failed) - never a real MTU
     bool isBridge;
     std::vector<std::string> bridgeMembers;
     bool isLagg;
@@ -65,6 +66,8 @@ public:
     const std::string &getDescription() const;
     void setDescription(const std::string &newDescription);
     void setHardwareAddress(const std::string &newHardwareAddress);
+    int getMtu() const;
+    void setMtu(int newMtu);
     void findPrimaryAndJailAddress();
 };
 

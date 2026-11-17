@@ -40,6 +40,8 @@ json NmWorkerSys::execCmd(NmCommandData* pcmd)
             return execCmdResolvConfRead(pcmd);
         case NmCmd::RESOLVCONF_WRITE :
             return execCmdResolvConfWrite(pcmd);
+        case NmCmd::SUBSCRIBE :
+            return execCmdSubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -239,11 +241,14 @@ json NmWorkerSys::execCmdIfEnable(NmCommandData* pcmd) {
     {
         return JSON_RESULT_ERR;
     }
+    bool wasDown = !(curflags & cmdflag);
     curflags |= cmdflag;
     if(!Tool::setIfFlags(ifname, curflags))
     {
         return JSON_RESULT_ERR;
     }
+    if(wasDown)
+        publishEvent(NmCmd::IF_ENABLE, cmd_json[JSON_PARAM_DATA]);
     return JSON_RESULT_SUCCESS;
 }
 
@@ -266,11 +271,18 @@ json NmWorkerSys::execCmdIfDisable(NmCommandData* pcmd) {
     {
         return JSON_RESULT_ERR;
     }
+    bool wasUp = (curflags & cmdflag) != 0;
     curflags &= ~cmdflag;
     if(!Tool::setIfFlags(ifname, curflags))
     {
         return JSON_RESULT_ERR;
     }
+    // The interface is down now regardless of what happens below: a failure
+    // to also clear its default route is a separate problem (and still
+    // reported as such via the ERROR return), not a reason to withhold the
+    // notification that the interface itself was successfully disabled.
+    if(wasUp)
+        publishEvent(NmCmd::IF_DISABLE, cmd_json[JSON_PARAM_DATA]);
     //json NmWorkerRoute::execCmdDefRouteGet(NmCommandData*)
     auto route_worker = std::make_unique<NmWorkerRoute>();
     auto default_route = route_worker->execCmdDefRouteGet(nullptr);
@@ -498,6 +510,8 @@ json NmWorkerSys::execCmdIfAdd(NmCommandData* pcmd)
         }
     }
 
+    publishEvent(NmCmd::IF_ADD, { { JSON_PARAM_IF_NAME, ifname }, { JSON_PARAM_IF_TYPE, iftype } });
+
     json res = {};
     res[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     json res_data = { { JSON_PARAM_IF_NAME, ifname } };
@@ -568,6 +582,7 @@ json NmWorkerSys::execCmdIfRemove(NmCommandData* pcmd)
     if(!Tool::clonedIfDestroy(ifname))
         return JSON_RESULT_ERR;
 
+    publishEvent(NmCmd::IF_REMOVE, cmd_json[JSON_PARAM_DATA]);
     return JSON_RESULT_SUCCESS;
 }
 

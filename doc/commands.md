@@ -31,6 +31,46 @@ Examples:
     { "IPV4 ADDRESS": "99.99.99.0", "IPV4 SUBNET MASK": "255.255.255.0" }
 
 
+## Subscriptions
+
+Any SYSTEM, INTERFACE, ROUTE or WPA command can be replaced by `SUBSCRIBE` to register for that scope's events instead of running a command:
+
+    { "SCOPE": "<scope>", "CMD": "SUBSCRIBE", "SOCKET": "<client_socket_path>"[, "DATA": {<filter_object>}] }
+
+`SCOPE` is the first level of filtering: the subscription only ever receives events from that scope's worker. `DATA`, if given, is the second level: an event is only delivered if every key it contains is also present in the event's own `DATA` with an equal value (an event can carry more keys than the filter checks). Omitting `DATA` subscribes to every event in that scope.
+
+`SOCKET` is the client's own listening socket (same hardening as the `SOCKET` used by `*_ASYNC` commands: it must sit directly in `/tmp` or `/var/tmp`, not be owned by root, and nmdaemon test-connects to it before accepting the subscription). Subscribing again with the same `SOCKET` and `DATA` is a no-op (returns `{ "RESULT": "SUCCESS" }` without adding a duplicate entry). There is currently no `UNSUBSCRIBE` command; a subscription lasts for the life of the nmdaemon process once registered, and a client that goes away is only noticed the next time an event would have been delivered to it (that one delivery is dropped, logged, and nothing is retried).
+
+For each matching event, nmdaemon connects to `<client_socket_path>`, writes one message, and closes the connection (it does not keep a connection open) — the same one-shot delivery already used for `*_ASYNC` results. `EVENT` is the command whose execution produced this event (e.g. `"IF_REMOVE"`):
+
+    { "EVENT": "<cmd>", "SCOPE": "<scope>", "DATA": {<event_object>} }
+
+The shape of `<event_object>` is not yet defined for most commands, and most commands still don't trigger any event. So far, only these SYSTEM-scope commands publish to SYSTEM subscribers, and only when they actually succeed *and* change something (a no-op success - e.g. `IF_ENABLE` on an already-enabled interface, or an `IF_EDIT` with no recognized field - publishes nothing):
+
+- `IF_ENABLE`, `IF_DISABLE`, `IF_REMOVE`: the event's `DATA` is exactly the command's own `DATA` as received.
+- `IF_ADD`: the event's `DATA` is `{ "INTERFACE NAME": "<name>", "INTERFACE TYPE": "<type>" }` (the actual created name/type, not necessarily verbatim from the request).
+
+INTERFACE-scope subscribers get these so far:
+
+- `IF_EDIT`, `IF_RENAME`, `MTU_SET`, `MAC_ADDR_SET`, `IP_ADDR_SET`, `IP_ADDR_ADD`, `IP_ADDR_REMOVE`: the event's `DATA` is the same object an `IF_GET` for that interface would return (i.e. the interface's full current state after the change, not just the field that was changed) - for `IF_RENAME`, that's a lookup under the *new* name.
+
+ROUTE-scope subscribers get these so far:
+
+- `RT_SET`, `RT_DEF_SET`, `RT_DEL`, `RT_DEF_DEL`: the event's `DATA` is the same object an `RT_LIST`/`RT_LIST6` (whichever address family the operation affected; `RT_DEF_DEL` is IPv4-only) would return right after the change - i.e. the full current routing table for that family, not just the one route that was set/removed. `RT_DEL`/`RT_DEF_DEL` use this too (rather than `RT_GET`, which has nothing left to return once the route is gone): `{ "ROUTES": [] }` if none remain.
+
+WPA-scope subscribers get these so far:
+
+- `WPA_ADD`, `WPA_REMOVE`, `WPA_ENABLE`, `WPA_DISABLE`: the event's `DATA` is the same object a `WPA_LIST` with `"DETAILS": false` for that interface would return right after the change - i.e. the interface's full current network list, not just the one network that was added/removed/enabled/disabled. Unlike the ROUTE-scope commands above, a failure to re-fetch that list (not the same thing as the list genuinely being empty) means nothing is published at all, rather than falling back to an empty list.
+
+For example:
+
+    { "SCOPE": "SYSTEM", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11451" }
+    { "SCOPE": "INTERFACE", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11452" }
+    { "SCOPE": "INTERFACE", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11452", "DATA": { "INTERFACE NAME": "em0" } }
+    { "SCOPE": "ROUTE", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11453" }
+    { "SCOPE": "WPA", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11454" }
+    { "SCOPE": "WPA", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11454", "DATA": { "INTERFACE NAME": "wlan0" } }
+
 ## Commands
 
 **Run-time and boot-time configurations**
@@ -44,7 +84,7 @@ The commands from WPA scope changes the run-time configuration of wpa\_supplican
 
     { "SCOPE": "SYSTEM", "CMD": "IF_LIST"[, "DATA": { "FILTER": { "MODE": "INCLUDE|EXCLUDE", "INTERFACE TYPE": [ "<type_1>", "<type_2>", ... ] } }] }
 
-List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address. Driver-reported hardware offload capabilities (currently "TXCSUM" and "TXCSUM6", see IF_EDIT) are reported as "ON"/"OFF"; a capability is omitted entirely when the interface's driver doesn't support it (more capabilities may be added to this list over time).
+List all network interfaces, their IP addresses, status ("UP"/"RUNNING"/media), their "MTU", their "DRIVER NAME" (the original kernel-assigned name, e.g. "igb0", as reported by `ifconfig -D`; stays available after the interface has been renamed with IF_RENAME/IF_EDIT) and "DESCRIPTION" (if one was set); for BRIDGE interfaces, their current "MEMBERS" list; for LAGG interfaces, their current "MEMBERS" (ports) list, "LAGG PROTOCOL", and "MASTER" (the name of the port currently holding the MASTER flag, as shown by `ifconfig <lagg_name>`'s `laggport: ... flags=...<MASTER,...>` lines; omitted if no port currently has it). If the interface's current MAC address (see MAC_ADDR_SET) differs from its permanent/burned-in one, the permanent one is also reported as "HARDWARE ADDRESS" -- matching `ifconfig`'s own `ether <current>` / `hwaddr <permanent>` distinction; omitted when they match or the interface has no permanent address. Driver-reported hardware offload capabilities (currently "TXCSUM" and "TXCSUM6", see IF_EDIT) are reported as "ON"/"OFF"; a capability is omitted entirely when the interface's driver doesn't support it (more capabilities may be added to this list over time).
 
 An optional "DATA"."FILTER" narrows the returned list. "MODE" is required and is either "INCLUDE" (only interfaces matching every given criterion are returned) or "EXCLUDE" (interfaces matching every given criterion are removed, everything else is returned). Currently the only supported criterion is "INTERFACE TYPE", an array of the same type strings used by IF_ADD ("TUN", "TAP", "EPAIR", "BRIDGE", "LAGG"); an interface that is none of these (e.g. a physical NIC or wlan0) never matches it. More criteria (e.g. "INTERFACE NAME", "STATUS", "MEDIA") may be added over time; when several are present in the same FILTER, an interface must satisfy all of them to match. An invalid or malformed FILTER returns `{ "RESULT": "ERROR" }`.
 

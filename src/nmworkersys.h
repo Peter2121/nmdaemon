@@ -31,7 +31,8 @@ protected:
         { NmScope::SYSTEM, NmCmd::RCCONF_WRITE },
         { NmScope::SYSTEM, NmCmd::JAIL_LIST },
         { NmScope::SYSTEM, NmCmd::RESOLVCONF_READ },
-        { NmScope::SYSTEM, NmCmd::RESOLVCONF_WRITE }
+        { NmScope::SYSTEM, NmCmd::RESOLVCONF_WRITE },
+        { NmScope::SYSTEM, NmCmd::SUBSCRIBE }
     };
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";

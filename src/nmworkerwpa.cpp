@@ -38,6 +38,11 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
         return execCmdWpaScanAsync(pcmd);
     if(pcmd->getCommand().cmd == NmCmd::WPA_CONNECT_ASYNC)
         return execCmdWpaConnectAsync(pcmd);
+    // SUBSCRIBE only touches the independent subscriptions list (its own
+    // mutex), not any of the worker state worker_access serializes, so it
+    // shouldn't be rejected as BUSY behind an unrelated in-flight async job.
+    if(pcmd->getCommand().cmd == NmCmd::SUBSCRIBE)
+        return execCmdSubscribe(pcmd);
 
     // Reject rather than block: a sync command must not stall the dispatcher
     // (and the global work_access it holds) behind an in-flight async job on
@@ -227,22 +232,23 @@ json NmWorkerWpa::getJsonFromBufTable(std::string param_name)
 
 json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
 {
-    std::string strCmd;
-    json cmd = {};
-    json ret_list = {};
-    std::string ifname = "";
-    bool details = false;
-
-    ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
+    std::string ifname = getStringParamFromCommand(pcmd, JSON_PARAM_IF_NAME);
     if(ifname.empty())
         return JSON_RESULT_ERR;
 
-    strCmd = COMMAND_LIST;
+    bool details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
+    return getWpaListJson(ifname, details);
+}
+
+json NmWorkerWpa::getWpaListJson(const std::string& ifname, bool details)
+{
+    std::string strCmd = COMMAND_LIST;
+    json ret_list = {};
+
     if(!wpaCtrlCmd(strCmd, ifname))
         return JSON_RESULT_ERR;
 
     ret_list = getJsonFromBufTable(JSON_PARAM_NETWORKS);
-    details = getBoolParamFromCommand(pcmd, JSON_PARAM_DETAILS);
     if(details)
     {
         //getSuppParams(ifname, ret_list);
@@ -250,6 +256,13 @@ json NmWorkerWpa::execCmdWpaList(NmCommandData* pcmd)
     }
 
     return ret_list;
+}
+
+void NmWorkerWpa::publishWpaListEvent(NmCmd cmd, const std::string& ifname)
+{
+    json listResult = getWpaListJson(ifname, false);
+    if(listResult.contains(JSON_PARAM_DATA))
+        publishEvent(cmd, listResult[JSON_PARAM_DATA]);
 }
 
 json NmWorkerWpa::execCmdWpaListAsync(NmCommandData* pcmd)
@@ -1496,6 +1509,8 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     jret[JSON_PARAM_DATA] = jdata;
 
+    publishWpaListEvent(NmCmd::WPA_ADD, ifname);
+
     return jret;
 }
 
@@ -1636,6 +1651,8 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
 
     if(!removeNetwork(ifname, id))
         return JSON_RESULT_ERR;
+
+    publishWpaListEvent(NmCmd::WPA_REMOVE, ifname);
 
     return JSON_RESULT_SUCCESS;
 }
@@ -1960,7 +1977,10 @@ json NmWorkerWpa::execCmdWpaEnable(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
 
     if(enableNetwork(ifname, id))
+    {
+        publishWpaListEvent(NmCmd::WPA_ENABLE, ifname);
         return JSON_RESULT_SUCCESS;
+    }
     else
         return JSON_RESULT_ERR;
 }
@@ -2003,6 +2023,8 @@ json NmWorkerWpa::execCmdWpaDisable(NmCommandData* pcmd)
         LOG_S(WARNING) << "execCmdWpaDisable did not receive OK for " << strCmd << " command";
         return JSON_RESULT_ERR;
     }
+
+    publishWpaListEvent(NmCmd::WPA_DISABLE, ifname);
 
     return JSON_RESULT_SUCCESS;
 }

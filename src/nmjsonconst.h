@@ -6,6 +6,7 @@
 const std::string JSON_PARAM_SCOPE = "SCOPE";
 const std::string JSON_PARAM_CMD = "CMD";
 const std::string JSON_PARAM_DATA = "DATA";
+const std::string JSON_PARAM_EVENT = "EVENT";
 const std::string JSON_PARAM_SOCKET = "SOCKET";
 const std::string JSON_PARAM_REQUEST = "REQUEST";
 const std::string JSON_PARAM_RESULT = "RESULT";

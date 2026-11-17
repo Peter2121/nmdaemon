@@ -8,14 +8,18 @@
 #include <filesystem>
 #include <regex>
 #include <string_view>
-#include <thread>
 
 #include "loguru/loguru.hpp"
 #include "sockpp/unix_connector.h"
+//#define LIBASYNC_STATIC
+#include "async++.h"
 
 namespace
 {
-    constexpr std::size_t ASYNC_NOTIFY_MAXBUF = 512;
+    // Matches NmDaemon::NM_MAXBUF (nmdaemon.h), the main command socket's own
+    // fixed buffer size, so a notification isn't more size-constrained than
+    // an ordinary command response.
+    constexpr std::size_t ASYNC_NOTIFY_MAXBUF = 8192;
 
     // Hardening for the client callback socket named in an async request.
     // These will move to the config file later; for now they are fixed here.
@@ -27,6 +31,21 @@ namespace
     {
         static const std::regex requestIdRegex(R"(^[A-Za-z0-9]+$)");
         return request_id.length() <= MAX_REQUEST_ID_LENGTH && std::regex_match(request_id, requestIdRegex);
+    }
+
+    // A subscription's DATA filter matches an event's own DATA when every
+    // key present in the filter is also present in the event with an equal
+    // value (an empty/absent filter matches any event for the scope).
+    bool jsonMatchesFilter(const json& data, const json& filter)
+    {
+        if(filter.empty())
+            return true;
+        for(auto it = filter.begin(); it != filter.end(); ++it)
+        {
+            if(!data.contains(it.key()) || data[it.key()] != it.value())
+                return false;
+        }
+        return true;
     }
 
     bool isAllowedClientSocketDir(const std::string& sock_path)
@@ -206,9 +225,15 @@ json NmWorkerBase::execCmdAsync(NmCommandData* pcmd, std::function<json(NmComman
     std::string str_cmd_data = cmd_data.dump();
 
     // pcmd itself is owned by the dispatcher, which deletes it as soon as
-    // execCmd (and therefore this function) returns, so the background thread
+    // execCmd (and therefore this function) returns, so the background job
     // gets its own independent copy instead of the original pointer.
-    std::thread([syncExec, str_cmd_data, sock_path, request_id, guard = std::move(worker_guard)]() mutable
+    // Delivered on async++'s own thread pool rather than a raw detached
+    // std::thread - same fire-and-forget pattern as publishEvent() (see its
+    // own comment there for why discarding the returned task<void> is safe,
+    // and why a stray exception here is dropped rather than crashing the
+    // process): bounded thread usage instead of one new OS thread per async
+    // command, regardless of how many run concurrently.
+    async::spawn([syncExec, str_cmd_data, sock_path, request_id, guard = std::move(worker_guard)]() mutable
     {
         json result = JSON_RESULT_ERR;
         try
@@ -226,7 +251,118 @@ json NmWorkerBase::execCmdAsync(NmCommandData* pcmd, std::function<json(NmComman
         bool succeeded = result.contains(JSON_PARAM_RESULT) && result[JSON_PARAM_RESULT] == JSON_PARAM_SUCC;
         json notify = { { JSON_PARAM_RESULT, succeeded ? JSON_PARAM_SUCC : JSON_PARAM_ERR }, { JSON_PARAM_REQUEST, request_id } };
         sendAsyncNotification(sock_path, notify);
-    }).detach();
+    });
 
     return JSON_RESULT_SUCCESS;
+}
+
+json NmWorkerBase::execCmdSubscribe(NmCommandData* pcmd)
+{
+    json cmd_data;
+    std::string sock_path;
+    json data_filter = json::object();
+
+    try
+    {
+        cmd_data = pcmd->getJsonData();
+        if(!cmd_data.contains(JSON_PARAM_SOCKET) || !cmd_data[JSON_PARAM_SOCKET].is_string())
+        {
+            LOG_S(WARNING) << "execCmdSubscribe: missing or invalid " << JSON_PARAM_SOCKET;
+            return JSON_RESULT_ERR;
+        }
+        sock_path = cmd_data[JSON_PARAM_SOCKET].get<std::string>();
+
+        if(cmd_data.contains(JSON_PARAM_DATA))
+        {
+            if(!cmd_data[JSON_PARAM_DATA].is_object())
+            {
+                LOG_S(WARNING) << "execCmdSubscribe: invalid " << JSON_PARAM_DATA;
+                return JSON_RESULT_ERR;
+            }
+            data_filter = cmd_data[JSON_PARAM_DATA];
+        }
+    }
+    catch(std::exception& e)
+    {
+        LOG_S(WARNING) << "execCmdSubscribe: exception reading request: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+
+    if(sock_path.empty())
+        return JSON_RESULT_ERR;
+
+    if(!isAllowedClientSocketDir(sock_path))
+    {
+        LOG_S(ERROR) << "execCmdSubscribe: client socket " << sock_path << " is not in an allowed directory";
+        return JSON_RESULT_ERR;
+    }
+
+    if(!isClientSocketOwnerAllowed(sock_path))
+        return JSON_RESULT_ERR;
+
+    {
+        sockpp::unix_connector testconn;
+        if(!testconn.connect(sockpp::unix_address(sock_path)))
+        {
+            LOG_S(ERROR) << "execCmdSubscribe cannot connect to client socket " << sock_path << " : " << testconn.last_error_str();
+            return JSON_RESULT_ERR;
+        }
+        testconn.close();
+    }
+
+    {
+        std::lock_guard<std::mutex> lk(subscriptions_mutex);
+        for(const auto& sub : subscriptions)
+        {
+            if(sub.socketPath == sock_path && sub.dataFilter == data_filter)
+            {
+                LOG_S(INFO) << "execCmdSubscribe: " << sock_path << " already subscribed to " << magic_enum::enum_name(getScope()) << " with this filter";
+                return JSON_RESULT_SUCCESS;
+            }
+        }
+        subscriptions.push_back({ sock_path, data_filter });
+    }
+
+    LOG_S(INFO) << "execCmdSubscribe: " << sock_path << " subscribed to " << magic_enum::enum_name(getScope()) << " events";
+    return JSON_RESULT_SUCCESS;
+}
+
+void NmWorkerBase::publishEvent(NmCmd cmd, const json& data)
+{
+    std::vector<Subscription> targets;
+    {
+        std::lock_guard<std::mutex> lk(subscriptions_mutex);
+        for(const auto& sub : subscriptions)
+        {
+            if(jsonMatchesFilter(data, sub.dataFilter))
+                targets.push_back(sub);
+        }
+    }
+    if(targets.empty())
+        return;
+
+    json payload = { { JSON_PARAM_EVENT, std::string(magic_enum::enum_name(cmd)) },
+                      { JSON_PARAM_SCOPE, std::string(magic_enum::enum_name(getScope())) },
+                      { JSON_PARAM_DATA, data } };
+    // Delivered on async++'s own thread pool instead of the calling (worker)
+    // thread, so a slow/unresponsive subscriber can't delay the response to
+    // whichever command just triggered this event. Fire-and-forget: the
+    // returned task<void> is deliberately discarded rather than kept or
+    // waited on - async++ keeps the task alive internally until it finishes
+    // regardless, and (unlike a raw std::thread) a stray exception in a
+    // task nobody ever calls get()/wait() on is simply stored and dropped
+    // rather than calling std::terminate, so the catch below is only for
+    // visibility in the logs, not crash safety.
+    async::spawn([targets, payload]()
+    {
+        try
+        {
+            for(const auto& sub : targets)
+                sendAsyncNotification(sub.socketPath, payload);
+        }
+        catch(std::exception& e)
+        {
+            LOG_S(ERROR) << "publishEvent: exception delivering notifications: " << e.what();
+        }
+    });
 }

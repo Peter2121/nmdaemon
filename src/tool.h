@@ -98,6 +98,7 @@ public:
     static std::string getMediaDesc(std::string);
     static std::string getIfDriverName(const std::string&); // original driver-assigned name (e.g. "igb0"), survives interface rename
     static std::string getIfDescription(const std::string&);
+    static int getIfMtu(const std::string& ifname); // 0 on failure, never a real MTU
     static std::unique_ptr<struct ifmediareq> getMediaState(std::string);
     static std::string getDescWord(int ifmw, int print_toptype);
     static bool isMediaStatusSupported(std::string);

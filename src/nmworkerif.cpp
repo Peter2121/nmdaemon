@@ -58,6 +58,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
         case NmCmd::IP6_DHCP_DISABLE :
         case NmCmd::IP6_GET_DHCP_STATUS :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
+        case NmCmd::SUBSCRIBE :
+            return execCmdSubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -320,6 +322,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
 {
     json cmd = {};
     json cmd_data = {};
+    bool configChanged = false;
 
     try {
         cmd = pcmd->getJsonData();
@@ -346,6 +349,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         if(!setIfName(ifName, newIfName))
             return JSON_RESULT_ERR;
         ifName = newIfName;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_MTU))
@@ -359,6 +363,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!setMtu(ifName, mtu))
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     bool laggProtoSetToRoundRobin = false;
@@ -386,6 +391,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         if(!Tool::laggSetProto(ifName, laggProtoVal))
             return JSON_RESULT_ERR;
         laggProtoSetToRoundRobin = (laggProtoVal == (int)LAGG_PROTO_ROUNDROBIN);
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_LAGG_ROUNDROBIN_LIMIT))
@@ -414,6 +420,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!Tool::laggSetRRLimit(ifName, rrLimit))
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_MEMBERS))
@@ -436,6 +443,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         bool membersOk = ifName.starts_with(Tool::LAGG_IF_PREFIX) ? setLaggMembers(ifName, members) : setBridgeMembers(ifName, members);
         if(!membersOk)
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_DESCRIPTION))
@@ -449,6 +457,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!setDescription(ifName, description))
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_LINK_ADDR))
@@ -462,6 +471,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!Tool::setIfMacAddr(ifName, macAddr))
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_TXCSUM_IPV4))
@@ -477,6 +487,7 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!Tool::setIfCap(ifName, IFCAP_TXCSUM, onoff == JSON_PARAM_ON))
             return JSON_RESULT_ERR;
+        configChanged = true;
     }
 
     if(cmd_data.contains(JSON_PARAM_TXCSUM_IPV6))
@@ -492,6 +503,14 @@ json NmWorkerIf::execCmdIfEdit(NmCommandData* pcmd)
         }
         if(!Tool::setIfCap(ifName, IFCAP_TXCSUM_IPV6, onoff == JSON_PARAM_ON))
             return JSON_RESULT_ERR;
+        configChanged = true;
+    }
+
+    if(configChanged)
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IF_EDIT, ifJson[0]);
     }
 
     return JSON_RESULT_SUCCESS;
@@ -550,6 +569,13 @@ json NmWorkerIf::execCmdIfRename(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
 
     ifName = newIfName;
+
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IF_RENAME, ifJson[0]);
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -617,6 +643,13 @@ json NmWorkerIf::execCmdIpAddrSet(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address set to interface " << ifName;
+
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IP_ADDR_SET, ifJson[0]);
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -648,6 +681,13 @@ json NmWorkerIf::execCmdIpAddrAdd(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "New IP address added to interface " << ifName;
+
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IP_ADDR_ADD, ifJson[0]);
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -679,6 +719,13 @@ json NmWorkerIf::execCmdIpAddrRemove(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
     LOG_S(INFO) << "IP address removed from interface " << ifName;
+
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IP_ADDR_REMOVE, ifJson[0]);
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -901,6 +948,12 @@ json NmWorkerIf::execCmdMtuSet(NmCommandData* pcmd)
     if(!setMtu(ifName, mtu))
         return JSON_RESULT_ERR;
 
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::MTU_SET, ifJson[0]);
+    }
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -1012,6 +1065,12 @@ json NmWorkerIf::execCmdMacAddrSet(NmCommandData* pcmd)
 
     if(!Tool::setIfMacAddr(ifName, macAddr))
         return JSON_RESULT_ERR;
+
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::MAC_ADDR_SET, ifJson[0]);
+    }
 
     return JSON_RESULT_SUCCESS;
 }

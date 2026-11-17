@@ -9,6 +9,9 @@ enum class NmScope
 enum class NmCmd
 {
     NONE, TEST,
+//  Cross-cutting: supported by multiple scopes' workers (see each worker's
+//  Cmds[]), not tied to one section below.
+    SUBSCRIBE,
 //  system_worker
     IF_ADD, IF_REMOVE, IF_LIST,
     IF_ENABLE, IF_DISABLE,

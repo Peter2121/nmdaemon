@@ -614,6 +614,7 @@ std::vector<json> Tool::getIfInfoJson(const std::string& ifname)
         iface.setMediaDesc(Tool::getMediaDesc(name));
         iface.setDriverName(Tool::getIfDriverName(name));
         iface.setDescription(Tool::getIfDescription(name));
+        iface.setMtu(Tool::getIfMtu(name));
         {
             std::string curMac = Tool::getIfMacAddr(name);
             std::string hwMac = Tool::getIfHwAddr(name);
@@ -1252,6 +1253,25 @@ std::string Tool::getIfDescription(const std::string& ifname)
     sock.close();
     description.assign(buf.data());
     return description;
+}
+
+int Tool::getIfMtu(const std::string& ifname)
+{
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strlcpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
+
+    sockpp::socket sock = sockpp::socket::create(AF_INET, SOCK_DGRAM);
+    if (ioctl(sock.handle(), SIOCGIFMTU, (caddr_t)&ifr) < 0)
+    {
+        LOG_S(INFO) << "Cannot get MTU for interface " << ifname;
+        sock.close();
+        return 0;
+    }
+
+    sock.close();
+    return ifr.ifr_mtu;
 }
 
 std::vector<JailParam> Tool::getJails()

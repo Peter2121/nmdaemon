@@ -34,7 +34,8 @@ protected:
         { NmScope::INTERFACE, NmCmd::MTU_GET },
         { NmScope::INTERFACE, NmCmd::MTU_SET },
         { NmScope::INTERFACE, NmCmd::MAC_ADDR_GET },
-        { NmScope::INTERFACE, NmCmd::MAC_ADDR_SET }
+        { NmScope::INTERFACE, NmCmd::MAC_ADDR_SET },
+        { NmScope::INTERFACE, NmCmd::SUBSCRIBE }
     };
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);

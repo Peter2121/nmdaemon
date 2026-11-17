@@ -45,6 +45,8 @@ json NmWorkerRoute::execCmd(NmCommandData* pcmd)
             return execCmdDefRouteGet6(pcmd);
         case NmCmd::RT_DEF_DEL :
             return execCmdDefRouteDel(pcmd);
+        case NmCmd::SUBSCRIBE :
+            return execCmdSubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -409,6 +411,11 @@ json NmWorkerRoute::execCmdDefRouteDel(NmCommandData*)
     }
 
     LOG_S(INFO) << "Default route deleted";
+
+    // execCmdDefRouteDel only ever handles the IPv4 default route (no IPv6
+    // counterpart exists yet - see execCmdDefRouteGet6 having no "Del" sibling).
+    publishRouteListEvent(NmCmd::RT_DEF_DEL, AF_INET);
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -495,6 +502,9 @@ json NmWorkerRoute::execCmdRouteSet(NmCommandData* pcmd)
     }
 
     LOG_S(INFO) << "Static route set";
+
+    publishRouteListEvent(NmCmd::RT_SET, rt_addr->getFamily());
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -509,6 +519,8 @@ json NmWorkerRoute::execCmdRouteDel(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    short family = rt_addr->getFamily();
+
     if(!NmWorkerRoute::delStaticRoute(rt_addr))
     {
         LOG_S(ERROR) << "Cannot delete route";
@@ -516,6 +528,9 @@ json NmWorkerRoute::execCmdRouteDel(NmCommandData* pcmd)
     }
 
     LOG_S(INFO) << "Static route deleted";
+
+    publishRouteListEvent(NmCmd::RT_DEL, family);
+
     return JSON_RESULT_SUCCESS;
 }
 
@@ -576,10 +591,36 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
     }
 
     LOG_S(INFO) << "Default route set";
+
+    publishRouteListEvent(NmCmd::RT_DEF_SET, rt_addr->getFamily());
+
     return JSON_RESULT_SUCCESS;
 }
 
+void NmWorkerRoute::publishRouteListEvent(NmCmd cmd, int family)
+{
+    json listResult = getRouteListJson(family);
+    json listData = listResult.contains(JSON_PARAM_DATA)
+        ? listResult[JSON_PARAM_DATA]
+        : json{ { JSON_PARAM_ROUTES, json::array() } };
+    publishEvent(cmd, listData);
+}
+
 json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
+{
+    int family = 0;
+
+    if(pcmd->getCommand().cmd == NmCmd::RT_LIST)
+        family = AF_INET;
+    else if(pcmd->getCommand().cmd == NmCmd::RT_LIST6)
+        family = AF_INET6;
+    else
+        return JSON_RESULT_ERR;
+
+    return getRouteListJson(family);
+}
+
+json NmWorkerRoute::getRouteListJson(int family)
 {
     struct rt_msghdr* rtm = nullptr;
     struct sockaddr *sa = nullptr;
@@ -593,7 +634,6 @@ json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
     std::shared_ptr<AddressBase> sp_mask = nullptr;
     std::shared_ptr<AddressBase> sp_gate = nullptr;
     short constexpr MIB_SIZE = 6;
-    int family = 0;
     int mib[MIB_SIZE];
     char ifname[IFNAMSIZ];
     std::string strIfName = "";
@@ -601,13 +641,6 @@ json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
     std::vector<nlohmann::json> vectIfsJson;
     nlohmann::json retIfListJson = {};
     nlohmann::json res_routes = {};
-
-    if(pcmd->getCommand().cmd == NmCmd::RT_LIST)
-        family = AF_INET;
-    else if(pcmd->getCommand().cmd == NmCmd::RT_LIST6)
-        family = AF_INET6;
-    else
-        return JSON_RESULT_ERR;
 
     mib[0] = CTL_NET;
     mib[1] = AF_ROUTE;

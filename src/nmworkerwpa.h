@@ -63,7 +63,8 @@ protected:
         { NmScope::WPA, NmCmd::WPA_ENABLE },
         { NmScope::WPA, NmCmd::WPA_DISABLE },
         { NmScope::WPA, NmCmd::WPA_SET_BSSID },
-        { NmScope::WPA, NmCmd::WPA_SELECT }
+        { NmScope::WPA, NmCmd::WPA_SELECT },
+        { NmScope::WPA, NmCmd::SUBSCRIBE }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -160,6 +161,15 @@ protected:
     bool enableNetwork(std::string, int);
     std::string searchLineInBuf(const std::string, bool);
     int getNetId(std::string, std::string, std::string);
+    // Core of WPA_LIST (talks to wpa_supplicant and builds the NETWORKS
+    // json), factored out so WPA-scope notifications can reuse it directly
+    // without going through an NmCommandData.
+    json getWpaListJson(const std::string& ifname, bool details = false);
+    // Publishes the same data a WPA_LIST with "DETAILS": false would return
+    // for ifname as a WPA event's DATA. Skipped (not a fallback to an empty
+    // list) if the list itself cannot be retrieved - unlike an empty routing
+    // table, a failed wpaCtrlCmd() doesn't mean "genuinely no networks".
+    void publishWpaListEvent(NmCmd cmd, const std::string& ifname);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);

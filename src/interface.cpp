@@ -122,6 +122,9 @@ const nlohmann::json Interface::getIfJson() const
     if(!hardwareAddress.empty())
         retIfJson[JSON_PARAM_HWADDR] = hardwareAddress;
 
+    if(mtu > 0)
+        retIfJson[JSON_PARAM_MTU] = mtu;
+
     if(isDhcpEnabled)
         retIfJson[JSON_PARAM_DHCP_ENABLED] = isDhcpEnabled;
 
@@ -236,6 +239,16 @@ void Interface::setDescription(const std::string &newDescription)
 void Interface::setHardwareAddress(const std::string &newHardwareAddress)
 {
     hardwareAddress = newHardwareAddress;
+}
+
+int Interface::getMtu() const
+{
+    return mtu;
+}
+
+void Interface::setMtu(int newMtu)
+{
+    mtu = newMtu;
 }
 
 void Interface::findPrimaryAndJailAddress()
