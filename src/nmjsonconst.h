@@ -127,6 +127,26 @@ const std::string JSON_PARAM_NAMESERVERS = "NAMESERVERS";
 const std::string JSON_PARAM_SEARCH_DOMAINS = "SEARCH DOMAINS";
 const std::string JSON_PARAM_HOST_DOMAIN = "DOMAIN";
 
+// RTM_IEEE80211 kernel event fields (see NmWorkerIeee80211's routing-socket
+// monitor). JSON_PARAM_LINK_ADDR/CHANNEL/MODE/ON/OFF/IF_NAME above are
+// reused where their existing meaning already fits.
+const std::string JSON_PARAM_FREQUENCY = "FREQUENCY";
+const std::string JSON_PARAM_CHAN_FLAGS = "CHANNEL FLAGS";
+const std::string JSON_PARAM_COUNT = "COUNT";
+const std::string JSON_PARAM_CAC_TYPE = "CAC TYPE";
+const std::string JSON_PARAM_CIPHER = "CIPHER";
+const std::string JSON_PARAM_KEY_INDEX = "KEY INDEX";
+const std::string JSON_PARAM_KEY_RSC = "KEY RSC";
+const std::string JSON_PARAM_FRAME_RSC = "FRAME RSC";
+const std::string JSON_PARAM_SRC_ADDR = "SOURCE ADDRESS";
+const std::string JSON_PARAM_DST_ADDR = "DESTINATION ADDRESS";
+const std::string JSON_PARAM_COUNTRY_CODE = "COUNTRY CODE";
+const std::string JSON_PARAM_RADIO_STATE = "RADIO STATE";
+const std::string JSON_DATA_CAC_START = "START";
+const std::string JSON_DATA_CAC_STOP = "STOP";
+const std::string JSON_DATA_CAC_RADAR = "RADAR";
+const std::string JSON_DATA_CAC_EXPIRE = "EXPIRE";
+
 const nlohmann::json JSON_RESULT_SUCCESS = { { JSON_PARAM_RESULT, JSON_PARAM_SUCC } };
 const nlohmann::json JSON_RESULT_ERR = { { JSON_PARAM_RESULT, JSON_PARAM_ERR } };
 const nlohmann::json JSON_RESULT_NOTFOUND = { { JSON_PARAM_RESULT, JSON_PARAM_NOTFOUND } };

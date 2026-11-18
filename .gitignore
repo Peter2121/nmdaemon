@@ -2,3 +2,4 @@ build*
 src/generated*
 src/backups*
 doc/backups*
+*.claude-*

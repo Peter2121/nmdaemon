@@ -3,16 +3,105 @@
 #include <sys/wait.h>
 #include <stdexcept>
 #include <algorithm>
+#include <cerrno>
 #include <net/if_lagg.h>
 
 extern char **environ;
 
-NmWorkerIf::NmWorkerIf()
+NmWorkerIf::NmWorkerIf() :
+    routeMonitor("INTERFACE", [this](const char* buf, size_t n)
+    {
+        if(!hasSubscribers())
+            return;
+        NmCmd cmd;
+        json data;
+        if(decodeInterfaceEvent(buf, n, cmd, data))
+            publishEvent(cmd, data);
+    })
 {
 }
 
 NmWorkerIf::~NmWorkerIf()
 {
+}
+
+bool NmWorkerIf::decodeInterfaceEvent(const char* buf, size_t n, NmCmd& outCmd, json& outData)
+{
+    if(n < 4)
+        return false;
+
+    u_char type = buf[3]; // common header layout: msglen(2) + version(1) + type(1), shared by every routing-socket message family
+
+    switch(type)
+    {
+        case RTM_IFINFO:
+        {
+            if(n < sizeof(struct if_msghdr))
+                return false;
+            const auto* ifm = reinterpret_cast<const struct if_msghdr*>(buf);
+            char ifname[IFNAMSIZ] = {0};
+            if(ifm->ifm_index == 0 || if_indextoname(ifm->ifm_index, ifname) == nullptr)
+                return false;
+            // Which field (if any) actually changed is not knowable from
+            // this message alone (SIOCSIFMTU, an IFF_UP toggle, and a
+            // driver-level link-state bounce all produce the exact same
+            // RTM_IFINFO shape) - publish the interface's current full
+            // state and let the subscriber diff it against what it already
+            // knew, same as every ambiguous case already documented.
+            std::vector<json> ifJson = Tool::getIfInfoJson(ifname);
+            if(ifJson.empty())
+                return false;
+            outCmd = NmCmd::IF_INFO_CHANGED;
+            outData = ifJson[0];
+            return true;
+        }
+        case RTM_NEWADDR:
+        case RTM_DELADDR:
+        {
+            if(n < sizeof(struct ifa_msghdr))
+                return false;
+            const auto* ifam = reinterpret_cast<const struct ifa_msghdr*>(buf);
+            char ifname[IFNAMSIZ] = {0};
+            if(ifam->ifam_index == 0 || if_indextoname(ifam->ifam_index, ifname) == nullptr)
+                return false;
+            // The interface itself still exists either way (only one of
+            // its addresses was added/removed), so this is always a fresh
+            // re-fetch - same convention as the command-triggered events.
+            std::vector<json> ifJson = Tool::getIfInfoJson(ifname);
+            if(ifJson.empty())
+                return false;
+            outCmd = (type == RTM_NEWADDR) ? NmCmd::IF_ADDR_ADDED : NmCmd::IF_ADDR_REMOVED;
+            outData = ifJson[0];
+            return true;
+        }
+        case RTM_IFANNOUNCE:
+        {
+            if(n < sizeof(struct if_announcemsghdr))
+                return false;
+            const auto* ifan = reinterpret_cast<const struct if_announcemsghdr*>(buf);
+            std::string name(ifan->ifan_name);
+            if(ifan->ifan_what == IFAN_ARRIVAL)
+            {
+                // The interface exists now - full snapshot, same as above.
+                std::vector<json> ifJson = Tool::getIfInfoJson(name);
+                outCmd = NmCmd::IF_ARRIVED;
+                outData = ifJson.empty() ? json{ { JSON_PARAM_IF_NAME, name } } : ifJson[0];
+                return true;
+            }
+            if(ifan->ifan_what == IFAN_DEPARTURE)
+            {
+                // Nothing left to fetch - echo its identity, same "echo
+                // instead of re-query on removal" pattern RT_DEL/WPA_REMOVE
+                // already use.
+                outCmd = NmCmd::IF_DEPARTED;
+                outData = { { JSON_PARAM_IF_NAME, name } };
+                return true;
+            }
+            return false;
+        }
+        default:
+            return false; // route-table, multicast, IEEE80211, etc. - not this worker's concern
+    }
 }
 
 NmScope NmWorkerIf::getScope()
@@ -60,6 +149,8 @@ json NmWorkerIf::execCmd(NmCommandData* pcmd)
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_NOT_IMPLEMENTED} };
         case NmCmd::SUBSCRIBE :
             return execCmdSubscribe(pcmd);
+        case NmCmd::UNSUBSCRIBE :
+            return execCmdUnsubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -1104,6 +1195,8 @@ json NmWorkerIf::execCmdDHCPEnable(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
+    bool wasEnabled = isDHCPEnabled();
+
     std::shared_ptr<AddressBase> sp_cur_addr = getMainIfAddr(AF_INET);
     if(sp_cur_addr == nullptr)
     {
@@ -1115,10 +1208,17 @@ json NmWorkerIf::execCmdDHCPEnable(NmCommandData* pcmd)
         LOG_S(ERROR) << "Enabling DHCP on this interface anyway...";
     }
 
-    if(enableDHCP())
-        return JSON_RESULT_SUCCESS;
-    else
+    if(!enableDHCP())
         return JSON_RESULT_ERR;
+
+    if(!wasEnabled)
+    {
+        std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+        if(!ifJson.empty())
+            publishEvent(NmCmd::IP4_DHCP_ENABLE, ifJson[0]);
+    }
+
+    return JSON_RESULT_SUCCESS;
 }
 
 bool NmWorkerIf::enableDHCP()
@@ -1194,17 +1294,27 @@ json NmWorkerIf::execCmdDHCPDisable(NmCommandData* pcmd)
     if(!isDHCPEnabled())
         return JSON_RESULT_SUCCESS;
 
+    bool disabled = false;
+
     termDHCPClient();
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    if(!isDHCPEnabled())
-        return JSON_RESULT_SUCCESS;
+    disabled = !isDHCPEnabled();
 
-    killDHCPClient();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    if(!isDHCPEnabled())
-        return JSON_RESULT_SUCCESS;
+    if(!disabled)
+    {
+        killDHCPClient();
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        disabled = !isDHCPEnabled();
+    }
 
-    return JSON_RESULT_ERR;
+    if(!disabled)
+        return JSON_RESULT_ERR;
+
+    std::vector<json> ifJson = Tool::getIfInfoJson(ifName);
+    if(!ifJson.empty())
+        publishEvent(NmCmd::IP4_DHCP_DISABLE, ifJson[0]);
+
+    return JSON_RESULT_SUCCESS;
 }
 
 json NmWorkerIf::execCmdDHCPGetStatus(NmCommandData* pcmd)

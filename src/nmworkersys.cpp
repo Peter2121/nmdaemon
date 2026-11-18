@@ -1,14 +1,74 @@
 #include "nmworkersys.h"
 #include "nmworkerroute.h"
 #include <net/if_lagg.h>
+#include <cerrno>
 
-NmWorkerSys::NmWorkerSys()
+NmWorkerSys::NmWorkerSys() :
+    routeMonitor("SYSTEM", [this](const char* buf, size_t n)
+    {
+        if(!hasSubscribers())
+            return;
+        NmCmd cmd;
+        json data;
+        if(decodeSystemEvent(buf, n, cmd, data))
+            publishEvent(cmd, data);
+    })
 {
     prcConf = nullptr;
 }
 
 NmWorkerSys::~NmWorkerSys()
 {
+}
+
+bool NmWorkerSys::decodeSystemEvent(const char* buf, size_t n, NmCmd& outCmd, json& outData)
+{
+    if(n < 4)
+        return false;
+
+    u_char type = buf[3]; // common header layout: msglen(2) + version(1) + type(1), shared by every routing-socket message family
+
+    switch(type)
+    {
+        case RTM_IFINFO:
+        {
+            if(n < sizeof(struct if_msghdr))
+                return false;
+            const auto* ifm = reinterpret_cast<const struct if_msghdr*>(buf);
+            char ifname[IFNAMSIZ] = {0};
+            if(ifm->ifm_index == 0 || if_indextoname(ifm->ifm_index, ifname) == nullptr)
+                return false;
+            std::vector<json> ifJson = Tool::getIfInfoJson(ifname);
+            if(ifJson.empty())
+                return false;
+            outCmd = NmCmd::IF_INFO_CHANGED;
+            outData = ifJson[0];
+            return true;
+        }
+        case RTM_IFANNOUNCE:
+        {
+            if(n < sizeof(struct if_announcemsghdr))
+                return false;
+            const auto* ifan = reinterpret_cast<const struct if_announcemsghdr*>(buf);
+            std::string name(ifan->ifan_name);
+            if(ifan->ifan_what == IFAN_ARRIVAL)
+            {
+                std::vector<json> ifJson = Tool::getIfInfoJson(name);
+                outCmd = NmCmd::IF_ARRIVED;
+                outData = ifJson.empty() ? json{ { JSON_PARAM_IF_NAME, name } } : ifJson[0];
+                return true;
+            }
+            if(ifan->ifan_what == IFAN_DEPARTURE)
+            {
+                outCmd = NmCmd::IF_DEPARTED;
+                outData = { { JSON_PARAM_IF_NAME, name } };
+                return true;
+            }
+            return false;
+        }
+        default:
+            return false; // route-table, address, multicast, IEEE80211, etc. - not this worker's concern
+    }
 }
 
 NmScope NmWorkerSys::getScope()
@@ -42,6 +102,8 @@ json NmWorkerSys::execCmd(NmCommandData* pcmd)
             return execCmdResolvConfWrite(pcmd);
         case NmCmd::SUBSCRIBE :
             return execCmdSubscribe(pcmd);
+        case NmCmd::UNSUBSCRIBE :
+            return execCmdUnsubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }

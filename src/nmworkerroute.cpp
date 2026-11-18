@@ -13,7 +13,16 @@
 */
 #define NEXT_SA(ap) ap = (struct sockaddr *) ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (u_long)) : sizeof(u_long)))
 
-NmWorkerRoute::NmWorkerRoute()
+NmWorkerRoute::NmWorkerRoute() :
+    routeMonitor("ROUTE", [this](const char* buf, size_t n)
+    {
+        if(!hasSubscribers())
+            return;
+        NmCmd cmd;
+        json data;
+        if(decodeRouteEvent(buf, n, cmd, data))
+            publishEvent(cmd, data);
+    })
 { }
 
 NmWorkerRoute::~NmWorkerRoute()
@@ -47,6 +56,8 @@ json NmWorkerRoute::execCmd(NmCommandData* pcmd)
             return execCmdDefRouteDel(pcmd);
         case NmCmd::SUBSCRIBE :
             return execCmdSubscribe(pcmd);
+        case NmCmd::UNSUBSCRIBE :
+            return execCmdUnsubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
@@ -398,7 +409,12 @@ json NmWorkerRoute::execCmdDefRouteDel(NmCommandData*)
     auto spmask = std::make_shared<AddressIp4>();
     auto sp_rt_addr = std::make_shared<AddressGroup>(spaddr, spmask, nullptr, AddressGroupType::ROUTE);
 
-    if( !getStaticRoute(sp_rt_addr) )
+    // Fetching the route (needed anyway, to learn its real gateway before
+    // deleting it) also doubles as the pre-delete snapshot for the
+    // notification below - there's nothing left in the kernel to query
+    // once delStaticRoute succeeds.
+    auto proute = getStaticRoute(sp_rt_addr);
+    if( proute == nullptr )
     {
         LOG_S(ERROR) << "Error in execCmdDefRouteDel - cannot get default route";
         return JSON_RESULT_ERR;
@@ -412,9 +428,7 @@ json NmWorkerRoute::execCmdDefRouteDel(NmCommandData*)
 
     LOG_S(INFO) << "Default route deleted";
 
-    // execCmdDefRouteDel only ever handles the IPv4 default route (no IPv6
-    // counterpart exists yet - see execCmdDefRouteGet6 having no "Del" sibling).
-    publishRouteListEvent(NmCmd::RT_DEF_DEL, AF_INET);
+    publishEvent(NmCmd::RT_DEF_DEL, proute->getIfJson());
 
     return JSON_RESULT_SUCCESS;
 }
@@ -503,7 +517,13 @@ json NmWorkerRoute::execCmdRouteSet(NmCommandData* pcmd)
 
     LOG_S(INFO) << "Static route set";
 
-    publishRouteListEvent(NmCmd::RT_SET, rt_addr->getFamily());
+    // Re-query the kernel for the route we just set, the same way RT_GET
+    // does, so the notification carries exactly the data an RT_GET for this
+    // one route would return - not every other route in the table too.
+    rt_addr->setType(AddressGroupType::ROUTE);
+    auto proute = getStaticRoute(rt_addr);
+    if(proute != nullptr)
+        publishEvent(NmCmd::RT_SET, proute->getIfJson());
 
     return JSON_RESULT_SUCCESS;
 }
@@ -519,7 +539,12 @@ json NmWorkerRoute::execCmdRouteDel(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    short family = rt_addr->getFamily();
+    // Snapshot the route's current (RT_GET-equivalent) data before deleting
+    // it - once delStaticRoute succeeds there's nothing left in the kernel
+    // to query. A failed snapshot doesn't block the deletion itself, it
+    // just means nothing gets published for it.
+    rt_addr->setType(AddressGroupType::ROUTE);
+    auto proute = getStaticRoute(rt_addr);
 
     if(!NmWorkerRoute::delStaticRoute(rt_addr))
     {
@@ -529,7 +554,8 @@ json NmWorkerRoute::execCmdRouteDel(NmCommandData* pcmd)
 
     LOG_S(INFO) << "Static route deleted";
 
-    publishRouteListEvent(NmCmd::RT_DEL, family);
+    if(proute != nullptr)
+        publishEvent(NmCmd::RT_DEL, proute->getIfJson());
 
     return JSON_RESULT_SUCCESS;
 }
@@ -592,18 +618,12 @@ json NmWorkerRoute::execCmdDefRouteSet(NmCommandData* pcmd)
 
     LOG_S(INFO) << "Default route set";
 
-    publishRouteListEvent(NmCmd::RT_DEF_SET, rt_addr->getFamily());
+    rt_addr->setType(AddressGroupType::ROUTE);
+    auto proute = getStaticRoute(rt_addr);
+    if(proute != nullptr)
+        publishEvent(NmCmd::RT_DEF_SET, proute->getIfJson());
 
     return JSON_RESULT_SUCCESS;
-}
-
-void NmWorkerRoute::publishRouteListEvent(NmCmd cmd, int family)
-{
-    json listResult = getRouteListJson(family);
-    json listData = listResult.contains(JSON_PARAM_DATA)
-        ? listResult[JSON_PARAM_DATA]
-        : json{ { JSON_PARAM_ROUTES, json::array() } };
-    publishEvent(cmd, listData);
 }
 
 json NmWorkerRoute::execCmdRouteList(NmCommandData* pcmd)
@@ -1042,4 +1062,80 @@ std::unique_ptr<Interface> NmWorkerRoute::getStaticRoute(std::shared_ptr<Address
     up_ret->addAddress(sp_route);
 
     return up_ret;
+}
+
+bool NmWorkerRoute::decodeRouteEvent(const char* buf, size_t n, NmCmd& outCmd, json& outData)
+{
+    if(n < sizeof(struct rt_msghdr))
+        return false;
+
+    const auto* rtm = reinterpret_cast<const struct rt_msghdr*>(buf);
+
+    NmCmd cmd;
+    switch(rtm->rtm_type)
+    {
+        case RTM_ADD:    cmd = NmCmd::RT_ADDED; break;
+        case RTM_DELETE: cmd = NmCmd::RT_REMOVED; break;
+        case RTM_CHANGE: cmd = NmCmd::RT_CHANGED; break;
+        default:
+            return false; // RTM_GET/RTM_IFINFO/ifa/IEEE80211/etc. - not this worker's concern
+    }
+
+    // Parse the trailing sockaddr array directly from the message itself -
+    // same encoding getRouteListJson()'s NET_RT_DUMP walk and getStaticRoute()
+    // already decode for this exact message shape - rather than a follow-up
+    // kernel re-query: the kernel already told us everything it knows.
+    struct sockaddr* sa = reinterpret_cast<struct sockaddr*>(const_cast<struct rt_msghdr*>(rtm) + 1);
+    struct sockaddr* rti_info[RTAX_MAX];
+    for(short i = 0; i < RTAX_MAX; i++)
+    {
+        if(rtm->rtm_addrs & (1 << i))
+        {
+            rti_info[i] = sa;
+            NEXT_SA(sa);
+        }
+        else
+            rti_info[i] = nullptr;
+    }
+
+    std::shared_ptr<AddressBase> sp_dest = nullptr;
+    std::shared_ptr<AddressBase> sp_gate = nullptr;
+    std::shared_ptr<AddressBase> sp_mask = nullptr;
+
+    if((sa = rti_info[RTAX_DST]) != nullptr)
+    {
+        if(sa->sa_family == AF_INET)
+            sp_dest = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+        else if(sa->sa_family == AF_INET6)
+            sp_dest = std::make_shared<AddressIp6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+    }
+    if(sp_dest == nullptr)
+        return false; // not enough information to publish a meaningful route entry
+
+    if((sa = rti_info[RTAX_GATEWAY]) != nullptr)
+    {
+        if(sa->sa_family == AF_INET)
+            sp_gate = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+        else if(sa->sa_family == AF_INET6)
+            sp_gate = std::make_shared<AddressIp6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+    }
+
+    if((sa = rti_info[RTAX_NETMASK]) != nullptr)
+    {
+        if(sa->sa_family == AF_INET)
+            sp_mask = std::make_shared<AddressIp4>(reinterpret_cast<const struct sockaddr_in*>(sa));
+        else if(sa->sa_family == AF_INET6)
+            sp_mask = std::make_shared<AddressIp6>(reinterpret_cast<const struct sockaddr_in6*>(sa));
+    }
+
+    char ifname[IFNAMSIZ];
+    std::string strIfName = (rtm->rtm_index > 0 && if_indextoname(rtm->rtm_index, ifname) != nullptr)
+        ? std::string(ifname) : std::to_string(rtm->rtm_index);
+
+    Interface iface(strIfName);
+    iface.addAddress(std::make_shared<AddressGroup>(sp_dest, sp_mask, sp_gate, AddressGroupType::ROUTE, true, rtm->rtm_flags));
+
+    outCmd = cmd;
+    outData = iface.getIfJson();
+    return true;
 }

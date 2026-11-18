@@ -33,34 +33,76 @@ Examples:
 
 ## Subscriptions
 
-Any SYSTEM, INTERFACE, ROUTE or WPA command can be replaced by `SUBSCRIBE` to register for that scope's events instead of running a command:
+Any SYSTEM, INTERFACE, ROUTE, WPA or WIFI command can be replaced by `SUBSCRIBE` to register for that scope's events instead of running a command:
 
     { "SCOPE": "<scope>", "CMD": "SUBSCRIBE", "SOCKET": "<client_socket_path>"[, "DATA": {<filter_object>}] }
 
 `SCOPE` is the first level of filtering: the subscription only ever receives events from that scope's worker. `DATA`, if given, is the second level: an event is only delivered if every key it contains is also present in the event's own `DATA` with an equal value (an event can carry more keys than the filter checks). Omitting `DATA` subscribes to every event in that scope.
 
-`SOCKET` is the client's own listening socket (same hardening as the `SOCKET` used by `*_ASYNC` commands: it must sit directly in `/tmp` or `/var/tmp`, not be owned by root, and nmdaemon test-connects to it before accepting the subscription). Subscribing again with the same `SOCKET` and `DATA` is a no-op (returns `{ "RESULT": "SUCCESS" }` without adding a duplicate entry). There is currently no `UNSUBSCRIBE` command; a subscription lasts for the life of the nmdaemon process once registered, and a client that goes away is only noticed the next time an event would have been delivered to it (that one delivery is dropped, logged, and nothing is retried).
+`SOCKET` is the client's own listening socket (same hardening as the `SOCKET` used by `*_ASYNC` commands: it must sit directly in `/tmp` or `/var/tmp`, not be owned by root, and nmdaemon test-connects to it before accepting the subscription). Subscribing again with the same `SOCKET` and `DATA` is a no-op (returns `{ "RESULT": "SUCCESS" }` without adding a duplicate entry).
+
+`UNSUBSCRIBE` removes a subscription - same request shape as `SUBSCRIBE` (`SOCKET` required, `DATA` optional), matched exactly against the `{SOCKET, DATA}` pair a prior `SUBSCRIBE` registered (so unsubscribing needs the identical `DATA` filter the matching `SUBSCRIBE` used, if any - omitting `DATA` only removes a no-filter subscription, it doesn't remove every filtered one for that `SOCKET`). Unlike `SUBSCRIBE`, it does **not** require the socket to still be reachable - no directory/ownership/test-connect checks are applied, since removing a subscription for a client that already went away is a normal, expected use:
+
+    { "SCOPE": "<scope>", "CMD": "UNSUBSCRIBE", "SOCKET": "<client_socket_path>"[, "DATA": {<filter_object>}] }
+
+Returns `{ "RESULT": "SUCCESS" }` if a matching subscription was found and removed, or `{ "RESULT": "NOT FOUND" }` if none matched (not treated as an error - the client's desired end state, "not subscribed", was already true). A subscription otherwise lasts for the life of the nmdaemon process once registered, and a client that goes away without calling `UNSUBSCRIBE` first is only noticed the next time an event would have been delivered to it (that one delivery is dropped, logged, and nothing is retried).
 
 For each matching event, nmdaemon connects to `<client_socket_path>`, writes one message, and closes the connection (it does not keep a connection open) — the same one-shot delivery already used for `*_ASYNC` results. `EVENT` is the command whose execution produced this event (e.g. `"IF_REMOVE"`):
 
     { "EVENT": "<cmd>", "SCOPE": "<scope>", "DATA": {<event_object>} }
 
-The shape of `<event_object>` is not yet defined for most commands, and most commands still don't trigger any event. So far, only these SYSTEM-scope commands publish to SYSTEM subscribers, and only when they actually succeed *and* change something (a no-op success - e.g. `IF_ENABLE` on an already-enabled interface, or an `IF_EDIT` with no recognized field - publishes nothing):
+The shape of `<event_object>` is not yet defined for most commands, and most commands still don't trigger any event. The guiding principle for every command that does: `DATA` describes the one thing that changed, not the broader collection it belongs to - a subscriber wants to know what just happened, not a full state dump it would have to diff against its own last-seen copy itself. Concretely, that means: re-fetch and publish just the single affected item's current state when it still exists after the change (the same shape a `*_GET` for that one item would return); when the operation *removed* the item (nothing left to fetch), echo its identifying fields - from a pre-change snapshot where one was taken for the operation anyway, or otherwise straight from the request - instead of substituting some other collection's full listing.
+
+So far, only these SYSTEM-scope commands publish to SYSTEM subscribers, and only when they actually succeed *and* change something (a no-op success - e.g. `IF_ENABLE` on an already-enabled interface, or an `IF_EDIT` with no recognized field - publishes nothing):
 
 - `IF_ENABLE`, `IF_DISABLE`, `IF_REMOVE`: the event's `DATA` is exactly the command's own `DATA` as received.
 - `IF_ADD`: the event's `DATA` is `{ "INTERFACE NAME": "<name>", "INTERFACE TYPE": "<type>" }` (the actual created name/type, not necessarily verbatim from the request).
 
+SYSTEM-scope subscribers *also* get a second, independent source of events, same model and same reasoning as INTERFACE scope below: `NmWorkerSys` runs its own `PF_ROUTE` monitor thread (a separate socket and thread from `NmWorkerIf`'s - each scope's worker listens independently for its own subscribers, nothing is shared between them), reporting kernel notifications uniformly regardless of what caused them:
+
+- `IF_INFO_CHANGED` (from `RTM_IFINFO`): same full `IF_GET`-shaped snapshot INTERFACE scope's own `IF_INFO_CHANGED` uses. `IF_ENABLE`/`IF_DISABLE` are the SYSTEM-scope commands that can cause this, but so can an INTERFACE-scope `MTU_SET`/`MAC_ADDR_SET` or a purely external flag/link change - this event type alone can't tell them apart, from either scope's monitor.
+- `IF_ARRIVED` / `IF_DEPARTED` (from `RTM_IFANNOUNCE`): `IF_ADD`/`IF_REMOVE` are the SYSTEM-scope commands that cause this (an INTERFACE-scope `IF_RENAME` also causes a departure+arrival pair, visible the same way to INTERFACE scope's own monitor). `IF_ARRIVED`'s `DATA` is the full `IF_GET` shape (the interface exists now); `IF_DEPARTED`'s is just `{ "INTERFACE NAME": "<name>" }` (nothing left to fetch).
+
+`RTM_NEWADDR`/`RTM_DELADDR` are deliberately *not* watched by SYSTEM scope's monitor - no SYSTEM-scope command touches interface addresses, that's INTERFACE scope's `IF_ADDR_ADDED`/`IF_ADDR_REMOVED` below.
+
 INTERFACE-scope subscribers get these so far:
 
-- `IF_EDIT`, `IF_RENAME`, `MTU_SET`, `MAC_ADDR_SET`, `IP_ADDR_SET`, `IP_ADDR_ADD`, `IP_ADDR_REMOVE`: the event's `DATA` is the same object an `IF_GET` for that interface would return (i.e. the interface's full current state after the change, not just the field that was changed) - for `IF_RENAME`, that's a lookup under the *new* name.
+- `IF_EDIT`, `IF_RENAME`, `MTU_SET`, `MAC_ADDR_SET`, `IP_ADDR_SET`, `IP_ADDR_ADD`, `IP_ADDR_REMOVE`, `IP4_DHCP_ENABLE`, `IP4_DHCP_DISABLE`: the event's `DATA` is the same object an `IF_GET` for that interface would return (i.e. the interface's full current state after the change, not just the field that was changed - for DHCP toggling, that includes `"DHCP_ENABLED"`) - for `IF_RENAME`, that's a lookup under the *new* name. The interface itself still exists after every one of these, so it's always a fresh re-fetch, never an echo. This covers every INTERFACE-scope command that actually mutates something - `IP6_DHCP_ENABLE`/`DISABLE` are the only other mutating commands in this scope, and they currently return `NOT IMPLEMENTED` regardless, so there's nothing for them to publish yet.
+
+INTERFACE-scope subscribers *also* get a second, independent source of events: `NmWorkerIf` runs a background thread for its whole lifetime, listening directly on a `PF_ROUTE` socket for kernel notifications about interfaces - the same model WIFI-scope subscribers already get from `NmWorkerIeee80211`, and for the same reason: nmdaemon has no reliable way to tell whether a given kernel notification was caused by one of its own commands or by something external (a manual `ifconfig`, another tool, a driver-level event). Rather than guess, these are reported uniformly under their own `EVENT` values, distinct from the command-triggered ones above, so a subscriber can tell the two sources apart:
+
+- `IF_INFO_CHANGED` (from `RTM_IFINFO` - flags, MTU, or link state changed): `DATA` is the interface's current full state, same `IF_GET` shape as above. Which field actually changed is **not** knowable from this alone - an `MTU_SET`, an `IF_ENABLE`/`IF_DISABLE` (SYSTEM scope), and a driver-level link bounce all produce this exact same event shape.
+- `IF_ADDR_ADDED` / `IF_ADDR_REMOVED` (from `RTM_NEWADDR`/`RTM_DELADDR`): same full `IF_GET` shape, re-fetched - the interface itself still exists either way.
+- `IF_ARRIVED` (from `RTM_IFANNOUNCE`/`IFAN_ARRIVAL`): same full `IF_GET` shape (the interface exists now).
+- `IF_DEPARTED` (from `RTM_IFANNOUNCE`/`IFAN_DEPARTURE`): `DATA` is just `{ "INTERFACE NAME": "<name>" }` - nothing left to fetch, so this is an echo of its identity, not a snapshot.
+
+A command that already publishes its own event (e.g. `MTU_SET`) will typically *also* produce a kernel-sourced `IF_INFO_CHANGED` shortly after, from the same underlying kernel change - this is intentional, not a bug: the two are independent, deliberately overlapping sources, not a deduplicated single feed.
 
 ROUTE-scope subscribers get these so far:
 
-- `RT_SET`, `RT_DEF_SET`, `RT_DEL`, `RT_DEF_DEL`: the event's `DATA` is the same object an `RT_LIST`/`RT_LIST6` (whichever address family the operation affected; `RT_DEF_DEL` is IPv4-only) would return right after the change - i.e. the full current routing table for that family, not just the one route that was set/removed. `RT_DEL`/`RT_DEF_DEL` use this too (rather than `RT_GET`, which has nothing left to return once the route is gone): `{ "ROUTES": [] }` if none remain.
+- `RT_SET`, `RT_DEF_SET`: the event's `DATA` is the same object an `RT_GET` for that one route would return - re-fetched from the kernel after the change, not the rest of the routing table.
+- `RT_DEL`, `RT_DEF_DEL`: the event's `DATA` is that same single-route shape, but captured as a snapshot *before* the route was removed (there's nothing left in the kernel to re-fetch afterward) - for `RT_DEF_DEL`, this snapshot is simply the lookup the command already has to do anyway, to learn the current gateway it needs in order to delete it.
+
+ROUTE-scope subscribers *also* get a second, independent source of events, same model as SYSTEM/INTERFACE/WIFI scope: `NmWorkerRoute` runs its own `PF_ROUTE` monitor thread, decoding `RTM_ADD`/`RTM_DELETE`/`RTM_CHANGE` into `RT_ADDED`/`RT_REMOVED`/`RT_CHANGED` - reported uniformly regardless of whether `RT_SET`/`RT_DEL`/`RT_DEF_SET`/`RT_DEF_DEL` caused it or something external did (a manual `route` command, another tool). Unlike every other scope's kernel-sourced events, this one's `DATA` is built directly from the message's own `DST`/`GATEWAY`/`NETMASK` sockaddrs rather than a follow-up kernel query - the kernel already told us everything it knows in the broadcast itself - but it's still the same single-route `IF_GET`-equivalent shape the command-triggered events above use.
 
 WPA-scope subscribers get these so far:
 
-- `WPA_ADD`, `WPA_REMOVE`, `WPA_ENABLE`, `WPA_DISABLE`: the event's `DATA` is the same object a `WPA_LIST` with `"DETAILS": false` for that interface would return right after the change - i.e. the interface's full current network list, not just the one network that was added/removed/enabled/disabled. Unlike the ROUTE-scope commands above, a failure to re-fetch that list (not the same thing as the list genuinely being empty) means nothing is published at all, rather than falling back to an empty list.
+- `WPA_ADD`: the event's `DATA` is `{ "NETWORK": {<entry>} }` for the newly-added network only - the same single-network object the command's own response already returns.
+- `WPA_ENABLE`, `WPA_DISABLE`: the event's `DATA` is that same `{ "NETWORK": {<entry>} }` shape, re-fetched by `NETID` from the interface's network list after the change (the network itself still exists, just toggled).
+- `WPA_REMOVE`: the event's `DATA` is `{ "NETWORK": {...} }` containing just the removed network's resolved `"network id"` (plus `SSID`/`BSSID` if that's how the request identified it) - there's no network left to re-fetch, so this is an echo of its identity, not a snapshot of its former configuration.
+
+WIFI-scope subscribers work differently from every other scope above: none of them are published from inside a WIFI/WPA command handler. Instead, `NmWorkerIeee80211` runs a background thread for its whole lifetime, listening directly on a `PF_ROUTE` socket for the kernel's own `RTM_IEEE80211` notifications - the same messages `ifconfig`/`wpa_cli`/a roaming daemon would see too, regardless of whether nmdaemon had anything to do with causing them. This was deliberate: there is no reliable way to attribute these events to "a command nmdaemon ran" vs. "something external" (the kernel doesn't record an origin for them, and the chain from a command like `WPA_CONNECT` to an eventual `ASSOC` is asynchronous and multi-hop anyway) - so rather than publish a partial, command-triggered subset, every WIFI-scope event comes uniformly from the one source that actually sees all of them. One `EVENT` value per kernel sub-event, each a notification-only `NmCmd` that's never dispatched as a command:
+
+- `WIFI_STA_JOIN`, `WIFI_STA_REJOIN`, `WIFI_STA_LEAVE`, `WIFI_WDS_DISCOVER`, `WIFI_STA_DEAUTH`, `WIFI_STA_AUTH`: the event's `DATA` is `{ "INTERFACE NAME": "<name>", "LINK ADDRESS": "<mac>" }` - the station's MAC address.
+- `WIFI_STA_ASSOC`, `WIFI_STA_REASSOC`: same shape, `LINK ADDRESS` is the BSSID (station/bss mode).
+- `WIFI_STA_DISASSOC`, `WIFI_SCAN_DONE`: `DATA` is just `{ "INTERFACE NAME": "<name>" }` - no further detail in the kernel message itself.
+- `WIFI_REPLAY_FAILURE`: `{ "INTERFACE NAME", "SOURCE ADDRESS", "DESTINATION ADDRESS", "CIPHER", "KEY INDEX", "KEY RSC", "FRAME RSC" }`.
+- `WIFI_MICHAEL_FAILURE`: `{ "INTERFACE NAME", "SOURCE ADDRESS", "DESTINATION ADDRESS", "CIPHER", "KEY INDEX" }`.
+- `WIFI_CSA`: `{ "INTERFACE NAME", "CHANNEL FLAGS", "FREQUENCY", "CHANNEL", "MODE", "COUNT" }`.
+- `WIFI_RADAR`: `{ "INTERFACE NAME", "CHANNEL FLAGS", "FREQUENCY", "CHANNEL" }`.
+- `WIFI_CAC`: `{ "INTERFACE NAME", "CHANNEL FLAGS", "FREQUENCY", "CHANNEL", "CAC TYPE" }` (`CAC TYPE` is one of `START`/`STOP`/`RADAR`/`EXPIRE`).
+- `WIFI_COUNTRY`: `{ "INTERFACE NAME", "LINK ADDRESS", "COUNTRY CODE" }`.
+- `WIFI_RADIO`: `{ "INTERFACE NAME", "RADIO STATE": "ON"|"OFF" }`.
 
 For example:
 
@@ -70,6 +112,10 @@ For example:
     { "SCOPE": "ROUTE", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11453" }
     { "SCOPE": "WPA", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11454" }
     { "SCOPE": "WPA", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11454", "DATA": { "INTERFACE NAME": "wlan0" } }
+    { "SCOPE": "WIFI", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11455" }
+    { "SCOPE": "WIFI", "CMD": "SUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11455", "DATA": { "INTERFACE NAME": "wlan0" } }
+    { "SCOPE": "WIFI", "CMD": "UNSUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11455", "DATA": { "INTERFACE NAME": "wlan0" } }
+    { "SCOPE": "SYSTEM", "CMD": "UNSUBSCRIBE", "SOCKET": "/var/tmp/nmdcli11451" }
 
 ## Commands
 

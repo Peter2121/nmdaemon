@@ -38,11 +38,14 @@ json NmWorkerWpa::execCmd(NmCommandData* pcmd)
         return execCmdWpaScanAsync(pcmd);
     if(pcmd->getCommand().cmd == NmCmd::WPA_CONNECT_ASYNC)
         return execCmdWpaConnectAsync(pcmd);
-    // SUBSCRIBE only touches the independent subscriptions list (its own
-    // mutex), not any of the worker state worker_access serializes, so it
-    // shouldn't be rejected as BUSY behind an unrelated in-flight async job.
+    // SUBSCRIBE/UNSUBSCRIBE only touch the independent subscriptions list
+    // (its own mutex), not any of the worker state worker_access
+    // serializes, so neither should be rejected as BUSY behind an
+    // unrelated in-flight async job.
     if(pcmd->getCommand().cmd == NmCmd::SUBSCRIBE)
         return execCmdSubscribe(pcmd);
+    if(pcmd->getCommand().cmd == NmCmd::UNSUBSCRIBE)
+        return execCmdUnsubscribe(pcmd);
 
     // Reject rather than block: a sync command must not stall the dispatcher
     // (and the global work_access it holds) behind an in-flight async job on
@@ -258,11 +261,31 @@ json NmWorkerWpa::getWpaListJson(const std::string& ifname, bool details)
     return ret_list;
 }
 
-void NmWorkerWpa::publishWpaListEvent(NmCmd cmd, const std::string& ifname)
+json NmWorkerWpa::getWpaNetworkJson(const std::string& ifname, int netid)
 {
     json listResult = getWpaListJson(ifname, false);
-    if(listResult.contains(JSON_PARAM_DATA))
-        publishEvent(cmd, listResult[JSON_PARAM_DATA]);
+    if(!listResult.contains(JSON_PARAM_DATA))
+        return listResult;
+
+    std::string strNetId = std::to_string(netid);
+    for(const auto& net : listResult[JSON_PARAM_DATA][JSON_PARAM_NETWORKS])
+    {
+        if(net.contains("network id") && net["network id"] == strNetId)
+        {
+            json jret;
+            jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
+            jret[JSON_PARAM_DATA][JSON_PARAM_NETWORK] = net;
+            return jret;
+        }
+    }
+    return JSON_RESULT_ERR;
+}
+
+void NmWorkerWpa::publishWpaNetworkEvent(NmCmd cmd, const std::string& ifname, int netid)
+{
+    json netResult = getWpaNetworkJson(ifname, netid);
+    if(netResult.contains(JSON_PARAM_DATA))
+        publishEvent(cmd, netResult[JSON_PARAM_DATA]);
 }
 
 json NmWorkerWpa::execCmdWpaListAsync(NmCommandData* pcmd)
@@ -1509,7 +1532,10 @@ json NmWorkerWpa::execCmdWpaAdd(NmCommandData* pcmd)
     jret[JSON_PARAM_RESULT] = JSON_PARAM_SUCC;
     jret[JSON_PARAM_DATA] = jdata;
 
-    publishWpaListEvent(NmCmd::WPA_ADD, ifname);
+    // Publish the same single-network entry the command itself is about to
+    // return - the newly-added network, not every other network already
+    // configured on this interface.
+    publishEvent(NmCmd::WPA_ADD, jdata);
 
     return jret;
 }
@@ -1652,7 +1678,18 @@ json NmWorkerWpa::execCmdWpaRemove(NmCommandData* pcmd)
     if(!removeNetwork(ifname, id))
         return JSON_RESULT_ERR;
 
-    publishWpaListEvent(NmCmd::WPA_REMOVE, ifname);
+    // The network is gone now, so there's nothing left to re-query (unlike
+    // WPA_ENABLE/WPA_DISABLE) - publish its resolved identity instead,
+    // wrapped the same way every other WPA event's single-network DATA is.
+    {
+        json removedNetwork;
+        removedNetwork["network id"] = netid;
+        if(!ssid.empty())
+            removedNetwork[JSON_PARAM_SSID] = ssid;
+        if(!bssid.empty())
+            removedNetwork[JSON_PARAM_BSSID] = bssid;
+        publishEvent(NmCmd::WPA_REMOVE, { { JSON_PARAM_NETWORK, removedNetwork } });
+    }
 
     return JSON_RESULT_SUCCESS;
 }
@@ -1978,7 +2015,7 @@ json NmWorkerWpa::execCmdWpaEnable(NmCommandData* pcmd)
 
     if(enableNetwork(ifname, id))
     {
-        publishWpaListEvent(NmCmd::WPA_ENABLE, ifname);
+        publishWpaNetworkEvent(NmCmd::WPA_ENABLE, ifname, id);
         return JSON_RESULT_SUCCESS;
     }
     else
@@ -2024,7 +2061,7 @@ json NmWorkerWpa::execCmdWpaDisable(NmCommandData* pcmd)
         return JSON_RESULT_ERR;
     }
 
-    publishWpaListEvent(NmCmd::WPA_DISABLE, ifname);
+    publishWpaNetworkEvent(NmCmd::WPA_DISABLE, ifname, id);
 
     return JSON_RESULT_SUCCESS;
 }

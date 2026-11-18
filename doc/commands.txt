@@ -18,6 +18,7 @@
 { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "bridge5" } }
 { "SCOPE" : "SYSTEM", "CMD" : "IF_REMOVE", "DATA" : { "INTERFACE NAME" : "lagg5" } }
 { "SCOPE" : "SYSTEM", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11451" }
+{ "SCOPE" : "SYSTEM", "CMD" : "UNSUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11451" }
 { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "em0", "MTU": 1400 } }
 { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "bridge5", "MEMBERS": [ "re0", "vboxnet0" ] } }
 { "SCOPE": "INTERFACE", "CMD": "IF_EDIT", "DATA": { "INTERFACE NAME": "vnet0", "NAME": "eth0" } }
@@ -42,6 +43,7 @@
 { "SCOPE" : "INTERFACE", "CMD" : "MTU_SET", "DATA" : { "INTERFACE NAME" : "em0", "MTU" : 1400 } }
 { "SCOPE" : "INTERFACE", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11452" }
 { "SCOPE" : "INTERFACE", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11452", "DATA" : { "INTERFACE NAME" : "em0" } }
+{ "SCOPE" : "INTERFACE", "CMD" : "UNSUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11452", "DATA" : { "INTERFACE NAME" : "em0" } }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF_GET" }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF6_GET" }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEF_DEL" }
@@ -54,6 +56,7 @@
 { "SCOPE" : "ROUTE", "CMD" : "RT_GET", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0" } }
 { "SCOPE" : "ROUTE", "CMD" : "RT_DEL", "DATA" : { "IPV4 ADDRESS" : "99.99.99.0", "IPV4 SUBNET MASK" : "255.255.255.0", "IPV4 GATEWAY" : "192.168.211.2" } }
 { "SCOPE" : "ROUTE", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11453" }
+{ "SCOPE" : "ROUTE", "CMD" : "UNSUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11453" }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST_IF" }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WPA", "CMD" : "WPA_LIST", "DATA" : { "INTERFACE NAME" : "wlan0", "DETAILS": true } }
@@ -84,6 +87,10 @@
 { "SCOPE" : "WPA", "CMD" : "WPA_SET_BSSID", "DATA" : { "INTERFACE NAME" : "wlan0", "NETID" : 13, "BSSID" : "00:00:00:00:00:00" } }
 { "SCOPE" : "WPA", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11454" }
 { "SCOPE" : "WPA", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11454", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WPA", "CMD" : "UNSUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11454", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_SCAN_RESULTS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_SCAN", "DATA" : { "INTERFACE NAME" : "wlan0" } }
 { "SCOPE" : "WIFI", "CMD" : "WIFI_STATUS", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WIFI", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11455" }
+{ "SCOPE" : "WIFI", "CMD" : "SUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11455", "DATA" : { "INTERFACE NAME" : "wlan0" } }
+{ "SCOPE" : "WIFI", "CMD" : "UNSUBSCRIBE", "SOCKET" : "/var/tmp/nmdcli11455", "DATA" : { "INTERFACE NAME" : "wlan0" } }

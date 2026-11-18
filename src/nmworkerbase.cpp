@@ -3,6 +3,9 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <unistd.h>
 
 #include <array>
 #include <filesystem>
@@ -13,6 +16,76 @@
 #include "sockpp/unix_connector.h"
 //#define LIBASYNC_STATIC
 #include "async++.h"
+
+PfRouteMonitor::PfRouteMonitor(std::string label, MessageHandler handler) :
+    label_(std::move(label)), handler_(std::move(handler))
+{
+    sock_ = sockpp::socket::create(PF_ROUTE, SOCK_RAW);
+    if(!sock_.is_open())
+    {
+        LOG_S(ERROR) << "PfRouteMonitor(" << label_ << "): cannot open PF_ROUTE socket - kernel events will not be delivered";
+        return;
+    }
+
+    if(pipe(stopPipe_) != 0)
+    {
+        LOG_S(ERROR) << "PfRouteMonitor(" << label_ << "): cannot create stop pipe - kernel events will not be delivered";
+        sock_.close();
+        return;
+    }
+
+    thread_ = std::thread(&PfRouteMonitor::loop, this);
+}
+
+PfRouteMonitor::~PfRouteMonitor()
+{
+    if(!thread_.joinable())
+        return;
+
+    char byte = 0;
+    write(stopPipe_[1], &byte, 1);
+    thread_.join();
+
+    close(stopPipe_[0]);
+    close(stopPipe_[1]);
+    stopPipe_[0] = stopPipe_[1] = -1;
+}
+
+void PfRouteMonitor::loop()
+{
+    constexpr size_t BUFLEN = 2048;
+    char buf[BUFLEN];
+    int routeFd = sock_.handle();
+    int stopFd = stopPipe_[0];
+    int maxFd = (routeFd > stopFd ? routeFd : stopFd) + 1;
+
+    while(true)
+    {
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(routeFd, &fds);
+        FD_SET(stopFd, &fds);
+
+        int r = select(maxFd, &fds, nullptr, nullptr, nullptr);
+        if(r < 0)
+        {
+            if(errno == EINTR)
+                continue;
+            LOG_S(ERROR) << "PfRouteMonitor(" << label_ << "): select() failed, stopping";
+            return;
+        }
+
+        if(FD_ISSET(stopFd, &fds))
+            return;
+
+        if(FD_ISSET(routeFd, &fds))
+        {
+            ssize_t n = read(routeFd, buf, BUFLEN);
+            if(n > 0)
+                handler_(buf, (size_t)n);
+        }
+    }
+}
 
 namespace
 {
@@ -327,6 +400,58 @@ json NmWorkerBase::execCmdSubscribe(NmCommandData* pcmd)
     return JSON_RESULT_SUCCESS;
 }
 
+json NmWorkerBase::execCmdUnsubscribe(NmCommandData* pcmd)
+{
+    json cmd_data;
+    std::string sock_path;
+    json data_filter = json::object();
+
+    try
+    {
+        cmd_data = pcmd->getJsonData();
+        if(!cmd_data.contains(JSON_PARAM_SOCKET) || !cmd_data[JSON_PARAM_SOCKET].is_string())
+        {
+            LOG_S(WARNING) << "execCmdUnsubscribe: missing or invalid " << JSON_PARAM_SOCKET;
+            return JSON_RESULT_ERR;
+        }
+        sock_path = cmd_data[JSON_PARAM_SOCKET].get<std::string>();
+
+        if(cmd_data.contains(JSON_PARAM_DATA))
+        {
+            if(!cmd_data[JSON_PARAM_DATA].is_object())
+            {
+                LOG_S(WARNING) << "execCmdUnsubscribe: invalid " << JSON_PARAM_DATA;
+                return JSON_RESULT_ERR;
+            }
+            data_filter = cmd_data[JSON_PARAM_DATA];
+        }
+    }
+    catch(std::exception& e)
+    {
+        LOG_S(WARNING) << "execCmdUnsubscribe: exception reading request: " << e.what();
+        return JSON_RESULT_ERR;
+    }
+
+    if(sock_path.empty())
+        return JSON_RESULT_ERR;
+
+    {
+        std::lock_guard<std::mutex> lk(subscriptions_mutex);
+        for(auto it = subscriptions.begin(); it != subscriptions.end(); ++it)
+        {
+            if(it->socketPath == sock_path && it->dataFilter == data_filter)
+            {
+                subscriptions.erase(it);
+                LOG_S(INFO) << "execCmdUnsubscribe: " << sock_path << " unsubscribed from " << magic_enum::enum_name(getScope()) << " events";
+                return JSON_RESULT_SUCCESS;
+            }
+        }
+    }
+
+    LOG_S(INFO) << "execCmdUnsubscribe: " << sock_path << " was not subscribed to " << magic_enum::enum_name(getScope()) << " with this filter";
+    return JSON_RESULT_NOTFOUND;
+}
+
 void NmWorkerBase::publishEvent(NmCmd cmd, const json& data)
 {
     std::vector<Subscription> targets;
@@ -365,4 +490,10 @@ void NmWorkerBase::publishEvent(NmCmd cmd, const json& data)
             LOG_S(ERROR) << "publishEvent: exception delivering notifications: " << e.what();
         }
     });
+}
+
+bool NmWorkerBase::hasSubscribers()
+{
+    std::lock_guard<std::mutex> lk(subscriptions_mutex);
+    return !subscriptions.empty();
 }

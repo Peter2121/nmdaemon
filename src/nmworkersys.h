@@ -3,6 +3,11 @@
 
 #include <ifaddrs.h>
 #include <sys/sockio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <unistd.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
@@ -32,7 +37,8 @@ protected:
         { NmScope::SYSTEM, NmCmd::JAIL_LIST },
         { NmScope::SYSTEM, NmCmd::RESOLVCONF_READ },
         { NmScope::SYSTEM, NmCmd::RESOLVCONF_WRITE },
-        { NmScope::SYSTEM, NmCmd::SUBSCRIBE }
+        { NmScope::SYSTEM, NmCmd::SUBSCRIBE },
+        { NmScope::SYSTEM, NmCmd::UNSUBSCRIBE }
     };
     static inline const std::string CONF_SECT_SYSTEM = "SYSTEM";
     static inline const std::string CONF_KEY_RCCONF_FILE = "rcconf_file";
@@ -54,6 +60,19 @@ protected:
     // (INCLUDE/EXCLUDE) handling stay unchanged.
     static bool ifMatchesFilterCriteria(const json& ifJson, const json& filter);
     static bool applyIfListFilter(std::vector<json>& ifList, const json& filter);
+
+    // Decodes one routing-socket message into the EVENT/DATA this worker's
+    // publishEvent() should fire. Returns false (nothing published) for a
+    // message type this worker doesn't care about, a truncated message, or
+    // one whose interface can't be resolved/no longer exists.
+    bool decodeSystemEvent(const char* buf, size_t n, NmCmd& outCmd, json& outData);
+    // Long-lived PF_ROUTE listener for SYSTEM-scope kernel events
+    // (RTM_IFINFO/RTM_IFANNOUNCE), independent of whatever command nmdaemon
+    // itself may have issued. Runs on its own independent PF_ROUTE socket,
+    // decoding the same kernel message types NmWorkerIf's own monitor also
+    // watches for - each worker pays attention for its own scope's
+    // subscribers, there is no shared listener between them.
+    PfRouteMonitor routeMonitor;
 public:
     NmWorkerSys();
     ~NmWorkerSys();

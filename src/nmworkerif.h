@@ -4,6 +4,8 @@
 #include <thread>
 #include <ifaddrs.h>
 #include <sys/sockio.h>
+#include <sys/socket.h>
+#include <net/route.h>
 //#define LOGURU_WITH_STREAMS 1
 #include "loguru/loguru.hpp"
 #include "sockpp/socket.h"
@@ -35,7 +37,8 @@ protected:
         { NmScope::INTERFACE, NmCmd::MTU_SET },
         { NmScope::INTERFACE, NmCmd::MAC_ADDR_GET },
         { NmScope::INTERFACE, NmCmd::MAC_ADDR_SET },
-        { NmScope::INTERFACE, NmCmd::SUBSCRIBE }
+        { NmScope::INTERFACE, NmCmd::SUBSCRIBE },
+        { NmScope::INTERFACE, NmCmd::UNSUBSCRIBE }
     };
 //    int getIfFlags(std::string);
 //    bool setIfFlags(std::string, int);
@@ -57,6 +60,16 @@ protected:
     static bool setIfName(const std::string& ifname, const std::string& newname);
     static bool setDescription(const std::string& ifname, const std::string& description);
 //    addr* getAddrFromJson(json);
+
+    // Decodes one routing-socket message into the EVENT/DATA this worker's
+    // publishEvent() should fire. Returns false (nothing published) for a
+    // message type this worker doesn't care about, a truncated message, or
+    // one whose interface can't be resolved/no longer exists.
+    bool decodeInterfaceEvent(const char* buf, size_t n, NmCmd& outCmd, json& outData);
+    // Long-lived PF_ROUTE listener for INTERFACE-scope kernel events
+    // (RTM_IFINFO/RTM_NEWADDR/RTM_DELADDR/RTM_IFANNOUNCE), independent of
+    // whatever command nmdaemon itself may have issued.
+    PfRouteMonitor routeMonitor;
 public:
     NmWorkerIf();
     ~NmWorkerIf();

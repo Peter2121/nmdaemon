@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <thread>
 #include <stddef.h>
+#include <unistd.h>
 #include <lib80211/lib80211_regdomain.h>
 #include <lib80211/lib80211_regdomain.h>
 //#include <lib80211/lib80211_ioctl.h>
@@ -75,7 +76,9 @@ protected:
     {
         { NmScope::WIFI, NmCmd::WIFI_SCAN },
         { NmScope::WIFI, NmCmd::WIFI_SCAN_RESULTS },
-        { NmScope::WIFI, NmCmd::WIFI_STATUS }
+        { NmScope::WIFI, NmCmd::WIFI_STATUS },
+        { NmScope::WIFI, NmCmd::SUBSCRIBE },
+        { NmScope::WIFI, NmCmd::UNSUBSCRIBE }
     };
     const short SCAN_RESULTS_MAX_RETRIES = 3;
     static constexpr std::chrono::milliseconds SCAN_RESULTS_RETRY_DELAY{150};
@@ -93,6 +96,23 @@ protected:
     int getMaxRate(const uint8_t rates[15], uint8_t nrates);
     std::string getCaps(int capinfo);
     std::string getIEs(const u_int8_t *vp, int ielen);
+
+    // Decodes one RTM_IEEE80211 message's sub-event (ifan_what) and its
+    // trailing event-specific struct into the EVENT/DATA this worker's
+    // publishEvent() should fire. Returns false (nothing published) for a
+    // truncated or unrecognized sub-event.
+    bool decodeIeee80211Event(const char* buf, size_t n, NmCmd& outCmd, json& outData);
+    // Long-lived PF_ROUTE listener for WIFI-scope kernel events
+    // (RTM_IEEE80211), independent of whatever command nmdaemon itself may
+    // have issued - a station can associate/leave/trigger radar detection
+    // etc. for reasons that have nothing to do with any WPA/WIFI command
+    // nmdaemon ever executed, so this is the only way to see all of it.
+    // Independent of (and no conflict with) the separate, short-lived
+    // PF_ROUTE socket execCmdScan opens for its own synchronous
+    // scan-completion wait: the kernel hands every open routing socket its
+    // own copy of every message, so multiple listeners in the same process
+    // is normal, not a shared resource.
+    PfRouteMonitor routeMonitor;
 public:
     NmWorkerIeee80211();
     ~NmWorkerIeee80211();

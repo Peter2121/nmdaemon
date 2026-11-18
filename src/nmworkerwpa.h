@@ -64,7 +64,8 @@ protected:
         { NmScope::WPA, NmCmd::WPA_DISABLE },
         { NmScope::WPA, NmCmd::WPA_SET_BSSID },
         { NmScope::WPA, NmCmd::WPA_SELECT },
-        { NmScope::WPA, NmCmd::SUBSCRIBE }
+        { NmScope::WPA, NmCmd::SUBSCRIBE },
+        { NmScope::WPA, NmCmd::UNSUBSCRIBE }
     };
 
     static inline const std::string COMMAND_LIST = "LIST_NETWORKS";
@@ -162,14 +163,19 @@ protected:
     std::string searchLineInBuf(const std::string, bool);
     int getNetId(std::string, std::string, std::string);
     // Core of WPA_LIST (talks to wpa_supplicant and builds the NETWORKS
-    // json), factored out so WPA-scope notifications can reuse it directly
-    // without going through an NmCommandData.
+    // json), factored out so it can be called with a plain ifname instead
+    // of an NmCommandData.
     json getWpaListJson(const std::string& ifname, bool details = false);
-    // Publishes the same data a WPA_LIST with "DETAILS": false would return
-    // for ifname as a WPA event's DATA. Skipped (not a fallback to an empty
-    // list) if the list itself cannot be retrieved - unlike an empty routing
-    // table, a failed wpaCtrlCmd() doesn't mean "genuinely no networks".
-    void publishWpaListEvent(NmCmd cmd, const std::string& ifname);
+    // Looks up one network's entry (same per-network shape WPA_LIST's own
+    // "NETWORKS" array elements have) by netid, wrapped as { "NETWORK": {} }
+    // - the same shape WPA_ADD's own response already uses for the network
+    // it just created. Returns an ERROR result if the list itself can't be
+    // retrieved, or if no entry with that netid is found in it.
+    json getWpaNetworkJson(const std::string& ifname, int netid);
+    // Publishes just the one affected network's entry as a WPA event's
+    // DATA - not every other network configured on the same interface.
+    // Skipped if getWpaNetworkJson() can't find/retrieve it.
+    void publishWpaNetworkEvent(NmCmd cmd, const std::string& ifname, int netid);
 public:
     NmWorkerWpa();
     NmWorkerWpa(std::string);

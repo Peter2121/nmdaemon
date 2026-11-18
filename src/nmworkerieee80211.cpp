@@ -1,6 +1,38 @@
 #include "nmworkerieee80211.h"
 
-NmWorkerIeee80211::NmWorkerIeee80211()
+namespace
+{
+    std::string macToString(const uint8_t mac[6])
+    {
+        char buf[18];
+        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return buf;
+    }
+
+    std::string cacEventName(uint8_t type)
+    {
+        switch(type)
+        {
+            case 0:  return JSON_DATA_CAC_START;
+            case 1:  return JSON_DATA_CAC_STOP;
+            case 2:  return JSON_DATA_CAC_RADAR;
+            case 3:  return JSON_DATA_CAC_EXPIRE;
+            default: return "UNKNOWN(" + std::to_string(type) + ")";
+        }
+    }
+}
+
+NmWorkerIeee80211::NmWorkerIeee80211() :
+    routeMonitor("WIFI", [this](const char* buf, size_t n)
+    {
+        if(!hasSubscribers())
+            return;
+        NmCmd cmd;
+        json data;
+        if(decodeIeee80211Event(buf, n, cmd, data))
+            publishEvent(cmd, data);
+    })
 {
     ChanInfo = nullptr;
     HtConf = 0;
@@ -27,9 +59,158 @@ json NmWorkerIeee80211::execCmd(NmCommandData* pcmd)
             return execCmdScanResults(pcmd);
         case NmCmd::WIFI_STATUS :
             return execCmdStatus(pcmd);
+        case NmCmd::SUBSCRIBE :
+            return execCmdSubscribe(pcmd);
+        case NmCmd::UNSUBSCRIBE :
+            return execCmdUnsubscribe(pcmd);
         default :
             return { { JSON_PARAM_RESULT, JSON_PARAM_ERR }, {JSON_PARAM_ERR, JSON_DATA_ERR_INVALID_COMMAND} };
     }
+}
+
+bool NmWorkerIeee80211::decodeIeee80211Event(const char* buf, size_t n, NmCmd& outCmd, json& outData)
+{
+    if(n < sizeof(struct if_announcemsghdr))
+        return false;
+
+    const auto* ifan = reinterpret_cast<const struct if_announcemsghdr*>(buf);
+    if(ifan->ifan_type != RTM_IEEE80211)
+        return false;
+
+    NmCmd cmd;
+    switch(ifan->ifan_what)
+    {
+        case RTM_IEEE80211_ASSOC:    cmd = NmCmd::WIFI_STA_ASSOC; break;
+        case RTM_IEEE80211_REASSOC:  cmd = NmCmd::WIFI_STA_REASSOC; break;
+        case RTM_IEEE80211_DISASSOC: cmd = NmCmd::WIFI_STA_DISASSOC; break;
+        case RTM_IEEE80211_JOIN:     cmd = NmCmd::WIFI_STA_JOIN; break;
+        case RTM_IEEE80211_REJOIN:   cmd = NmCmd::WIFI_STA_REJOIN; break;
+        case RTM_IEEE80211_LEAVE:    cmd = NmCmd::WIFI_STA_LEAVE; break;
+        case RTM_IEEE80211_SCAN:     cmd = NmCmd::WIFI_SCAN_DONE; break;
+        case RTM_IEEE80211_REPLAY:   cmd = NmCmd::WIFI_REPLAY_FAILURE; break;
+        case RTM_IEEE80211_MICHAEL:  cmd = NmCmd::WIFI_MICHAEL_FAILURE; break;
+        case RTM_IEEE80211_WDS:      cmd = NmCmd::WIFI_WDS_DISCOVER; break;
+        case RTM_IEEE80211_CSA:      cmd = NmCmd::WIFI_CSA; break;
+        case RTM_IEEE80211_RADAR:    cmd = NmCmd::WIFI_RADAR; break;
+        case RTM_IEEE80211_CAC:      cmd = NmCmd::WIFI_CAC; break;
+        case RTM_IEEE80211_DEAUTH:   cmd = NmCmd::WIFI_STA_DEAUTH; break;
+        case RTM_IEEE80211_AUTH:     cmd = NmCmd::WIFI_STA_AUTH; break;
+        case RTM_IEEE80211_COUNTRY:  cmd = NmCmd::WIFI_COUNTRY; break;
+        case RTM_IEEE80211_RADIO:    cmd = NmCmd::WIFI_RADIO; break;
+        default:
+            return false; // unrecognized sub-event, nothing to publish
+    }
+
+    const char* payload = buf + sizeof(struct if_announcemsghdr);
+    size_t payloadLen = n - sizeof(struct if_announcemsghdr);
+
+    json data;
+    data[JSON_PARAM_IF_NAME] = std::string(ifan->ifan_name);
+
+    switch(ifan->ifan_what)
+    {
+        case RTM_IEEE80211_ASSOC:
+        case RTM_IEEE80211_REASSOC:
+        case RTM_IEEE80211_JOIN:
+        case RTM_IEEE80211_REJOIN:
+        case RTM_IEEE80211_LEAVE:
+        case RTM_IEEE80211_WDS:
+        case RTM_IEEE80211_DEAUTH:
+        case RTM_IEEE80211_AUTH:
+        {
+            // ieee80211_join_event/leave_event/wds_event/auth_event/
+            // deauth_event are all the same {iev_addr[6]} layout -
+            // notify_macaddr() in the kernel builds every one of them
+            // identically regardless of which named struct is declared.
+            if(payloadLen < sizeof(struct ieee80211_join_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_join_event*>(payload);
+            data[JSON_PARAM_LINK_ADDR] = macToString(iev->iev_addr);
+            break;
+        }
+        case RTM_IEEE80211_DISASSOC:
+        case RTM_IEEE80211_SCAN:
+            // No payload for these two.
+            break;
+        case RTM_IEEE80211_REPLAY:
+        {
+            if(payloadLen < sizeof(struct ieee80211_replay_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_replay_event*>(payload);
+            data[JSON_PARAM_SRC_ADDR] = macToString(iev->iev_src);
+            data[JSON_PARAM_DST_ADDR] = macToString(iev->iev_dst);
+            data[JSON_PARAM_CIPHER] = iev->iev_cipher;
+            data[JSON_PARAM_KEY_INDEX] = iev->iev_keyix;
+            data[JSON_PARAM_KEY_RSC] = iev->iev_keyrsc;
+            data[JSON_PARAM_FRAME_RSC] = iev->iev_rsc;
+            break;
+        }
+        case RTM_IEEE80211_MICHAEL:
+        {
+            if(payloadLen < sizeof(struct ieee80211_michael_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_michael_event*>(payload);
+            data[JSON_PARAM_SRC_ADDR] = macToString(iev->iev_src);
+            data[JSON_PARAM_DST_ADDR] = macToString(iev->iev_dst);
+            data[JSON_PARAM_CIPHER] = iev->iev_cipher;
+            data[JSON_PARAM_KEY_INDEX] = iev->iev_keyix;
+            break;
+        }
+        case RTM_IEEE80211_CSA:
+        {
+            if(payloadLen < sizeof(struct ieee80211_csa_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_csa_event*>(payload);
+            data[JSON_PARAM_CHAN_FLAGS] = iev->iev_flags;
+            data[JSON_PARAM_FREQUENCY] = iev->iev_freq;
+            data[JSON_PARAM_CHANNEL] = iev->iev_ieee;
+            data[JSON_PARAM_MODE] = iev->iev_mode;
+            data[JSON_PARAM_COUNT] = iev->iev_count;
+            break;
+        }
+        case RTM_IEEE80211_RADAR:
+        {
+            if(payloadLen < sizeof(struct ieee80211_radar_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_radar_event*>(payload);
+            data[JSON_PARAM_CHAN_FLAGS] = iev->iev_flags;
+            data[JSON_PARAM_FREQUENCY] = iev->iev_freq;
+            data[JSON_PARAM_CHANNEL] = iev->iev_ieee;
+            break;
+        }
+        case RTM_IEEE80211_CAC:
+        {
+            if(payloadLen < sizeof(struct ieee80211_cac_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_cac_event*>(payload);
+            data[JSON_PARAM_CHAN_FLAGS] = iev->iev_flags;
+            data[JSON_PARAM_FREQUENCY] = iev->iev_freq;
+            data[JSON_PARAM_CHANNEL] = iev->iev_ieee;
+            data[JSON_PARAM_CAC_TYPE] = cacEventName(iev->iev_type);
+            break;
+        }
+        case RTM_IEEE80211_COUNTRY:
+        {
+            if(payloadLen < sizeof(struct ieee80211_country_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_country_event*>(payload);
+            data[JSON_PARAM_LINK_ADDR] = macToString(iev->iev_addr);
+            data[JSON_PARAM_COUNTRY_CODE] = std::string(reinterpret_cast<const char*>(iev->iev_cc), 2);
+            break;
+        }
+        case RTM_IEEE80211_RADIO:
+        {
+            if(payloadLen < sizeof(struct ieee80211_radio_event))
+                return false;
+            const auto* iev = reinterpret_cast<const struct ieee80211_radio_event*>(payload);
+            data[JSON_PARAM_RADIO_STATE] = iev->iev_state ? JSON_PARAM_ON : JSON_PARAM_OFF;
+            break;
+        }
+    }
+
+    outCmd = cmd;
+    outData = data;
+    return true;
 }
 
 bool NmWorkerIeee80211::isValidCmd(NmCommandData* pcmd)
